@@ -118,6 +118,8 @@ uv run python scripts/doctor.py --profile examples/profiles/world-us-seattle-new
 
 The doctor checks tools, the lock, settings shape, writable roots, path-safe profile validity, publication environment references, and explicitly required capabilities. It prints only status and variable names; it does not print values, create run output, call Gemini, upload to R2, or prove live-service access. PR 09 adds a live Gemini smoke; PR 11 adds the R2 probe and publication UAT; PR 13 activates and qualifies the local schedule.
 
+Codex native web research requires no separately installed collector. Configure optional research skills, tools, connectors, or MCP servers outside a production run and verify they are visible before selecting them. For a profile's explicitly required capabilities, keep `AUDIO_ENGINE_AVAILABLE_CAPABILITIES` aligned for preflight and pass only actually available, suitable capabilities to `scripts/select_collection_method.py`. See [`optional-collectors.md`](optional-collectors.md).
+
 ## Troubleshooting and rollback
 
 - If `uv sync --locked` reports drift, do not regenerate the lock outside a dependency-owning PR.
@@ -126,4 +128,5 @@ The doctor checks tools, the lock, settings shape, writable roots, path-safe pro
 - If central configuration is missing, rerun the helper; never copy values into a worktree.
 - If the doctor rejects a profile outside the repository examples, add its absolute parent to `AUDIO_ENGINE_INPUT_ROOTS`; do not weaken path checks or use a symlink escape.
 - If a credential is exposed, revoke or rotate it immediately and remove it from all logs and evidence. Feed-token rotation also changes the secret feed URL and requires republishing.
+- If collection method selection or dossier validation fails, follow [`troubleshooting.md`](troubleshooting.md); never install a tool, edit state, or weaken the contract inside the run.
 - To disable live operation, remove or disable the scheduled task, revoke the bucket token, and disable R2 public access. Offline development remains usable.

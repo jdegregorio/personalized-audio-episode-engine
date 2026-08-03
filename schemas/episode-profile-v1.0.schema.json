@@ -58,6 +58,13 @@
           "title": "Maximum Candidates",
           "type": "integer"
         },
+        "maximum_estimated_tokens": {
+          "default": 100000,
+          "maximum": 2000000,
+          "minimum": 1,
+          "title": "Maximum Estimated Tokens",
+          "type": "integer"
+        },
         "maximum_sources": {
           "maximum": 10000,
           "minimum": 1,
@@ -115,6 +122,13 @@
         },
         "time_window": {
           "$ref": "#/$defs/TimeWindow"
+        },
+        "warning_estimated_tokens": {
+          "default": 50000,
+          "maximum": 1000000,
+          "minimum": 1,
+          "title": "Warning Estimated Tokens",
+          "type": "integer"
         }
       },
       "required": [

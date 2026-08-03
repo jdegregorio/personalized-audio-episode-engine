@@ -213,6 +213,24 @@ def test_collection_request_carries_collection_context() -> None:
     assert artifact.audience.knowledge_level == "informed_generalist"
     assert artifact.editorial_priorities.policy["avoid_sensationalism"] is True
     assert artifact.evidence_contract_version == "1.0"
+    assert artifact.required_capabilities == []
+    assert artifact.targets.warning_estimated_tokens == 50_000
+    assert artifact.targets.maximum_estimated_tokens == 100_000
+
+
+def test_collection_request_accepts_legacy_scope_without_descriptions() -> None:
+    data = _json("collection-request.json")
+    data["scope"].pop("section_descriptions")
+
+    artifact, report = validate_artifact_data(
+        "collection-request",
+        data,
+        allowed_output_roots=[Path("/synthetic/run")],
+    )
+
+    assert report.valid
+    assert isinstance(artifact, CollectionRequest)
+    assert artifact.scope.section_descriptions == {}
 
 
 def test_collection_output_path_requires_explicit_allowed_root(tmp_path: Path) -> None:

@@ -8,7 +8,7 @@ The approved scope and sequence live in [`plan.md`](../plan.md). This page recor
 | 02 | Configuration, profile loading, path safety, and doctor | Implemented on `main` |
 | 03 | Artifact contracts, validators, and fixtures | Implemented on `main` |
 | 04 | Run lifecycle, state, leases, and invalidation | Implemented on `main` |
-| 05 | Capability-aware collection skill | Not started |
+| 05 | Capability-aware collection skill | Implemented in PR 05 |
 | 06 | Editorial planning | Not started |
 | 07 | Grounded two-host scripting | Not started |
 | 08 | TTS preparation | Not started |
@@ -50,3 +50,10 @@ Workflow mutation, research, speech, audio processing, publication behavior, and
 - Heartbeat leases with live-owner no-op behavior, mutation-wide owner fencing, owner-only refresh/release, terminal and stale recovery, fail-closed corruption handling, atomic stale quarantine, and portable retry of the transient zero-byte `O_EXCL` creation window.
 - Validated stage transitions, current-state identity/upstream-reference binding, and exact hash-based downstream invalidation for profile, request, dossier, plan, and script changes.
 - Process concurrency, stale-race, mutation-safety, recovery, secret-redaction, and public-command smoke coverage using temporary local roots.
+
+## PR 05 delivered surface
+
+- A concise `produce-audio-episode` skill with stage routing and focused workflow, collection, and run-state references.
+- Capability-aware selection from already available suitable tools, native public-web fallback, optional-capability failover, and actionable required-capability failure without automatic installation.
+- One method-neutral dossier recorder that binds request lineage/method/prompt/limits, persists validation outcomes, allows one repair, fails after attempt two, surfaces warnings, and resumes verified evidence without recollection.
+- Topic-generic native/specialized adapter coverage, prompt-injection guardrails, optional-collector guidance, and collection troubleshooting without source-specific clients.

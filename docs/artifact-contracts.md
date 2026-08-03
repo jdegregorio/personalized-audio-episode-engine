@@ -6,7 +6,7 @@ Pipeline handoffs are strict JSON files with `contract_version: "1.0"`. The Pyda
 
 | Validator type | Schema | Purpose |
 | --- | --- | --- |
-| `collection-request` | [`collection-request-v1.0.schema.json`](../schemas/collection-request-v1.0.schema.json) | Topic-generic scope, audience/editorial context, evidence version, limits, capability hints, and output location |
+| `collection-request` | [`collection-request-v1.0.schema.json`](../schemas/collection-request-v1.0.schema.json) | Topic-generic section IDs/descriptions, audience/editorial context, evidence version, limits, capability hints, and output location |
 | `evidence` | [`evidence-dossier-v1.0.schema.json`](../schemas/evidence-dossier-v1.0.schema.json) | Candidates, normalized claims, claim supports, source provenance, and collection method |
 | `plan` | [`editorial-plan-v1.0.schema.json`](../schemas/editorial-plan-v1.0.schema.json) | Ordered candidate selection, claim requirements, treatment, exclusions, and host intent |
 | `script` | [`episode-script-v1.0.schema.json`](../schemas/episode-script-v1.0.schema.json) | Two-speaker turns, claim lineage, planned-segment references, and TTS boundaries |
@@ -37,6 +37,10 @@ Collection requests also require one or more explicit `--allowed-output-root` va
 
 The single-artifact command enforces schema and dossier semantics. Reusable `validate_plan_against_dossier` and `validate_script_against_plan_and_dossier` hooks enforce cross-artifact references and factual lineage. PRs 06 and 07 add profile-aware duration/section/host policy and prose-quality warnings without changing this baseline contract.
 
+During the production collection handoff, `record_collection.py` adapts every method to this same evidence boundary. It replaces method-supplied collection metadata with the selected method from state, binds the current collection-request hash, records collection prompt version `1.0.0`, and enforces the request's candidate/source/token limits and declared candidate sections before validation. It never rewrites claims, supports, sources, provenance, or research judgments.
+
+Each attempt writes a private `evidence-validation-attempt-<n>.json` report and records its hash, counts, and repair status in run state. Attempt 1 may request one repair; attempt 2 is terminal when invalid. A valid dossier and its validation outcome are both required before the skill routes to editorial work.
+
 ## Synthetic fixtures
 
-[`tests/fixtures/artifacts/`](../tests/fixtures/artifacts/) contains one valid artifact of every supported type, a copyright-safe RSS feed for later publication tests, and named JSON-pointer mutations for every required invalid evidence class. The mutations keep each failure explicit without copying the full golden dossier for every case. The valid dossier deliberately includes both web and connector locators plus prompt-injection-looking text to prove it remains inert. `scripts/check_artifacts.py` validates schemas, every manifest expectation, plan/script lineage, and the RSS structure in the secret-free integrity job.
+[`tests/fixtures/artifacts/`](../tests/fixtures/artifacts/) contains one valid artifact of every supported type, a copyright-safe RSS feed for later publication tests, and named JSON-pointer mutations for every required invalid evidence class. The mutations keep each failure explicit without copying the full golden dossier for every case. The valid dossier is grounded in the committed corpus under [`tests/fixtures/sources/marine-brief/`](../tests/fixtures/sources/marine-brief/) and includes prompt-injection-looking text to prove it remains inert. `scripts/check_artifacts.py` validates schemas, every manifest expectation, plan/script lineage, and the RSS structure in the secret-free integrity job.

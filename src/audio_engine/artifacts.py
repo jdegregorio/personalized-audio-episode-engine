@@ -87,6 +87,7 @@ class ArtifactReference(_ContractModel):
 
 class RequestScope(_ContractModel):
     sections: Annotated[list[Identifier], Field(min_length=1, max_length=100)]
+    section_descriptions: dict[Identifier, LongText] = Field(default_factory=dict)
     notes: ShortText
 
     @field_validator("sections")
@@ -95,6 +96,12 @@ class RequestScope(_ContractModel):
         if len(value) != len(set(value)):
             raise ValueError("scope sections must be unique")
         return value
+
+    @model_validator(mode="after")
+    def described_sections(self) -> Self:
+        if self.section_descriptions and set(self.section_descriptions) != set(self.sections):
+            raise ValueError("scope section descriptions must match declared sections")
+        return self
 
 
 class RequestTimeWindow(_ContractModel):
@@ -123,6 +130,14 @@ class CollectionTargets(_ContractModel):
     by_section: dict[Identifier, Annotated[int, Field(ge=0, le=1_000)]]
     maximum_candidates: Annotated[int, Field(ge=1, le=5_000)]
     maximum_sources: Annotated[int, Field(ge=1, le=10_000)]
+    warning_estimated_tokens: Annotated[int, Field(ge=1, le=1_000_000)] = 50_000
+    maximum_estimated_tokens: Annotated[int, Field(ge=1, le=2_000_000)] = 100_000
+
+    @model_validator(mode="after")
+    def ordered_token_limits(self) -> Self:
+        if self.warning_estimated_tokens > self.maximum_estimated_tokens:
+            raise ValueError("warning_estimated_tokens must not exceed maximum_estimated_tokens")
+        return self
 
 
 class CollectionRequest(_ContractModel):
@@ -148,6 +163,9 @@ class CollectionRequest(_ContractModel):
     time_window: RequestTimeWindow
     source_types: Annotated[list[Identifier], Field(min_length=1, max_length=50)]
     suggested_capabilities: Annotated[list[Identifier], Field(max_length=50)]
+    required_capabilities: Annotated[list[Identifier], Field(max_length=50)] = Field(
+        default_factory=list
+    )
     allow_native_research_fallback: bool
     evidence_contract_version: Literal["1.0"]
     source_policy: SourcePolicy
@@ -536,6 +554,27 @@ class PublicationState(_ContractModel):
     message: ShortText | None
 
 
+class CollectionValidationState(_ContractModel):
+    attempt: Annotated[int, Field(ge=1, le=2)]
+    status: Literal["valid", "invalid"]
+    error_count: Annotated[int, Field(ge=0, le=10_000)]
+    warning_count: Annotated[int, Field(ge=0, le=10_000)]
+    repair_allowed: bool
+    report: ArtifactReference
+
+    @model_validator(mode="after")
+    def consistent_outcome(self) -> Self:
+        if self.report.artifact_type != "validation":
+            raise ValueError("collection validation report must have type validation")
+        if self.status == "valid" and (self.error_count or self.repair_allowed):
+            raise ValueError("valid collection validation cannot contain errors or allow repair")
+        if self.status == "invalid" and not self.error_count:
+            raise ValueError("invalid collection validation requires at least one error")
+        if self.attempt == 2 and self.repair_allowed:
+            raise ValueError("second collection validation attempt cannot allow another repair")
+        return self
+
+
 class RunState(_ContractModel):
     model_config = ConfigDict(
         extra="forbid",
@@ -557,6 +596,8 @@ class RunState(_ContractModel):
     skill_version: Version
     prompt_versions: dict[Identifier, Version]
     collection_method: CollectionMethod | None
+    failed_collection_capabilities: list[Identifier] = Field(default_factory=list)
+    collection_validation: CollectionValidationState | None = None
     codex_model: ShortText | None
     gemini_model: ShortText | None
     started_at: JsonAwareDatetime
@@ -568,6 +609,13 @@ class RunState(_ContractModel):
     artifacts: dict[Identifier, ArtifactReference]
     final_audio_validation: FinalAudioValidation
     publication: PublicationState
+
+    @field_validator("failed_collection_capabilities")
+    @classmethod
+    def unique_failed_collection_capabilities(cls, value: list[str]) -> list[str]:
+        if len(value) != len(set(value)):
+            raise ValueError("failed collection capabilities must be unique")
+        return value
 
     @model_validator(mode="after")
     def consistent_terminal_state(self) -> Self:

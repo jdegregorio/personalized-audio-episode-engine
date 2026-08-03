@@ -12,7 +12,11 @@
       "habitat",
       "methods"
     ],
-    "notes": "Profile-defined synthetic scope; section identifiers are opaque to the engine."
+    "section_descriptions": {
+      "habitat": "Material changes observed in the fictional coastal habitat plots",
+      "methods": "Material changes to fictional monitoring instruments or methods"
+    },
+    "notes": "Profile-defined section identifiers and descriptions."
   },
   "audience": {
     "locale": "en-US",
@@ -40,6 +44,7 @@
   "suggested_capabilities": [
     "research_library"
   ],
+  "required_capabilities": [],
   "allow_native_research_fallback": true,
   "evidence_contract_version": "1.0",
   "source_policy": {
@@ -52,11 +57,13 @@
   },
   "targets": {
     "by_section": {
-      "habitat": 3,
-      "methods": 2
+      "habitat": 1,
+      "methods": 1
     },
     "maximum_candidates": 10,
-    "maximum_sources": 20
+    "maximum_sources": 20,
+    "warning_estimated_tokens": 50000,
+    "maximum_estimated_tokens": 100000
   },
   "output_path": "/synthetic/run/evidence-dossier.json"
 }

@@ -1,0 +1,4 @@
+interface:
+  display_name: "Produce Audio Episode"
+  short_description: "Produce a grounded conversational audio episode"
+  default_prompt: "Use $produce-audio-episode to produce one source-grounded audio episode from an episode profile."

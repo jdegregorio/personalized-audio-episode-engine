@@ -40,6 +40,8 @@ uv run python scripts/doctor.py --profile examples/profiles/world-us-seattle-new
 
 Episode profiles are strict, versioned YAML data. See [`docs/profile-authoring.md`](docs/profile-authoring.md) and the committed [`schemas/episode-profile-v1.0.schema.json`](schemas/episode-profile-v1.0.schema.json).
 
+For offline collection verification, [`examples/profiles/synthetic-marine-brief.yaml`](examples/profiles/synthetic-marine-brief.yaml) is grounded in the committed synthetic corpus under `tests/fixtures/sources/marine-brief/`; it is test data, not a production feed.
+
 Validate a persisted pipeline artifact without modifying it:
 
 ```bash
@@ -56,6 +58,19 @@ uv run python scripts/init_run.py \
 ```
 
 The run layout, lifecycle stages, invalidation, same-episode no-op behavior, and stale-lease recovery are documented in [`docs/run-lifecycle.md`](docs/run-lifecycle.md).
+
+## Collection workflow
+
+The repository skill at [`.agents/skills/produce-audio-episode/SKILL.md`](.agents/skills/produce-audio-episode/SKILL.md) routes one profile through the durable workflow. During collection it inspects capabilities already available to Codex, uses a suitable specialized capability when helpful, and otherwise uses native public-web research when the profile permits it. Specialized collectors are optional and are never installed by a production run; see [`docs/optional-collectors.md`](docs/optional-collectors.md).
+
+After initialization, record the chosen method and validate the dossier through the same deterministic boundary regardless of research method:
+
+```bash
+uv run python scripts/select_collection_method.py --run <run-directory>
+uv run python scripts/record_collection.py --run <run-directory>
+```
+
+The first invalid dossier receives one machine-readable repair opportunity; a second invalid attempt fails the run. Collection recovery is documented in [`docs/troubleshooting.md`](docs/troubleshooting.md).
 
 ## Security boundary
 
