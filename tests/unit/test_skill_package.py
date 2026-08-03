@@ -19,7 +19,12 @@ def test_skill_package_is_concise_linked_and_command_complete() -> None:
     assert len(skill_text.splitlines()) < 100
     assert "TODO" not in skill_text
 
-    expected_references = {"workflow.md", "evidence-collection.md", "run-state.md"}
+    expected_references = {
+        "workflow.md",
+        "evidence-collection.md",
+        "editorial-planning.md",
+        "run-state.md",
+    }
     references = SKILL_ROOT / "references"
     assert {path.name for path in references.glob("*.md")} == expected_references
     for name in expected_references:
@@ -34,6 +39,7 @@ def test_skill_package_is_concise_linked_and_command_complete() -> None:
         "scripts/doctor.py",
         "scripts/init_run.py",
         "scripts/record_collection.py",
+        "scripts/record_editorial_plan.py",
         "scripts/select_collection_method.py",
     }
     repository_root = SKILL_ROOT.parents[2]
@@ -58,3 +64,13 @@ def test_collection_reference_treats_source_content_as_inert_data() -> None:
 def test_skill_ui_metadata_names_the_skill_in_default_prompt() -> None:
     metadata = yaml.safe_load((SKILL_ROOT / "agents" / "openai.yaml").read_text(encoding="utf-8"))
     assert "$produce-audio-episode" in metadata["interface"]["default_prompt"]
+
+
+def test_editorial_reference_preserves_the_single_judgment_phase() -> None:
+    instructions = (SKILL_ROOT / "references" / "editorial-planning.md").read_text(encoding="utf-8")
+
+    assert "complete authoritative episode profile" in instructions
+    assert "evidence-dossier.json" in instructions
+    assert "Do not write host dialogue" in instructions
+    assert "Do not add numerical scoring" in instructions
+    assert "every dossier candidate" in instructions

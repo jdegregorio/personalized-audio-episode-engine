@@ -27,6 +27,7 @@ from audio_engine.artifacts import (
     EpisodeScript,
     EvidenceDossier,
     FinalAudioValidation,
+    PlanValidationState,
     PublicationState,
     RequestScope,
     RequestTimeWindow,
@@ -577,6 +578,134 @@ def record_collection_validation(
     return updated
 
 
+def record_plan_validation(
+    workspace: RunWorkspace,
+    manager: LeaseManager,
+    run_id: str,
+    *,
+    attempt: int,
+    prompt_version: str,
+    report: ValidationReport,
+    now: datetime,
+    plan: EditorialPlan | None = None,
+    allowed_profile_roots: Sequence[Path] = (),
+) -> RunState:
+    """Persist one editorial-plan outcome and terminalize the second invalid attempt."""
+    should_release = False
+    try:
+        with manager.mutation(workspace.episode_key, run_id):
+            state = load_run_state(workspace.state_path)
+            if state.run_id != run_id or state.status != "running":
+                raise LifecycleError("plan validation requires the active run owner")
+            if state.collection_validation is None or state.collection_validation.status != "valid":
+                raise LifecycleError("plan validation requires valid collected evidence")
+            previous = state.plan_validation
+            expected_attempt = 1
+            if previous is not None:
+                if not previous.repair_allowed:
+                    raise LifecycleError("plan validation does not allow another attempt")
+                expected_attempt = previous.attempt + 1
+            if attempt != expected_attempt:
+                raise LifecycleError(f"plan validation attempt must be {expected_attempt}")
+            if report.artifact_type != "plan":
+                raise LifecycleError("plan validation report must describe an editorial plan")
+            if report.valid:
+                if plan is None:
+                    raise LifecycleError("valid plan outcome requires an editorial plan")
+                if plan.prompt_version != prompt_version:
+                    raise LifecycleError("editorial prompt provenance does not match active state")
+            else:
+                if plan is not None:
+                    raise LifecycleError("invalid plan outcome cannot persist an editorial plan")
+                if state.current_stage != "editorial":
+                    raise LifecycleError("invalid plan outcome must remain in editorial")
+
+            validation_filename = f"plan-validation-attempt-{attempt}.json"
+            validation_path = resolve_within_roots(
+                workspace.run_directory / validation_filename,
+                [workspace.run_directory],
+                must_exist=False,
+            )
+            atomic_write_json(
+                validation_path,
+                {
+                    "attempt": attempt,
+                    "prompt_version": prompt_version,
+                    "validated_at": _aware_utc(now).isoformat().replace("+00:00", "Z"),
+                    **report.to_dict(),
+                },
+            )
+            report_reference = ArtifactReference(
+                artifact_type="validation",
+                path=validation_filename,
+                sha256=sha256_file(validation_path),
+            )
+            outcome = PlanValidationState(
+                attempt=attempt,
+                status="valid" if report.valid else "invalid",
+                error_count=len(report.errors),
+                warning_count=len(report.warnings),
+                repair_allowed=not report.valid and attempt == 1,
+                report=report_reference,
+            )
+            if outcome.status == "valid":
+                if plan is None:  # pragma: no cover - checked before report persistence
+                    raise LifecycleError("valid plan outcome requires an editorial plan")
+                state, _ = _prepare_stage_artifact_owned(
+                    workspace,
+                    run_id,
+                    artifact_key="editorial_plan",
+                    rule=_ARTIFACT_RULES["editorial_plan"],
+                    data=plan.model_dump(mode="json"),
+                    allowed_input_roots=allowed_profile_roots,
+                )
+                if (
+                    state.current_stage not in {"editorial", "script"}
+                    or "editorial_plan" not in state.artifacts
+                ):
+                    raise LifecycleError("valid plan outcome requires a persisted editorial plan")
+
+            artifacts = {**state.artifacts, "plan_validation": outcome.report}
+            update: dict[str, object] = {
+                "artifacts": artifacts,
+                "plan_validation": outcome,
+                "prompt_versions": {**state.prompt_versions, "editorial": prompt_version},
+            }
+            if outcome.status == "valid":
+                update["current_stage"] = "script"
+                update["last_completed_valid_stage"] = "editorial"
+            elif not outcome.repair_allowed:
+                update.update(
+                    {
+                        "completed_at": _aware_utc(now),
+                        "failure": RunFailure(
+                            stage="editorial",
+                            code="plan_validation_failed",
+                            message="Editorial plan remained invalid after one repair attempt.",
+                            recovery_guidance=(
+                                "Inspect the latest plan-validation-attempt file, correct the "
+                                "editorial input, and start a new owning run."
+                            ),
+                        ),
+                        "status": "failed",
+                    }
+                )
+                should_release = True
+            updated = _validated_state_update(state, update)
+            _write_run_state(workspace, updated)
+            _write_summary(workspace, updated)
+    except (SafetyError, StorageError) as error:
+        raise LifecycleError("plan validation could not be persisted") from error
+    except LeaseError as error:
+        raise LifecycleError(str(error)) from None
+    if should_release:
+        try:
+            manager.release(workspace.episode_key, run_id)
+        except LeaseError as error:
+            raise LifecycleError(str(error)) from None
+    return updated
+
+
 def refresh_run_summary(
     workspace: RunWorkspace,
     manager: LeaseManager,
@@ -686,6 +815,20 @@ def _require_current_lineage(
     if identity is not None and identity != (state.run_id, state.profile_id, expected_date):
         raise LifecycleError("stage artifact identity does not match the active run")
 
+    if isinstance(artifact, EditorialPlan) and artifact.profile is not None:
+        if state.artifacts.get("profile") != artifact.profile:
+            raise LifecycleError("editorial plan profile input does not match current run state")
+        try:
+            profile_path = resolve_within_roots(
+                Path(artifact.profile.path),
+                allowed_input_roots,
+                must_exist=True,
+            )
+            if sha256_file(profile_path) != artifact.profile.sha256:
+                raise LifecycleError("recorded profile hash does not match its file")
+        except (SafetyError, StorageError) as error:
+            raise LifecycleError("recorded profile input is missing or unsafe") from error
+
     required: tuple[tuple[str, ArtifactReference], ...]
     if isinstance(artifact, EvidenceDossier):
         required = (("collection_request", artifact.collection_request),)
@@ -735,6 +878,7 @@ def invalidate_for_artifact_change(
     if existing is not None and existing.sha256 == reference.sha256:
         return state
     replaces_evidence = artifact_key == "evidence_dossier" and existing is not None
+    replaces_plan = artifact_key == "editorial_plan" and existing is not None
     if artifact_key == "profile":
         if profile_version is None:
             raise LifecycleError("profile invalidation requires the new profile version")
@@ -777,6 +921,12 @@ def invalidate_for_artifact_change(
         update["collection_validation"] = None
         update["current_stage"] = "collection"
         update["last_completed_valid_stage"] = "initialized"
+    if artifact_key in {"profile", "collection_request", "evidence_dossier"}:
+        update["plan_validation"] = None
+    elif replaces_plan:
+        update["plan_validation"] = None
+        update["current_stage"] = "editorial"
+        update["last_completed_valid_stage"] = "collection"
     if downstream & _FINAL_OUTPUT_KEYS:
         update["final_audio_validation"] = FinalAudioValidation(
             status="pending",
@@ -862,6 +1012,14 @@ def render_summary(workspace: RunWorkspace, state: RunState) -> str:
         elif validation.warning_count:
             label = "warning" if validation.warning_count == 1 else "warnings"
             warnings.append(f"dossier valid with {validation.warning_count} {label}")
+    if state.plan_validation:
+        validation = state.plan_validation
+        if validation.status == "invalid":
+            repair = "repair available" if validation.repair_allowed else "no repairs remain"
+            warnings.append(f"editorial plan invalid ({validation.error_count} errors; {repair})")
+        elif validation.warning_count:
+            label = "warning" if validation.warning_count == 1 else "warnings"
+            warnings.append(f"editorial plan valid with {validation.warning_count} {label}")
     warning_text = "; ".join(warnings) if warnings else "none"
     lines = [
         "# Run summary",

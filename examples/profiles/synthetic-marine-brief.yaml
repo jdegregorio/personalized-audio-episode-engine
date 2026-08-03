@@ -59,6 +59,11 @@ editorial:
       maximum_items: 1
   maximum_total_items: 2
   allow_empty_sections: []
+  exclusion_reason_codes:
+    - lower_importance
+    - duplicate_observation
+    - weak_measurement
+    - episode_length_constraint
   policy:
     synthetic_only: true
     fixture_corpus: tests/fixtures/sources/marine-brief

@@ -137,6 +137,7 @@ class Editorial(_ProfileModel):
     target_sections: dict[Identifier, SectionTarget]
     maximum_total_items: Annotated[int, Field(ge=1, le=100)]
     allow_empty_sections: list[Identifier] = Field(default_factory=list)
+    exclusion_reason_codes: list[Identifier] = Field(default_factory=list)
     policy: dict[Identifier, JsonValue] = Field(default_factory=dict)
 
     @model_validator(mode="after")
@@ -144,6 +145,13 @@ class Editorial(_ProfileModel):
         if not self.minimum_minutes <= self.target_minutes <= self.maximum_minutes:
             raise ValueError("target_minutes must be within minimum_minutes and maximum_minutes")
         return self
+
+    @field_validator("allow_empty_sections", "exclusion_reason_codes")
+    @classmethod
+    def unique_editorial_identifiers(cls, value: list[str]) -> list[str]:
+        if len(value) != len(set(value)):
+            raise ValueError("editorial identifier lists must contain unique values")
+        return value
 
 
 class Speaker(_ProfileModel):

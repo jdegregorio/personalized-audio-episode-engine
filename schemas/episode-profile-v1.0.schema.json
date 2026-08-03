@@ -156,6 +156,16 @@
           "title": "Allow Empty Sections",
           "type": "array"
         },
+        "exclusion_reason_codes": {
+          "items": {
+            "maxLength": 80,
+            "minLength": 1,
+            "pattern": "^[a-z][a-z0-9_-]*$",
+            "type": "string"
+          },
+          "title": "Exclusion Reason Codes",
+          "type": "array"
+        },
         "maximum_minutes": {
           "maximum": 180,
           "minimum": 1,

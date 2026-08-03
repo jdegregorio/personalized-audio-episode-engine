@@ -1,6 +1,6 @@
 # Operations
 
-The engine supports validated environment/profile preflight, deterministic artifact/lineage validation, owner-checked run initialization, and capability-neutral evidence collection. Editorial planning, rendering, and publication arrive only in their owning PRs in [`plan.md`](../plan.md).
+The engine supports validated environment/profile preflight, deterministic artifact/lineage validation, owner-checked run initialization, capability-neutral evidence collection, and one profile-driven editorial-planning phase. Scriptwriting, rendering, and publication arrive only in their owning PRs in [`plan.md`](../plan.md).
 
 ## Development gate
 
@@ -72,6 +72,16 @@ uv run python scripts/record_collection.py --run <run-directory>
 
 The recorder binds current request lineage, selected method, prompt version, and configured limits; validates and persists the dossier; writes a hashed validation report; and advances only valid evidence. It returns `repair_required` once, fails/releases after a second invalid attempt, and returns `already_valid` when resuming verified collection. See [`optional-collectors.md`](optional-collectors.md) and [`troubleshooting.md`](troubleshooting.md).
 
+## Editorial planning
+
+In a distinct Codex phase, follow the skill's [`editorial-planning.md`](../.agents/skills/produce-audio-episode/references/editorial-planning.md) reference. Read the complete profile and validated dossier, write `<run-directory>/editorial-plan.json`, and run:
+
+```bash
+uv run python scripts/record_editorial_plan.py --run <run-directory>
+```
+
+The command authoritatively binds prompt/run/profile/date and profile/dossier hashes, then validates selected and excluded candidates, claims, order, section and item limits, duration, configured lead hosts, profile-defined reason codes, transitions, and useful disagreement notes. Profile minimum counts remain editorial targets: a shortfall is a warning, while maxima and duration bounds fail. Attempt 1 may receive one repair; attempt 2 fails/releases. A verified resume returns `already_valid` without re-planning.
+
 ## Production invariants
 
 - One independent Codex run processes one profile.
@@ -84,6 +94,6 @@ The recorder binds current request lineage, selected method, prompt version, and
 
 ## Rollback at this phase
 
-No current command contacts Gemini or R2. Initialization and collection create only local runtime files after acquiring an episode lease; Codex research itself may access public sources or an already configured capability. Follow the lease-aware rollback in [`run-lifecycle.md`](run-lifecycle.md); do not manually remove a live lock. Invalid generated artifacts are repaired at their owning stage rather than bypassing version, lineage, locator, or evidence validation.
+No current command contacts Gemini or R2. Initialization, collection recording, and editorial recording create only local runtime files after acquiring an episode lease; Codex research itself may access public sources or an already configured capability. Follow the lease-aware rollback in [`run-lifecycle.md`](run-lifecycle.md); do not manually remove a live lock. Invalid generated artifacts are repaired at their owning stage rather than bypassing version, lineage, locator, evidence, or plan validation.
 
 Service-specific recovery and rotation are documented in [`cloudflare-r2.md`](cloudflare-r2.md) and will be expanded alongside their implementations.

@@ -59,7 +59,7 @@ Default GitHub Actions must be secret-free and cover repository/document integri
 
 ## Unblocking work without weakening evidence
 
-Required test, smoke, UAT, and review evidence is never skipped because a tool, dependency, environment, or service is initially unavailable. Contributors must diagnose the failure and independently apply the smallest safe in-scope repair when they have the access and authority to do so, then rerun the affected gate and continue the PR without waiting for owner approval.
+Required test, smoke, UAT, correctness-review, and simplification-review evidence is never skipped because a tool, dependency, environment, or service is initially unavailable. Contributors must diagnose the failure and independently apply the smallest safe in-scope repair when they have the access and authority to do so, then rerun the affected gate and continue the PR without waiting for owner approval.
 
 Stop and request owner help only when the remaining blocker genuinely requires an action the contributor cannot perform, such as providing or rotating a secret, completing account or billing setup, approving an external permission, configuring a physical device, or making an unavailable owner-only product choice. Report the exact missing prerequisite and do not substitute mocks, reduce coverage, waive a gate, or proceed to dependent PRs while required evidence remains incomplete.
 
@@ -88,22 +88,11 @@ git diff origin/main...HEAD
 
 Reject unrelated churn, speculative frameworks, duplicated or overly nested logic, clever compression, dead paths, and documentation that creates multiple conflicting sources of truth. Record the reviewer, commit SHA, simplifications made, justified retained complexity, and a final pass or changes-requested decision. Any subsequent change invalidates that reviewed SHA and requires affected checks and review to run again.
 
-## Codex auto-review merge gate
+## GitHub Codex feedback during accelerated MVP delivery
 
-Open PRs as ready for review so the configured GitHub Codex review can run. Use no more than two Codex review rounds per PR:
+For PR 06 through PR 13, do not request or wait for GitHub Codex auto-review and do not change the active PR in response to it. A review that is absent, pending, in progress, or incomplete is not a merge blocker. Required GitHub checks, local correctness and simplification passes, applicable tests, smoke, and real UAT remain merge gates.
 
-1. Run the initial review after the scoped implementation and applicable checks are ready.
-2. If that review causes changes or a rereview would materially reduce risk, run one final rereview. Do not request a third Codex review.
-
-Examine every comment and thread from those rounds and record one explicit disposition:
-
-- Implement and verify findings that block the current scope, acceptance criteria, correctness, security, privacy, durability, or release safety.
-- Resolve or dismiss immaterial, incorrect, or non-actionable findings only after replying with a concrete rationale.
-- Defer valid but non-blocking work only by updating `plan.md` in the same PR with the owning future PR, expected behavior, and acceptance evidence, then link that disposition in the thread.
-
-Resolve every thread after its disposition; silent dismissal is not adequate. If the second review causes further changes, rerun affected local and GitHub checks plus the final correctness and simplification reviews, but do not request a third Codex review. A Codex review that predates those bounded follow-up changes is therefore intentional and is not a stale-review blocker. No PR may merge with a pending change request, failed required check, or undispositioned review finding.
-
-The `main` ruleset requires conversation resolution. This written two-round gate remains mandatory even when repository settings cannot enforce the review-round limit or quality of each disposition.
+Merge as soon as those gates pass. Feedback left on a PR before or after merge is intentionally outside the active delivery loop; scrape closed PRs later into a separate post-MVP backlog. If repository settings require conversation resolution to merge, resolve the thread administratively without treating it as an implementation gate, while preserving the closed PR as the source for later backlog triage.
 
 ## Documentation and release discipline
 
@@ -118,7 +107,6 @@ A PR is complete only when:
 - Its scoped requirements and acceptance criteria pass.
 - Affected documentation matches the implementation.
 - Applicable local, CI, smoke, UAT, failure, and recovery checks pass.
-- Correctness and simplification reviews cover the final SHA; the Codex review gate is complete within its two-round limit.
-- Every Codex finding has a recorded implement, rationale, or plan-deferral disposition, and every thread is resolved.
+- Correctness and simplification reviews cover the final SHA; no GitHub Codex review is required for PR 06 through PR 13.
 - No secret, runtime artifact, live-news dependency, source-specific client, unrelated refactor, or deferred documentation is included.
 - The branch is current with its merged predecessor and is safe to squash-merge.

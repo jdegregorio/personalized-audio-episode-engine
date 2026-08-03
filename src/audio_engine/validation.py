@@ -26,6 +26,7 @@ from audio_engine.artifacts import (
     EpisodeScript,
     EvidenceDossier,
 )
+from audio_engine.profile import EpisodeProfile
 from audio_engine.safety import SafetyError, resolve_within_roots
 
 ARTIFACT_TYPES = tuple(ARTIFACT_MODELS)
@@ -665,6 +666,161 @@ def validate_plan_against_dossier(
             )
         excluded.add(exclusion.candidate_id)
     return tuple(sorted(issues))
+
+
+def validate_plan_against_profile(
+    plan: EditorialPlan,
+    dossier: EvidenceDossier,
+    profile: EpisodeProfile,
+) -> tuple[tuple[ValidationIssue, ...], tuple[ValidationIssue, ...]]:
+    """Validate profile-owned editorial bounds without scoring editorial judgment."""
+    errors: list[ValidationIssue] = []
+    warnings: list[ValidationIssue] = []
+    candidates = {candidate.candidate_id: candidate for candidate in dossier.candidates}
+    claims = {claim.claim_id: claim for claim in dossier.claims}
+    supports = {support.support_id: support for support in dossier.claim_supports}
+    selected = {segment.candidate_id for segment in plan.segments}
+    excluded = {exclusion.candidate_id for exclusion in plan.exclusions}
+    allowed_sections = set(profile.editorial.target_sections)
+    section_counts: dict[str, int] = defaultdict(int)
+    lead_hosts = {profile.hosts.female.name, profile.hosts.male.name}
+
+    if len(plan.segments) > profile.editorial.maximum_total_items:
+        errors.append(
+            _issue(
+                "item_limit_exceeded",
+                "/segments",
+                "planned segment count exceeds editorial.maximum_total_items",
+            )
+        )
+    minimum_seconds = profile.editorial.minimum_minutes * 60
+    maximum_seconds = profile.editorial.maximum_minutes * 60
+    if not minimum_seconds <= plan.planned_duration_seconds <= maximum_seconds:
+        errors.append(
+            _issue(
+                "duration_out_of_bounds",
+                "/planned_duration_seconds",
+                "planned duration is outside the profile's minimum and maximum",
+            )
+        )
+
+    for index, segment in enumerate(plan.segments):
+        if segment.lead_host not in lead_hosts:
+            errors.append(
+                _issue(
+                    "invalid_lead_host",
+                    f"/segments/{index}/lead_host",
+                    "lead host must match one of the two configured host names",
+                )
+            )
+        candidate = candidates.get(segment.candidate_id)
+        candidate_section = (
+            candidate.classification.get("section") if candidate is not None else None
+        )
+        section = segment.section if segment.section is not None else candidate_section
+        if segment.section is not None and segment.section not in allowed_sections:
+            errors.append(
+                _issue(
+                    "unsupported_classification",
+                    f"/segments/{index}/section",
+                    "planned section is not declared by the profile",
+                )
+            )
+        if isinstance(section, str) and section in allowed_sections:
+            section_counts[section] += 1
+
+        required = segment.required_claim_ids
+        optional = segment.optional_claim_ids
+        if len(required) != len(set(required)):
+            errors.append(
+                _issue(
+                    "duplicate_claim",
+                    f"/segments/{index}/required_claim_ids",
+                    "required claim IDs must be unique within a segment",
+                )
+            )
+        if len(optional) != len(set(optional)):
+            errors.append(
+                _issue(
+                    "duplicate_claim",
+                    f"/segments/{index}/optional_claim_ids",
+                    "optional claim IDs must be unique within a segment",
+                )
+            )
+        if set(required) & set(optional):
+            errors.append(
+                _issue(
+                    "claim_required_and_optional",
+                    f"/segments/{index}/optional_claim_ids",
+                    "a claim cannot be both required and optional",
+                )
+            )
+
+        referenced_claims = [
+            claims[claim_id] for claim_id in [*required, *optional] if claim_id in claims
+        ]
+        has_disagreement = bool(
+            candidate
+            and candidate.source_differences.meaningful_differences
+            or any(claim.status == "disputed" for claim in referenced_claims)
+            or any(
+                supports[support_id].support_type == "disputed"
+                for claim in referenced_claims
+                for support_id in claim.support_ids
+                if support_id in supports
+            )
+        )
+        if has_disagreement and not segment.source_conflict_notes:
+            errors.append(
+                _issue(
+                    "missing_source_conflict_notes",
+                    f"/segments/{index}/source_conflict_notes",
+                    "selected disputed or divergent evidence requires a concise plan note",
+                )
+            )
+
+    for section, target in profile.editorial.target_sections.items():
+        count = section_counts[section]
+        if count > target.maximum_items:
+            errors.append(
+                _issue(
+                    "section_item_limit_exceeded",
+                    "/segments",
+                    f"section {section!r} exceeds its configured maximum",
+                )
+            )
+        elif count < target.minimum_items and not (
+            count == 0 and section in profile.editorial.allow_empty_sections
+        ):
+            warnings.append(
+                _issue(
+                    "section_target_shortfall",
+                    "/segments",
+                    f"section {section!r} is below its configured target minimum",
+                )
+            )
+
+    allowed_reasons = set(profile.editorial.exclusion_reason_codes)
+    if allowed_reasons:
+        for index, exclusion in enumerate(plan.exclusions):
+            if exclusion.reason_code not in allowed_reasons:
+                errors.append(
+                    _issue(
+                        "unsupported_exclusion_reason",
+                        f"/exclusions/{index}/reason_code",
+                        "exclusion reason code is not declared by the profile",
+                    )
+                )
+
+    for candidate_id in sorted(set(candidates) - selected - excluded):
+        errors.append(
+            _issue(
+                "candidate_not_dispositioned",
+                "/exclusions",
+                f"candidate {candidate_id!r} must be selected or explicitly excluded",
+            )
+        )
+    return tuple(sorted(errors)), tuple(sorted(warnings))
 
 
 def validate_script_against_plan_and_dossier(

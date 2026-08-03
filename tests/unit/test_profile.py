@@ -39,11 +39,22 @@ def test_profile_supports_arbitrary_section_identifiers(
         "methods": {"minimum_items": 0, "maximum_items": 2},
     }
     example_profile_data["editorial"]["allow_empty_sections"] = ["methods"]
+    example_profile_data["editorial"]["exclusion_reason_codes"] = ["limited_field_value"]
     example_profile_data["editorial"]["policy"] = {"taxonomic_depth": "family"}
 
     profile = validate_profile_data(example_profile_data)
 
     assert {section.id for section in profile.episode.scope.sections} == {"fieldwork", "methods"}
+    assert profile.editorial.exclusion_reason_codes == ["limited_field_value"]
+
+
+def test_profile_rejects_duplicate_editorial_identifiers(
+    example_profile_data: dict[str, Any],
+) -> None:
+    example_profile_data["editorial"]["exclusion_reason_codes"] = ["weak_source", "weak_source"]
+
+    with pytest.raises(ProfileError, match="unique"):
+        validate_profile_data(example_profile_data)
 
 
 def test_profile_rejects_unsupported_or_unquoted_version(

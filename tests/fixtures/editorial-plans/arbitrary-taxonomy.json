@@ -1,0 +1,50 @@
+{
+  "contract_version": "1.0",
+  "prompt_version": "1.0.0",
+  "created_at": "2026-01-15T15:06:00Z",
+  "run_id": "marine-brief_2026-01-15_synthetic",
+  "profile_id": "marine-brief",
+  "episode_date": "2026-01-15",
+  "profile": null,
+  "evidence_dossier": {
+    "artifact_type": "evidence",
+    "path": "evidence-dossier.json",
+    "sha256": "sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"
+  },
+  "opening_approach": "Frame a non-news field briefing around observations and instrumentation.",
+  "segments": [
+    {
+      "segment_id": "segment_reef",
+      "order": 1,
+      "candidate_id": "item_reef_plot",
+      "section": "observations",
+      "editorial_angle": "Describe the observed habitat change.",
+      "why_it_matters": "It is the primary field observation in the briefing.",
+      "required_claim_ids": ["claim_reef_growth"],
+      "optional_claim_ids": [],
+      "desired_duration_seconds": 180,
+      "lead_host": "Maya",
+      "host_dynamic": "Maya leads the observation and Daniel asks about measurement context.",
+      "source_conflict_notes": [],
+      "transition_intent": "Move from observation to instrumentation."
+    },
+    {
+      "segment_id": "segment_sensor",
+      "order": 2,
+      "candidate_id": "item_sensor_method",
+      "section": "instrumentation",
+      "editorial_angle": "Explain the updated calibration interval.",
+      "why_it_matters": "Instrumentation policy affects how observations are compared.",
+      "required_claim_ids": ["claim_sensor_interval"],
+      "optional_claim_ids": [],
+      "desired_duration_seconds": 120,
+      "lead_host": "Daniel",
+      "host_dynamic": "Daniel leads the instrumentation detail and Maya summarizes its consequence.",
+      "source_conflict_notes": [],
+      "transition_intent": "Close by connecting measurement quality to interpretation."
+    }
+  ],
+  "exclusions": [],
+  "closing_takeaway": "The same engine can plan a non-news episode with profile-defined taxonomy.",
+  "planned_duration_seconds": 300
+}

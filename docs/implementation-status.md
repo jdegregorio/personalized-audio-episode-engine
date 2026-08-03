@@ -9,7 +9,7 @@ The approved scope and sequence live in [`plan.md`](../plan.md). This page recor
 | 03 | Artifact contracts, validators, and fixtures | Implemented on `main` |
 | 04 | Run lifecycle, state, leases, and invalidation | Implemented on `main` |
 | 05 | Capability-aware collection skill | Implemented in PR 05 |
-| 06 | Editorial planning | Not started |
+| 06 | Editorial planning | Implemented in PR 06 |
 | 07 | Grounded two-host scripting | Not started |
 | 08 | TTS preparation | Not started |
 | 09 | Gemini rendering and voice selection | Not started |
@@ -57,3 +57,10 @@ Workflow mutation, research, speech, audio processing, publication behavior, and
 - Capability-aware selection from already available suitable tools, native public-web fallback, optional-capability failover, and actionable required-capability failure without automatic installation.
 - One method-neutral dossier recorder that binds request lineage/method/prompt/limits, persists validation outcomes, allows one repair, fails after attempt two, surfaces warnings, and resumes verified evidence without recollection.
 - Topic-generic native/specialized adapter coverage, prompt-injection guardrails, optional-collector guidance, and collection troubleshooting without source-specific clients.
+
+## PR 06 delivered surface
+
+- A focused editorial skill reference and one distinct Codex phase that consumes the complete profile and validated dossier without a scoring/ranking engine or second model.
+- One recorder that binds prompt and input hashes, validates complete selected/excluded dispositions plus profile-owned sections, hosts, reason codes, bounds, and disagreement notes, and advances only valid plans.
+- Durable plan validation reports, one repair, terminal exhaustion, verified resume, and hash-based invalidation when accepted dossier or plan bytes change.
+- Ordinary, shorter-useful, optional-empty-section, source-disagreement, and arbitrary non-news golden-plan coverage.

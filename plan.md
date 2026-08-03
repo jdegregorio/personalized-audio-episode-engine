@@ -11,7 +11,7 @@ Offline feature work may start with fixtures, but the team is fully unblocked on
 
 ### 0.1 Selected simple baseline and reasonable alternatives
 
-This is a solo-maintainer project. The owner administers GitHub and external accounts and may use Codex for both required review passes; GitHub does not require a second human approval.
+This is a solo-maintainer project. For accelerated MVP delivery, PR 06 through PR 13 do not wait for or act on GitHub Codex auto-review; feedback from closed PRs is triaged into a separate post-MVP backlog later. GitHub does not require a second human approval.
 
 | Area | Selected simple baseline | Good alternative and tradeoff |
 | --- | --- | --- |
@@ -20,7 +20,7 @@ This is a solo-maintainer project. The owner administers GitHub and external acc
 | Secret sync | Local file is the source of truth; helper uploads values one-way with `gh` | Manual GitHub entry avoids a script but is easier to mistype and harder to repeat |
 | R2 public endpoint | Use `r2.dev` for the fastest MVP proof, accepting Cloudflare's non-production/rate-limit warning | A custom domain is recommended for ongoing scheduled use and unlocks Cloudflare cache/security controls |
 | Runtime storage | Stable mode-`0700` local directories outside feature worktrees | An ignored `runtime/` in the primary checkout is acceptable after PR 01 but less isolated |
-| Review | Follow the correctness, simplification, and Codex auto-review gates in [`CONTRIBUTORS.md`](CONTRIBUTORS.md) | Add a second human reviewer when useful without making approval a merge requirement |
+| Review | Require final local correctness and simplification passes plus green tests, UAT, and GitHub checks; PR 06–13 do not wait for GitHub Codex auto-review | Add a human review when useful without making it an MVP merge requirement |
 
 No Tailscale, VPN, always-on local web server, database, queue, podcast host, or general cloud orchestration is required. Cloudflare R2 is the only managed publication dependency. The bucket is public at tokenized object URLs, so this design is appropriate only for the public-news MVP; it is not authenticated private storage.
 

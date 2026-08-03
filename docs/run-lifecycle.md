@@ -28,11 +28,14 @@ An initialized owner creates:
     ├── evidence-dossier.json                  # after valid collection
     ├── evidence-validation-attempt-1.json     # every first attempt
     ├── evidence-validation-attempt-2.json     # after one invalid attempt only
+    ├── editorial-plan.json                    # after valid editorial planning
+    ├── plan-validation-attempt-1.json         # every first plan attempt
+    ├── plan-validation-attempt-2.json         # after one invalid plan only
     ├── state.json
     └── summary.md
 ```
 
-The canonical episode key is `<profile-id>:<local-date>`. State records the profile/local date, profile/engine/skill/prompt versions, engine Git commit, observable models and collection method, failed optional collection capabilities, collection validation attempt/status/counts/report hash, timestamps, current and last valid stages, artifact paths/hashes, failure details, final-audio validity, and redacted publication locations. Prompt and collection provenance starts empty until its owning phase selects them.
+The canonical episode key is `<profile-id>:<local-date>`. State records the profile/local date, profile/engine/skill/prompt versions, engine Git commit, observable models and collection method, collection and plan validation attempt/status/counts/report hashes, timestamps, current and last valid stages, artifact paths/hashes, failure details, final-audio validity, and redacted publication locations. Phase provenance starts empty until its owning phase records an attempt.
 
 Files are written to a private temporary sibling, synchronized, and atomically renamed. A stage advances only after its artifact validates on both sides of the write, its declared run identity and upstream references match current state, each referenced upstream file still exists and revalidates at its recorded SHA-256, and the new hash is recorded. State is authoritative if a machine failure leaves an unreferenced file between the artifact and state renames. An identical validated retry leaves the artifact/state unchanged but regenerates `summary.md`, repairing a transient summary-write failure.
 
@@ -47,9 +50,11 @@ PR 04 owns these transitions; later PRs add the remaining transition helpers:
 | Editorial plan | `script` | `editorial` |
 | Episode script | `tts` | `script` |
 
-Replacing an artifact with identical validated bytes preserves state. A changed hash replaces that artifact, retains valid upstream references, rolls the run back to the table's corresponding stage, and removes all downstream references. Profile changes roll back to `initialized`; an accepted dossier replacement clears its old validation and returns to `collection`; plan and script changes roll back to `script` and `tts`, respectively. Final-audio and publication status return to pending/not started whenever an invalidated dependency could affect them.
+Replacing an artifact with identical validated bytes preserves state. A changed hash replaces that artifact, retains valid upstream references, rolls the run back to the owning validation stage, and removes all downstream references. Profile changes roll back to `initialized`; an accepted dossier replacement clears collection/plan validation and returns to `collection`; an accepted plan replacement clears its validation and returns to `editorial`; a script change rolls back to `tts`. Final-audio and publication status return to pending/not started whenever an invalidated dependency could affect them.
 
 Collection method selection is recorded before retrieval. Failed optional capability names persist so reselection cannot loop back to a known failure. The first invalid dossier remains at `collection`, records a hashed validation report, and permits one focused repair or affected-step repeat. A second invalid attempt records its report, fails the run, and releases ownership. A valid attempt persists the normalized dossier only when every candidate uses a request-declared section, advances to `editorial`, records the valid report, and exposes dossier-size or section-target warnings in `summary.md`. A resume rechecks dossier/report hashes and returns `already_valid` without recollecting.
+
+Editorial planning reads the complete valid dossier and profile. The first invalid plan remains at `editorial`, records a hashed report, and permits one focused repair; attempt 2 fails/releases. A valid attempt atomically persists the plan/report/state, advances to `script`, and surfaces target-shortfall warnings without turning profile targets into quotas. Resume rechecks plan/report and both input hashes before returning `already_valid`.
 
 ## Lease and failure recovery
 
