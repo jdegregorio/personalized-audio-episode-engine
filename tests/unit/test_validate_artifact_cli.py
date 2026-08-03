@@ -25,6 +25,31 @@ def test_validate_artifact_main_prints_success(capsys: pytest.CaptureFixture[str
     assert output["valid"] is True
 
 
+def test_validate_collection_request_requires_allowed_output_root(
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    input_path = FIXTURE_ROOT / "collection-request.json"
+
+    rejected = main(["--type", "collection-request", "--input", str(input_path)])
+    rejected_output = json.loads(capsys.readouterr().err)
+    accepted = main(
+        [
+            "--type",
+            "collection-request",
+            "--input",
+            str(input_path),
+            "--allowed-output-root",
+            "/synthetic/run",
+        ]
+    )
+    accepted_output = json.loads(capsys.readouterr().out)
+
+    assert rejected == 1
+    assert rejected_output["errors"][0]["code"] == "unsafe_output_path"
+    assert accepted == 0
+    assert accepted_output["valid"] is True
+
+
 def test_validate_artifact_main_writes_full_failure_report(
     tmp_path: Path, capsys: pytest.CaptureFixture[str]
 ) -> None:

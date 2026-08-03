@@ -26,6 +26,8 @@ from audio_engine.validation import (
     validate_script_against_plan_and_dossier,
 )
 
+_SYNTHETIC_OUTPUT_ROOT = Path("/synthetic/run")
+
 
 class _ValidFixture(TypedDict):
     type: str
@@ -125,7 +127,12 @@ def artifact_contract_errors(root: Path) -> list[str]:
     valid_models: dict[str, object] = {}
     for fixture in manifest["valid"]:
         path = fixture_root / fixture["file"]
-        model, report = load_artifact_file(fixture["type"], path)
+        output_roots = [_SYNTHETIC_OUTPUT_ROOT] if fixture["type"] == "collection-request" else []
+        model, report = load_artifact_file(
+            fixture["type"],
+            path,
+            allowed_output_roots=output_roots,
+        )
         if not report.valid or model is None:
             errors.append(f"valid fixture rejected: {fixture['file']}")
         else:

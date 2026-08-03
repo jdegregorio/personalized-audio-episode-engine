@@ -43,7 +43,12 @@ def test_valid_and_invalid_fixture_manifest() -> None:
     manifest = _json(FIXTURE_ROOT / "manifest.json")
 
     for fixture in manifest["valid"]:
-        _, report = load_artifact_file(fixture["type"], FIXTURE_ROOT / fixture["file"])
+        output_roots = [Path("/synthetic/run")] if fixture["type"] == "collection-request" else []
+        _, report = load_artifact_file(
+            fixture["type"],
+            FIXTURE_ROOT / fixture["file"],
+            allowed_output_roots=output_roots,
+        )
         assert report.valid, (fixture, report.errors)
 
     for fixture in manifest["invalid"]:

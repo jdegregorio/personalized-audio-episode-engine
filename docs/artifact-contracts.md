@@ -21,7 +21,7 @@ Every factual claim must resolve through a claim-support record to a source. Sup
 
 Source material is untrusted inert data. Validation parses JSON and compares values only; it does not import code, follow source instructions, invoke a shell, download a locator, or modify the input. Excerpts are capped at 1,000 characters to keep fixtures and dossiers focused rather than archiving articles.
 
-Canonical locators may be ordinary web URLs, generic resource URIs such as `connector://...`, or absolute filesystem paths. Unsafe schemes, embedded URL credentials, relative/traversal paths, and filesystem paths outside explicit allowed roots fail. Filesystem locators require `--allowed-input-root`; the validator never infers a broad root.
+Canonical locators may be ordinary web URLs, generic resource URIs such as `connector://...`, or absolute filesystem paths. Unsafe schemes, malformed ports, embedded URL credentials, relative/traversal paths, and filesystem paths outside explicit allowed roots fail. Filesystem locators require `--allowed-input-root`; the validator never infers a broad root.
 
 ## Command and reports
 
@@ -32,6 +32,8 @@ uv run python scripts/validate_artifact.py \
 ```
 
 Success emits concise JSON on stdout. Fatal errors emit concise JSON on stderr and exit non-zero. Each issue has a stable code, exact JSON-pointer path, and safe message. Use `--report <path>` for the full repair report; the command rejects a report path that would overwrite the input.
+
+Collection requests also require one or more explicit `--allowed-output-root` values. The request's `output_path` must resolve below one of those run/runtime roots; the validator never trusts absoluteness alone.
 
 The single-artifact command enforces schema and dossier semantics. Reusable `validate_plan_against_dossier` and `validate_script_against_plan_and_dossier` hooks enforce cross-artifact references and factual lineage. PRs 06 and 07 add profile-aware duration/section/host policy and prose-quality warnings without changing this baseline contract.
 

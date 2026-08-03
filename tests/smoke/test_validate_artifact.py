@@ -24,6 +24,11 @@ def test_public_validator_accepts_every_golden_artifact() -> None:
     manifest = _json(FIXTURE_ROOT / "manifest.json")
 
     for fixture in manifest["valid"]:
+        output_root_args = (
+            ["--allowed-output-root", "/synthetic/run"]
+            if fixture["type"] == "collection-request"
+            else []
+        )
         result = subprocess.run(
             [
                 sys.executable,
@@ -32,6 +37,7 @@ def test_public_validator_accepts_every_golden_artifact() -> None:
                 fixture["type"],
                 "--input",
                 str(FIXTURE_ROOT / fixture["file"]),
+                *output_root_args,
             ],
             cwd=repo_root,
             check=False,

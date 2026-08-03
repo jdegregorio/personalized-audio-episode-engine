@@ -27,6 +27,13 @@ def main(argv: list[str] | None = None) -> int:
         default=[],
         help="allowed root for filesystem source locators; repeat as needed",
     )
+    parser.add_argument(
+        "--allowed-output-root",
+        type=Path,
+        action="append",
+        default=[],
+        help="allowed root for collection output_path; repeat as needed",
+    )
     args = parser.parse_args(argv)
 
     if args.report is not None:
@@ -40,6 +47,7 @@ def main(argv: list[str] | None = None) -> int:
         args.artifact_type,
         args.input_path,
         allowed_input_roots=args.allowed_input_root,
+        allowed_output_roots=args.allowed_output_root,
     )
     if args.report is not None:
         try:

@@ -86,6 +86,25 @@ def test_filesystem_locator_requires_explicit_allowed_root(tmp_path: Path) -> No
     assert not malformed.valid
 
 
+@pytest.mark.parametrize(
+    "locator",
+    [
+        "https://sources.example.invalid:notaport/report",
+        "https://sources.example.invalid:65536/report",
+    ],
+)
+def test_web_locator_rejects_invalid_ports(locator: str) -> None:
+    data = _json("evidence-dossier.json")
+    data["sources"][0]["canonical_locator"] = locator
+
+    _, report = validate_artifact_data("evidence", data)
+
+    assert not report.valid
+    assert ("unsafe_locator", "/sources/0/canonical_locator") in {
+        (issue.code, issue.path) for issue in report.errors
+    }
+
+
 def test_dossier_warning_threshold_is_nonfatal() -> None:
     data = _json("evidence-dossier.json")
     data["estimated_tokens"] = 50000
@@ -183,13 +202,44 @@ def test_date_and_datetime_fields_parse_iso_strings_but_reject_numbers() -> None
 def test_collection_request_carries_collection_context() -> None:
     data = _json("collection-request.json")
 
-    artifact, report = validate_artifact_data("collection-request", data)
+    artifact, report = validate_artifact_data(
+        "collection-request",
+        data,
+        allowed_output_roots=[Path("/synthetic/run")],
+    )
 
     assert report.valid
     assert isinstance(artifact, CollectionRequest)
     assert artifact.audience.knowledge_level == "informed_generalist"
     assert artifact.editorial_priorities.policy["avoid_sensationalism"] is True
     assert artifact.evidence_contract_version == "1.0"
+
+
+def test_collection_output_path_requires_explicit_allowed_root(tmp_path: Path) -> None:
+    run_root = tmp_path / "runtime" / "runs" / "synthetic-run"
+    run_root.mkdir(parents=True)
+    data = _json("collection-request.json")
+    data["output_path"] = str(run_root / "evidence-dossier.json")
+
+    _, missing_root = validate_artifact_data("collection-request", data)
+    _, allowed = validate_artifact_data(
+        "collection-request",
+        data,
+        allowed_output_roots=[run_root],
+    )
+    data["output_path"] = str(tmp_path / "outside" / "evidence-dossier.json")
+    _, outside = validate_artifact_data(
+        "collection-request",
+        data,
+        allowed_output_roots=[run_root],
+    )
+
+    assert not missing_root.valid
+    assert allowed.valid
+    assert not outside.valid
+    assert ("unsafe_output_path", "/output_path") in {
+        (issue.code, issue.path) for issue in outside.errors
+    }
 
 
 def test_published_asset_urls_require_https() -> None:

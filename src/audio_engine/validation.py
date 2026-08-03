@@ -19,6 +19,7 @@ from audio_engine.artifacts import (
     Artifact,
     ArtifactReference,
     Claim,
+    CollectionRequest,
     EditorialPlan,
     EpisodeScript,
     EvidenceDossier,
@@ -118,6 +119,10 @@ def _locator_issue(locator: str, allowed_input_roots: Sequence[Path]) -> str | N
             return "source locator uses an unsafe URI scheme"
         if parsed.username is not None or parsed.password is not None:
             return "source locator must not contain credentials"
+        try:
+            _ = parsed.port
+        except ValueError:
+            return "source locator contains an invalid port"
         decoded_path = unquote(parsed.path)
         if "\x00" in decoded_path:
             return "source locator contains an encoded null byte"
@@ -136,6 +141,20 @@ def _locator_issue(locator: str, allowed_input_roots: Sequence[Path]) -> str | N
     except SafetyError as error:
         return str(error)
     return None
+
+
+def _collection_request_issues(
+    request: CollectionRequest, allowed_output_roots: Sequence[Path]
+) -> list[ValidationIssue]:
+    try:
+        resolve_within_roots(
+            Path(request.output_path),
+            allowed_output_roots,
+            must_exist=False,
+        )
+    except SafetyError as error:
+        return [_issue("unsafe_output_path", "/output_path", str(error))]
+    return []
 
 
 def _evidence_issues(
@@ -398,6 +417,7 @@ def validate_artifact_data(
     data: object,
     *,
     allowed_input_roots: Sequence[Path] = (),
+    allowed_output_roots: Sequence[Path] = (),
 ) -> tuple[Artifact | None, ValidationReport]:
     """Validate decoded JSON without executing or mutating source content."""
     if artifact_type not in ARTIFACT_MODELS:
@@ -442,7 +462,9 @@ def validate_artifact_data(
 
     semantic_errors: list[ValidationIssue] = []
     semantic_warnings: list[ValidationIssue] = []
-    if isinstance(artifact, EvidenceDossier):
+    if isinstance(artifact, CollectionRequest):
+        semantic_errors = _collection_request_issues(artifact, allowed_output_roots)
+    elif isinstance(artifact, EvidenceDossier):
         semantic_errors, semantic_warnings = _evidence_issues(artifact, allowed_input_roots)
 
     errors = tuple(sorted(semantic_errors))
@@ -455,6 +477,7 @@ def load_artifact_file(
     path: Path,
     *,
     allowed_input_roots: Sequence[Path] = (),
+    allowed_output_roots: Sequence[Path] = (),
 ) -> tuple[Artifact | None, ValidationReport]:
     """Read one JSON artifact and return a safe machine-readable report."""
     try:
@@ -471,6 +494,7 @@ def load_artifact_file(
         artifact_type,
         data,
         allowed_input_roots=allowed_input_roots,
+        allowed_output_roots=allowed_output_roots,
     )
 
 
