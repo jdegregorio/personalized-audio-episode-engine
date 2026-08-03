@@ -20,7 +20,7 @@ This is a solo-maintainer project. The owner administers GitHub and external acc
 | Secret sync | Local file is the source of truth; helper uploads values one-way with `gh` | Manual GitHub entry avoids a script but is easier to mistype and harder to repeat |
 | R2 public endpoint | Use `r2.dev` for the fastest MVP proof, accepting Cloudflare's non-production/rate-limit warning | A custom domain is recommended for ongoing scheduled use and unlocks Cloudflare cache/security controls |
 | Runtime storage | Stable mode-`0700` local directories outside feature worktrees | An ignored `runtime/` in the primary checkout is acceptable after PR 01 but less isolated |
-| Review | Record correctness and simplification reviews on every PR | Add a second human reviewer when useful without making approval a merge requirement |
+| Review | Follow the correctness, simplification, and Codex auto-review gates in [`CONTRIBUTORS.md`](CONTRIBUTORS.md) | Add a second human reviewer when useful without making approval a merge requirement |
 
 No Tailscale, VPN, always-on local web server, database, queue, podcast host, or general cloud orchestration is required. Cloudflare R2 is the only managed publication dependency. The bucket is public at tokenized object URLs, so this design is appropriate only for the public-news MVP; it is not authenticated private storage.
 
@@ -101,7 +101,7 @@ The existing setup intentionally stays small:
 - The `live-smoke` environment exists and is limited to `main`; the helper will load its secrets and variables after the owner enters them locally.
 - Vulnerability alerts and automated security fixes are enabled.
 
-PR 01 adds stable CI checks to the existing ruleset rather than creating overlapping rules. Do not add CODEOWNERS, signed-commit enforcement, a merge queue, deployment reviewers, team rules, or another secrets product for the MVP.
+PR 01 adds stable CI checks and conversation-resolution enforcement to the existing ruleset rather than creating overlapping rules. Do not add CODEOWNERS, signed-commit enforcement, a merge queue, deployment reviewers, team rules, or another secrets product for the MVP.
 
 ### 0.7 Day-zero checks and remaining owner decisions
 
@@ -162,184 +162,12 @@ The implementation must preserve these boundaries throughout the sequence:
 - The MVP uses repository scripts rather than a custom application CLI or ad hoc production code.
 - Live services are never required by default CI. Networked Gemini and end-to-end production checks are explicit smoke/UAT gates.
 - Runtime data, generated audio, private feed tokens, and credentials are never committed.
-- Documentation is part of the product and the implementation. Every PR updates affected setup, design, command, schema, operations, recovery, security, and skill documentation in the same diff and records the delivered state; no implementation PR may defer documentation to a later cleanup.
 
-## 2. Mandatory worktree and merge protocol
+## 2. Delivery contract
 
-All PRs are implemented serially. A PR starts only after the preceding PR is merged, and its branch is created from the latest `origin/main`. This makes the list below the only planned dependency order and avoids stacked-branch ambiguity.
+[`CONTRIBUTORS.md`](CONTRIBUTORS.md) is the canonical worktree, SDLC, testing, documentation, review, and merge policy for every PR in this sequence. In particular, every PR uses a fresh worktree and may not merge until the configured Codex auto-review has completed and every comment is resolved or adequately dismissed with a recorded rationale.
 
-For every PR:
-
-1. Update the primary checkout without making feature changes there.
-2. Create a new sibling worktree and a new branch from the current `origin/main`.
-3. Implement, test, and perform the PR-specific smoke/UAT work only in that worktree.
-4. Open one PR containing only that PR's declared scope.
-5. Merge only after all pre-merge checks, review, and local UAT evidence pass.
-6. Run any newly introduced `main`-restricted live workflow and the full post-merge checks; do not start the next PR until they pass.
-7. Remove the merged worktree. Never reuse a worktree or branch for the next PR.
-
-Command template:
-
-```bash
-git fetch origin
-git worktree add ../paee-pr-<NN>-<slug> \
-  -b feature/pr-<NN>-<slug> origin/main
-cd ../paee-pr-<NN>-<slug>
-```
-
-Run `uv sync --locked --all-extras --dev` after entering every PR worktree once PR 01 has introduced `pyproject.toml` and `uv.lock`. PR 01 creates and locks that environment within its own worktree.
-
-After merge, from the primary checkout:
-
-```bash
-git fetch origin
-git switch main
-git pull --ff-only
-git worktree remove ../paee-pr-<NN>-<slug>
-git branch -d feature/pr-<NN>-<slug>
-```
-
-The scheduled production task is different from development: it must run from a stable local project path, not from a short-lived implementation worktree. The release-candidate worktree may be retained temporarily for qualification, but the durable schedule must ultimately point to the primary `main` checkout.
-
-## 3. SDLC and CI/CD contract for every PR
-
-PR 01 establishes these controls. PRs 02–13 must comply with them and may strengthen but not bypass them.
-
-### 3.1 Required PR contents
-
-Every PR description must include:
-
-- Objective and linked PRD requirement/acceptance IDs.
-- In-scope files and behavior.
-- Explicit non-goals.
-- Risk and security/privacy impact.
-- Local test commands and results.
-- GitHub Actions results.
-- Functional smoke procedure and observed output.
-- Reviewer-facing UAT procedure and evidence.
-- A completed simplification review, including changes made and the rationale for any substantial complexity retained.
-- Rollback approach.
-- Any new environment variable, dependency, schema version, or operational change.
-- A **Documentation impact** section listing every reviewed documentation surface and the exact files changed. Every implementation PR must at minimum update `docs/implementation-status.md`; “documentation later” and an unexplained “N/A” are not acceptable.
-
-Generated runtime artifacts are not PR evidence and must not be committed. Evidence should be a concise, redacted PR comment or an expiring CI artifact containing commands, exit status, validation summaries, and safe output metadata.
-
-### 3.2 Required local feedback loop
-
-From PR 01 onward, every PR runs the applicable complete local gate before review:
-
-```bash
-uv sync --locked --all-extras --dev
-uv lock --check
-uv build
-uv run ruff format --check .
-uv run ruff check .
-uv run pyright
-uv run pytest -m "not live and not smoke"
-uv run pytest -m smoke
-```
-
-Once `doctor.py` exists, feature PRs also run it with the example profile and PR-specific test configuration. Once the synthetic end-to-end harness exists, it is part of every later PR's local gate.
-
-Tests use temporary runtime roots, fake tokens, and an injected fake R2 client/local object store. They must not read a developer's real `.env`, call current-news sources, use a real feed token, or make network requests unless explicitly marked `live`.
-
-Every repository script must expose `--help`, accept explicit paths, return non-zero for fatal errors, keep console output concise, avoid mutating inputs it does not own, and update state only after durable output validation. New shell commands used in production must be documented in the same PR.
-
-### 3.3 Required GitHub Actions feedback loop
-
-The default PR workflow must be secret-free and must run on every pull request and push to `main`:
-
-1. **Repository integrity and docs:** locked dependency install, package build/import, schema/fixture validation, Markdown/style/link/path checks, documented-command probes, and no tracked runtime or secret files.
-2. **Static quality:** Ruff formatting, Ruff linting, and Pyright.
-3. **Automated tests:** unit, contract, integration, and offline functional smoke suites with deterministic fixtures.
-4. **Portability:** Python 3.12 checks on Ubuntu and macOS; FFmpeg/FFprobe installed where audio tests require them.
-5. **Security:** dependency review on PRs, CodeQL for Python, least-privilege workflow permissions, and pinned third-party action revisions.
-
-GitHub workflow concurrency should cancel superseded runs on the same PR. Required jobs must fail closed; skipped or missing required checks do not count as success. The single `main` ruleset requires a PR and required checks and blocks force pushes/deletions, but requires zero approvals for the solo-maintainer MVP.
-
-The default suite must mock Gemini, external research, and R2. Separate manually dispatched `live-smoke` jobs are added by their owning PRs: Gemini uses a short synthetic conversation and only `GEMINI_API_KEY`; R2 uses a non-sensitive probe object and only R2 settings. They use the `main`-restricted GitHub environment, never run for untrusted forks, redact secrets and tokenized paths, clean probe objects, and retain safe evidence only briefly. Before merge, run the same live probe locally from the PR worktree using the central env file; after the new workflow merges, dispatch it on `main` and do not begin the next PR until it passes. Live services remain excluded from default CI.
-
-### 3.4 Test and acceptance layers
-
-Each PR must provide all four layers appropriate to its scope:
-
-- **Unit tests:** isolated logic, success paths, boundaries, and failure behavior.
-- **Contract/integration tests:** artifact relationships, filesystem effects, concurrency, or provider boundaries.
-- **Functional smoke:** the smallest runnable path proving the new capability starts, produces the expected artifact/output, and exits correctly.
-- **UAT:** a human/reviewer follows copy-pasteable steps and confirms behavior at the user-visible boundary. Early PR UAT uses synthetic inputs; later PRs use real Codex research, Gemini, R2 publication, AntennaPod, and the scheduler.
-
-A smoke test is not merely an import test once a user-facing script exists. It must invoke the documented script and inspect its output. UAT must check output content or behavior, not just a zero exit code.
-
-### 3.5 Coverage, fixtures, and failure testing
-
-- Maintain at least 85% line coverage for deterministic Python code and do not reduce coverage in a PR without an explicit rationale.
-- Safety-critical state, locking, path/object-key validation, idempotency, publication ordering, and conditional feed-write branches require direct tests, including negative and concurrent cases.
-- Golden fixtures are synthetic, stable, non-current, and contain no full copyrighted articles.
-- Network access is blocked or mocked in the default test suite so an accidental live call fails.
-- Error-path tests must verify non-zero exit status, concise actionable console output, durable detailed error/validation artifacts where required, and no invalid state advancement.
-
-### 3.6 Mandatory simplification and maintainability review
-
-Every PR requires a specific simplification review pass after implementation and initial automated tests, but before merge. This is distinct from the correctness review. For the solo-maintainer MVP, Codex and/or the owner may perform both passes as long as each result identifies the final reviewed commit and is recorded in the PR.
-
-The reviewer must inspect the complete diff from the PR's `origin/main` base and ask:
-
-- Did the PR stay within its declared scope, or did it create unrelated churn or touch more components than necessary?
-- Can the same behavior be expressed with fewer lines, files, concepts, dependencies, configuration switches, abstractions, or public interfaces?
-- Are any helpers, wrappers, base classes, factories, extension points, or generalized frameworks speculative rather than required by this PR or the approved MVP?
-- Is logic duplicated, overly nested, fragmented across unnecessary layers, or obscured by cleverness?
-- Are names, module boundaries, control flow, error handling, and data ownership intuitive to a future maintainer?
-- Can standard-library or already-approved project functionality replace new custom code or another dependency?
-- Are there dead branches, unused compatibility paths, placeholders, premature optimization, redundant comments, or tests coupled to implementation details?
-- Does the diff preserve topic-generic boundaries without turning the MVP into a generalized platform?
-- Do the documentation changes describe the simplest accurate mental model, avoid duplicate/stale instructions, link to one canonical procedure, and match the final commands/configuration/failure behavior?
-
-The pass must use the diff and LOC/change surface as diagnostic evidence, for example:
-
-```bash
-git diff --stat origin/main...HEAD
-git diff --numstat origin/main...HEAD
-git diff origin/main...HEAD
-```
-
-Reducing LOC is not an end in itself. The review must not remove validation, error handling, tests, security controls, observability required for recovery, clear types, or requirements-compliant behavior; compress readable code into clever code; or combine responsibilities that should remain separate. The target is the smallest clear and complete implementation, not merely the smallest textual diff.
-
-The PR record must contain a **Simplification review** result with:
-
-1. The reviewer and reviewed commit SHA.
-2. Simplifications made, including removed LOC/files/dependencies or narrowed change surface when applicable.
-3. Any substantial abstraction, dependency, or code volume deliberately retained and why it is necessary for correctness, clarity, or a stated requirement.
-4. Confirmation that the resulting code and documentation are clean, intuitive, cohesive, appropriately typed/tested, and maintainable.
-5. A final `pass` or `changes requested` decision.
-
-Any code change made during this pass invalidates the reviewed SHA. The author must rerun the complete applicable local and GitHub gates plus affected smoke/UAT tests, then have the final commit rechecked. A PR cannot merge with unresolved simplification findings.
-
-### 3.7 Delivery and release policy
-
-For this MVP, “CD” means maintaining a releasable `main`, qualifying a versioned release candidate, and deliberately activating the local scheduled task against the configured R2 bucket. Default GitHub Actions must not publish the user's feed or mutate production R2/runtime state; only explicit live-smoke probes may write a disposable object and clean it up.
-
-- Every merge to `main` reruns the full offline suite.
-- Live smoke and production UAT require an explicit dispatch or local operator action.
-- A release is tagged only after PR 13's release qualification passes.
-- Rollback is a code revert or previous release checkout; runtime and valid generated audio are preserved.
-- Schema changes are additive within `1.0` or introduce a deliberate new version with compatibility tests. Silent breaking changes are prohibited.
-- Dependency changes must update `uv.lock`, explain why the dependency is needed, and pass dependency/security checks.
-
-### 3.8 Definition of done for each PR
-
-A PR is done only when:
-
-- Its scope and explicit acceptance criteria below are complete.
-- All affected documentation is reviewed and updated in the same diff, including `docs/implementation-status.md`; configuration names, commands, object layouts, permissions, failure/recovery behavior, and manual dashboard steps match the final implementation.
-- All local and required GitHub checks pass from a clean checkout.
-- The functional smoke test passes and its expected outputs are inspected.
-- The PR-specific UAT passes with redacted evidence attached to the PR.
-- Failure and recovery behavior are tested where the PR introduces a failure boundary.
-- The final commit has passed the mandatory simplification review, with retained complexity justified and no unresolved scope, structure, readability, or maintainability findings.
-- No secrets, runtime artifacts, current-news test dependencies, source-specific client code, or unrelated refactors are included.
-- The branch is current with its merged predecessor and has received review.
-
-## 4. Single MVP PR sequence
+## 3. Single MVP PR sequence
 
 | Order | PR | Usable exit signal |
 | --- | --- | --- |
@@ -359,7 +187,7 @@ A PR is done only when:
 
 The sections below are the implementation contracts for those PRs.
 
-Each PR's listed acceptance criteria are cumulative with the universal definition of done in section 3.8. In particular, omission of a documentation bullet from an individual PR does not waive the same-PR documentation and `docs/implementation-status.md` requirements.
+Each PR's listed acceptance criteria are cumulative with the definition of done in [`CONTRIBUTORS.md`](CONTRIBUTORS.md). Omission of a documentation or review bullet from an individual PR does not waive those project-wide requirements.
 
 ### PR 01 — Repository foundation and delivery guardrails
 
@@ -372,9 +200,9 @@ Each PR's listed acceptance criteria are cumulative with the universal definitio
 - Add `pyproject.toml` and a committed `uv.lock` with only the baseline runtime/test dependencies from the PRD.
 - Add Ruff, Pyright, pytest, coverage, and pytest marker configuration (`smoke`, `integration`, and `live`).
 - Add `.gitignore`, a credential-free `.env.example`, and ignore all `runtime/` content except an optional placeholder needed to preserve directories.
-- Add `AGENTS.md` with the production constraints from PRD section 19.4.
-- Add `CONTRIBUTING.md`, `docs/setup.md`, `docs/cloudflare-r2.md`, `docs/operations.md`, `docs/implementation-status.md`, `docs/sdlc.md`, and `docs/cicd.md` implementing sections 0 and 3 of this plan, including worktree-safe secret injection and every one-time external R2 dashboard step.
-- Add a PR template—including the mandatory simplification-review record—and GitHub workflows for integrity, lint/type checks, offline tests, portability, dependency review, and CodeQL.
+- Extend `AGENTS.md` with the production constraints from PRD section 19.4 while preserving its contributor-policy references.
+- Keep `CONTRIBUTORS.md` as the canonical SDLC policy and add `docs/setup.md`, `docs/cloudflare-r2.md`, `docs/operations.md`, `docs/implementation-status.md`, and `docs/cicd.md`, including worktree-safe secret injection and every one-time external R2 dashboard step.
+- Add a PR template—including Codex auto-review disposition and the mandatory simplification-review record—and GitHub workflows for integrity, lint/type checks, offline tests, portability, dependency review, and CodeQL.
 - Add Markdown/style/link/path validation and safe executable checks for documented repository commands; require the PR template to name documentation impact.
 - Add the stable CI check names to the existing `main-minimal` ruleset and document its intentionally small solo-maintainer configuration.
 
@@ -391,7 +219,7 @@ Each PR's listed acceptance criteria are cumulative with the universal definitio
 **Functional smoke and UAT**
 
 - Smoke: create a clean worktree, run the complete local gate, and import `audio_engine` through `uv run python`.
-- UAT: a reviewer follows only `CONTRIBUTING.md` on macOS or Ubuntu and reaches a green local gate without undocumented setup.
+- UAT: a reviewer follows `CONTRIBUTORS.md` and the linked setup documentation on macOS or Ubuntu and reaches a green local gate without undocumented setup.
 - Repository-owner UAT: confirm the one minimal `main` ruleset requires PRs and green checks, blocks force pushes/deletions, and requires zero approvals; record a settings summary in the PR.
 
 **Acceptance criteria**
@@ -403,7 +231,7 @@ Each PR's listed acceptance criteria are cumulative with the universal definitio
 - A direct feature push to protected `main` is disallowed after repository settings are applied.
 - No workflow receives production secrets on ordinary `pull_request` events.
 - The documented worktree, correctness review, simplification review, test, release, rollback, and secret-handling rules are actionable.
-- The PR template prevents merge without a reviewed commit SHA, correctness/simplification findings and disposition, retained-complexity rationale, and final pass decisions.
+- The PR template prevents merge before Codex auto-review completes and every comment is resolved or adequately dismissed, and records the reviewed commit SHA, correctness/simplification findings, retained-complexity rationale, and final pass decisions.
 
 **PRD traceability:** TR-054; NFR-050–054, NFR-060–061, NFR-070–071, NFR-090–094; sections 19, 25, 26, and 28.
 
@@ -916,7 +744,7 @@ Each PR's listed acceptance criteria are cumulative with the universal definitio
 
 **PRD traceability:** NFR-010–011, NFR-065, NFR-080; AC-004, AC-015–020; sections 23, 24, 28.6–28.7, 29, 31, and 32 phase 6.
 
-## 5. Cross-PR acceptance map
+## 4. Cross-PR acceptance map
 
 | MVP acceptance criterion | Implemented primarily in | Proven finally in |
 | --- | --- | --- |
@@ -941,7 +769,7 @@ Each PR's listed acceptance criteria are cumulative with the universal definitio
 | AC-019 Three-run reliability | PR 12 foundation | PR 13 three-run UAT |
 | AC-020 Safe concurrency | PR 04, PR 11 | PR 13 |
 
-## 6. Final MVP release gate
+## 5. Final MVP release gate
 
 The MVP is complete only when PR 13 is merged and all of the following are true:
 

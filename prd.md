@@ -1663,6 +1663,7 @@ Recommended layout:
 ```text
 personalized-audio-engine/
 ├── AGENTS.md
+├── CONTRIBUTORS.md
 ├── README.md
 ├── LICENSE
 ├── pyproject.toml
@@ -1745,7 +1746,6 @@ personalized-audio-engine/
     ├── cloudflare-r2.md
     ├── operations.md
     ├── implementation-status.md
-    ├── sdlc.md
     ├── cicd.md
     ├── scheduled-task.md
     ├── optional-collectors.md
