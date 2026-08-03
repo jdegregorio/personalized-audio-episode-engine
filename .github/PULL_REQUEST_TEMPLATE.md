@@ -70,14 +70,14 @@ Result:
 
 ## Codex auto-review disposition
 
-- Round 1 reviewed commit SHA:
-- Round 2 reviewed commit SHA, or `not required`:
+<!-- For PR 06 through PR 13, use the accelerated policy in CONTRIBUTORS.md. -->
+
+- Policy: `accelerated MVP` / `standard`
+- Review rounds completed, or `not requested under accelerated MVP policy`:
 - Deferred findings and owning `plan.md` items, or `none`:
-- [ ] At least one and no more than two GitHub Codex review rounds completed.
-- [ ] Every finding received a recorded implement, rationale, or plan-deferral disposition.
-- [ ] All threads are resolved after their dispositions.
-- [ ] If round 2 caused later changes, affected checks plus final correctness and simplification reviews cover the final SHA; no third Codex review was requested.
-- [ ] No pending change request, failed required check, undispositioned finding, or unresolved thread remains.
+- [ ] The applicable policy was followed. PR 06 through PR 13 did not request, wait for, or act on GitHub Codex review.
+- [ ] Under the standard policy, every finding received a recorded implement, rationale, or plan-deferral disposition and all threads are resolved.
+- [ ] No failed required check or unresolved thread that blocks merge remains.
 
 ## Merge readiness
 

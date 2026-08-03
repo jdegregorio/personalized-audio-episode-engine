@@ -307,6 +307,54 @@
       ],
       "title": "RunFailure",
       "type": "object"
+    },
+    "ScriptValidationState": {
+      "additionalProperties": false,
+      "properties": {
+        "attempt": {
+          "maximum": 2,
+          "minimum": 1,
+          "title": "Attempt",
+          "type": "integer"
+        },
+        "error_count": {
+          "maximum": 10000,
+          "minimum": 0,
+          "title": "Error Count",
+          "type": "integer"
+        },
+        "repair_allowed": {
+          "title": "Repair Allowed",
+          "type": "boolean"
+        },
+        "report": {
+          "$ref": "#/$defs/ArtifactReference"
+        },
+        "status": {
+          "enum": [
+            "valid",
+            "invalid"
+          ],
+          "title": "Status",
+          "type": "string"
+        },
+        "warning_count": {
+          "maximum": 10000,
+          "minimum": 0,
+          "title": "Warning Count",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "attempt",
+        "status",
+        "error_count",
+        "warning_count",
+        "repair_allowed",
+        "report"
+      ],
+      "title": "ScriptValidationState",
+      "type": "object"
     }
   },
   "$id": "urn:personalized-audio-episode-engine:schema:run-state:1.0",
@@ -531,6 +579,17 @@
       "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,199}$",
       "title": "Run Id",
       "type": "string"
+    },
+    "script_validation": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/ScriptValidationState"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null
     },
     "skill_version": {
       "maxLength": 40,

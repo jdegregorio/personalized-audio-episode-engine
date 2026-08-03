@@ -1,6 +1,6 @@
 # Operations
 
-The engine supports validated environment/profile preflight, deterministic artifact/lineage validation, owner-checked run initialization, capability-neutral evidence collection, and one profile-driven editorial-planning phase. Scriptwriting, rendering, and publication arrive only in their owning PRs in [`plan.md`](../plan.md).
+The engine supports validated environment/profile preflight, deterministic artifact/lineage validation, owner-checked run initialization, capability-neutral evidence collection, profile-driven editorial planning, and grounded two-host scriptwriting with exact transcript projection. TTS, rendering, and publication arrive only in their owning PRs in [`plan.md`](../plan.md).
 
 ## Development gate
 
@@ -82,6 +82,16 @@ uv run python scripts/record_editorial_plan.py --run <run-directory>
 
 The command authoritatively binds prompt/run/profile/date and profile/dossier hashes, then validates selected and excluded candidates, claims, order, section and item limits, duration, configured lead hosts, profile-defined reason codes, transitions, and useful disagreement notes. Profile minimum counts remain editorial targets: a shortfall is a warning, while maxima and duration bounds fail. Attempt 1 may receive one repair; attempt 2 fails/releases. A verified resume returns `already_valid` without re-planning.
 
+## Scriptwriting
+
+In a distinct Codex phase, follow the skill's [`scriptwriting.md`](../.agents/skills/produce-audio-episode/references/scriptwriting.md) reference. Read the complete profile, dossier, and plan, write `<run-directory>/episode-script.json`, and run:
+
+```bash
+uv run python scripts/record_script.py --run <run-directory>
+```
+
+The command authoritatively binds prompt/run/profile/date and current input hashes, validates planned claim coverage through underlying sources, preserves required spoken attribution/qualifications/disagreement, enforces two configured hosts and spoken-text policy, and surfaces balance/performance warnings. It writes `transcript.txt` only from validated ordered turns. Attempt 1 may receive one repair; attempt 2 fails/releases. A verified resume returns `already_valid` after rechecking inputs, script, transcript, and report.
+
 ## Production invariants
 
 - One independent Codex run processes one profile.
@@ -94,6 +104,6 @@ The command authoritatively binds prompt/run/profile/date and profile/dossier ha
 
 ## Rollback at this phase
 
-No current command contacts Gemini or R2. Initialization, collection recording, and editorial recording create only local runtime files after acquiring an episode lease; Codex research itself may access public sources or an already configured capability. Follow the lease-aware rollback in [`run-lifecycle.md`](run-lifecycle.md); do not manually remove a live lock. Invalid generated artifacts are repaired at their owning stage rather than bypassing version, lineage, locator, evidence, or plan validation.
+No current command contacts Gemini or R2. Initialization, collection, editorial, and script recording create only local runtime files after acquiring an episode lease; Codex research itself may access public sources or an already configured capability. Follow the lease-aware rollback in [`run-lifecycle.md`](run-lifecycle.md); do not manually remove a live lock. Invalid generated artifacts are repaired at their owning stage rather than bypassing version, lineage, locator, evidence, plan, or script validation.
 
 Service-specific recovery and rotation are documented in [`cloudflare-r2.md`](cloudflare-r2.md) and will be expanded alongside their implementations.

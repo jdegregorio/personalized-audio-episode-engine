@@ -2,7 +2,7 @@
 
 `state.json` is authoritative. Files that exist without a matching state reference are incomplete work, not completed stages.
 
-## Collection and editorial fields
+## Collection, editorial, and script fields
 
 - `collection_method` records native or specialized method type, name, and observable version.
 - `prompt_versions.collection` records the collection instruction version.
@@ -11,10 +11,15 @@
 - `prompt_versions.editorial` records editorial instruction version `1.0.0` after the first plan attempt.
 - `plan_validation` records attempt, outcome counts, repair availability, and the hashed plan-validation report.
 - `artifacts.editorial_plan` and `artifacts.plan_validation` bind the accepted plan and its report.
+- `prompt_versions.script` records script instruction version `1.0.0` after the first script attempt.
+- `script_validation` records attempt, outcome counts, repair availability, and the hashed script-validation report.
+- `artifacts.episode_script`, `artifacts.transcript`, and `artifacts.script_validation` bind the accepted structured script, exact transcript projection, and report.
 
 The recorder creates `evidence-validation-attempt-1.json` and, only after one invalid result, `evidence-validation-attempt-2.json`. Summary warnings expose dossier warning counts and invalid/repair status.
 
 The editorial recorder uses the parallel `plan-validation-attempt-1.json` and optional attempt-2 report. A changed accepted dossier clears plan state; a changed accepted plan clears its old validation and returns the run to `editorial`.
+
+The script recorder uses `script-validation-attempt-1.json` and an optional attempt-2 report. It generates `transcript.txt` from validated turns rather than accepting separate prose. A changed accepted plan clears script state; a changed accepted script clears its validation and returns the run to `script`.
 
 ## Resume rules
 
@@ -23,7 +28,9 @@ The editorial recorder uses the parallel `plan-validation-attempt-1.json` and op
 - At `editorial` with a valid collection outcome, do not recollect; use the collection recorder only when verifying `already_valid` is necessary.
 - At `editorial` with no plan outcome, create the first plan from the complete profile and dossier.
 - At `editorial` with invalid plan attempt 1 and `repair_allowed: true`, make exactly one focused repair.
-- At `script` with a valid plan outcome, run the editorial recorder only to verify `already_valid`; do not re-plan.
+- At `script` with a valid plan outcome, read the complete profile, dossier, and plan; create the first script without re-planning.
+- At `script` with invalid script attempt 1 and `repair_allowed: true`, make exactly one focused repair.
+- At `tts` with a valid script outcome, run the script recorder only to verify `already_valid`; do not rewrite dialogue.
 - In a failed state, stop and use the recorded recovery guidance. Do not acquire or mutate the released workspace manually.
 
 All state changes go through documented commands while the run owns the episode lease. Never hand-edit state, hashes, summaries, reports, or leases.

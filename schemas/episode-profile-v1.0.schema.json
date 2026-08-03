@@ -341,6 +341,14 @@
     "Performance": {
       "additionalProperties": false,
       "properties": {
+        "fatal_warning_codes": {
+          "default": [],
+          "items": {
+            "$ref": "#/$defs/ScriptWarningCode"
+          },
+          "title": "Fatal Warning Codes",
+          "type": "array"
+        },
         "pace": {
           "maxLength": 2000,
           "minLength": 1,
@@ -462,6 +470,19 @@
       ],
       "title": "ScopeSection",
       "type": "object"
+    },
+    "ScriptWarningCode": {
+      "enum": [
+        "excessive_performance_tags",
+        "excessive_reaction_turns",
+        "host_word_share",
+        "consecutive_host_turns",
+        "repeated_stock_phrase",
+        "missing_segment_takeaway",
+        "script_duration_preferred"
+      ],
+      "title": "ScriptWarningCode",
+      "type": "string"
     },
     "SectionTarget": {
       "additionalProperties": false,

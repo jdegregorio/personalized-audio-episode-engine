@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from collections.abc import Sequence
+from enum import StrEnum
 from pathlib import Path
 from typing import Annotated, Literal, cast
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
@@ -166,6 +167,22 @@ class Hosts(_ProfileModel):
     female: Speaker
     male: Speaker
 
+    @model_validator(mode="after")
+    def distinct_names(self) -> Hosts:
+        if self.female.name == self.male.name:
+            raise ValueError("configured host names must be distinct")
+        return self
+
+
+class ScriptWarningCode(StrEnum):
+    EXCESSIVE_PERFORMANCE_TAGS = "excessive_performance_tags"
+    EXCESSIVE_REACTION_TURNS = "excessive_reaction_turns"
+    HOST_WORD_SHARE = "host_word_share"
+    CONSECUTIVE_HOST_TURNS = "consecutive_host_turns"
+    REPEATED_STOCK_PHRASE = "repeated_stock_phrase"
+    MISSING_SEGMENT_TAKEAWAY = "missing_segment_takeaway"
+    SCRIPT_DURATION_PREFERRED = "script_duration_preferred"
+
 
 class Performance(_ProfileModel):
     style: NonEmptyText
@@ -173,6 +190,14 @@ class Performance(_ProfileModel):
     use_audio_tags: Literal["never", "sparingly", "freely"]
     prohibit_fake_personal_experience: bool
     prohibit_urls_in_speech: bool
+    fatal_warning_codes: list[ScriptWarningCode] = []
+
+    @field_validator("fatal_warning_codes")
+    @classmethod
+    def unique_fatal_warning_codes(cls, value: list[ScriptWarningCode]) -> list[ScriptWarningCode]:
+        if len(value) != len(set(value)):
+            raise ValueError("fatal warning codes must be unique")
+        return value
 
 
 class Tts(_ProfileModel):

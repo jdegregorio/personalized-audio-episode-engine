@@ -17,7 +17,7 @@ The required workflow surface is deliberately small:
 | `Dependency review` | Pull-request dependency risk review |
 | `CodeQL (python)` | Python static security analysis |
 
-The CI workflow also checks `uv.lock`, builds the wheel and source distribution, and imports the wheel from an isolated environment rather than the editable checkout. The repository tests its integrity guard with prohibited fake paths, confirms Ruff rejects a deliberately unformatted temporary Python file, runs `scripts/check_artifacts.py` so committed schemas and synthetic fixture expectations cannot drift from their Pydantic models and semantic validators, and verifies the production skill's concise metadata, direct progressive-disclosure references, security guardrails, and documented command paths. Deterministic integration fixtures cover ordinary, shorter, optional-section, disagreement, and arbitrary-taxonomy editorial plans. The existing Ubuntu/macOS package matrix also runs the narrow lease/concurrency subset with real local processes and filesystem operations, while the complete offline and functional-smoke suites remain on Ubuntu.
+The CI workflow also checks `uv.lock`, builds the wheel and source distribution, and imports the wheel from an isolated environment rather than the editable checkout. The repository tests its integrity guard with prohibited fake paths, confirms Ruff rejects a deliberately unformatted temporary Python file, runs `scripts/check_artifacts.py` so committed schemas and synthetic fixture expectations cannot drift from their Pydantic models and semantic validators, and verifies the production skill's concise metadata, direct progressive-disclosure references, security guardrails, and documented command paths. Deterministic integration fixtures cover ordinary, shorter, optional-section, disagreement, and arbitrary-taxonomy editorial plans plus balanced, imbalanced, disputed-source, arbitrary-topic, and malicious scripts. The existing Ubuntu/macOS package matrix also runs the narrow lease/concurrency subset with real local processes and filesystem operations, while the complete offline and functional-smoke suites remain on Ubuntu.
 
 ## Secret isolation
 
@@ -25,7 +25,7 @@ Ordinary `pull_request` and default-branch checks declare no production environm
 
 ## Main ruleset
 
-The repository uses one `main-minimal` ruleset. It applies to the default branch, requires a pull request with squash merge, blocks deletion and non-fast-forward pushes, requires conversation resolution, and requires the stable checks above. The solo-maintainer workflow intentionally requires zero approvals; the mandatory correctness, simplification, and Codex auto-review records in [`CONTRIBUTORS.md`](../CONTRIBUTORS.md) remain the review gate.
+The repository uses one `main-minimal` ruleset. It applies to the default branch, requires a pull request with squash merge, blocks deletion and non-fast-forward pushes, requires conversation resolution, and requires the stable checks above. The solo-maintainer workflow intentionally requires zero approvals. During accelerated MVP delivery for PR 06 through PR 13, required tests, real UAT, GitHub checks, and final correctness/simplification records are the merge gate; GitHub Codex review is not requested or awaited.
 
 Do not add overlapping rulesets, CODEOWNERS, a merge queue, deployment reviewers, or signed-commit enforcement for the MVP unless an observed failure justifies the extra mechanism.
 
@@ -33,7 +33,6 @@ Do not add overlapping rulesets, CODEOWNERS, a merge queue, deployment reviewers
 
 - Reproduce a failed check locally with the exact documented command.
 - Fix the smallest owning defect and rerun affected local checks.
-- Push the fix and wait for all required checks. Request at most one Codex rereview after the initial round.
-- If round two causes changes, disposition its findings, rerun affected checks and final correctness/simplification reviews, and do not request a third Codex review.
+- Push the fix and wait for all required checks. PR 06 through PR 13 do not request, wait for, or act on GitHub Codex review; closed-PR feedback is triaged into a post-MVP backlog later.
 - Do not bypass a red check by weakening a test or marking a required job optional.
 - If a platform outage prevents a required check from completing, wait or rerun it; do not merge without evidence.
