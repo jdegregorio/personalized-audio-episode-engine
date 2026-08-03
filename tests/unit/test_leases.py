@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import fcntl
 import json
+import time
 from concurrent.futures import ThreadPoolExecutor
 from concurrent.futures import TimeoutError as FutureTimeoutError
 from datetime import UTC, datetime, timedelta
@@ -62,7 +63,9 @@ def test_contender_retries_lease_visible_before_creator_locks(
     release_creator = Event()
     observer_locked = Event()
     release_observer = Event()
+    observer_retries = 0
     real_flock = fcntl.flock
+    real_sleep = time.sleep
 
     def controlled_flock(descriptor: int, operation: int) -> None:
         thread_name = current_thread().name
@@ -74,7 +77,16 @@ def test_contender_retries_lease_visible_before_creator_locks(
             observer_locked.set()
             assert release_observer.wait(timeout=5)
 
+    def controlled_sleep(delay: float) -> None:
+        nonlocal observer_retries
+        if current_thread().name.startswith("lease-observer"):
+            observer_retries += 1
+            if observer_retries == 3:
+                release_creator.set()
+        real_sleep(delay)
+
     monkeypatch.setattr("audio_engine.leases.fcntl.flock", controlled_flock)
+    monkeypatch.setattr("audio_engine.leases.time.sleep", controlled_sleep)
     with (
         ThreadPoolExecutor(max_workers=1, thread_name_prefix="lease-creator") as creators,
         ThreadPoolExecutor(max_workers=1, thread_name_prefix="lease-observer") as observers,
@@ -83,14 +95,18 @@ def test_contender_retries_lease_visible_before_creator_locks(
         assert creator_waiting.wait(timeout=5)
         observer = observers.submit(manager.acquire, episode_key, "run_observer")
         assert observer_locked.wait(timeout=5)
-        release_creator.set()
         release_observer.set()
-        created = creator.result(timeout=5)
-        observed = observer.result(timeout=5)
+        try:
+            created = creator.result(timeout=5)
+            observed = observer.result(timeout=5)
+        finally:
+            release_creator.set()
+            release_observer.set()
 
     assert created.acquired
     assert not observed.acquired
     assert observed.lease.run_id == "run_creator"
+    assert observer_retries >= 3
 
 
 def test_stale_lease_is_quarantined_before_new_owner(tmp_path: Path) -> None:
