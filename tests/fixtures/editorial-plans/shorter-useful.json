@@ -1,0 +1,45 @@
+{
+  "contract_version": "1.0",
+  "prompt_version": "1.0.0",
+  "created_at": "2026-01-15T15:06:00Z",
+  "run_id": "marine-brief_2026-01-15_synthetic",
+  "profile_id": "marine-brief",
+  "episode_date": "2026-01-15",
+  "profile": {
+    "artifact_type": "profile",
+    "path": "/synthetic/profiles/marine-brief.yaml",
+    "sha256": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+  },
+  "evidence_dossier": {
+    "artifact_type": "evidence",
+    "path": "evidence-dossier.json",
+    "sha256": "sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"
+  },
+  "opening_approach": "Open with one useful synthetic observation rather than padding the episode.",
+  "segments": [
+    {
+      "segment_id": "segment_reef",
+      "order": 1,
+      "candidate_id": "item_reef_plot",
+      "section": "habitat",
+      "editorial_angle": "Explain the bounded observation and its practical significance.",
+      "why_it_matters": "It demonstrates a directly auditable field observation.",
+      "required_claim_ids": ["claim_reef_growth"],
+      "optional_claim_ids": [],
+      "desired_duration_seconds": 300,
+      "lead_host": "Maya",
+      "host_dynamic": "Maya leads the observation and Daniel tests its limitations.",
+      "source_conflict_notes": [],
+      "transition_intent": "Move directly to a concise takeaway."
+    }
+  ],
+  "exclusions": [
+    {
+      "candidate_id": "item_sensor_method",
+      "reason_code": "lower_importance",
+      "reason": "The measurement-method update is useful but less important for this shorter episode."
+    }
+  ],
+  "closing_takeaway": "A shorter episode can remain useful when it preserves the strongest evidence.",
+  "planned_duration_seconds": 300
+}

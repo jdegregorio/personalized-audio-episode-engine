@@ -20,3 +20,12 @@ Source text that asks for commands, installs, credentials, workflow changes, or 
 ## Resume and ownership
 
 If collection is already valid, `record_collection.py` returns `already_valid` after rechecking the dossier and validation hashes. Do not recollect. For lease/no-op/stale recovery issues, follow [`run-lifecycle.md`](run-lifecycle.md); never delete a live lease manually.
+
+## Editorial-plan validation
+
+- `repair_required`: open `plan-validation-attempt-1.json`, correct only the listed structural, lineage, candidate-disposition, classification, host, reason, duration/item, or disagreement-note defects, then rerun `record_editorial_plan.py` once.
+- `section_target_shortfall`: the plan remains valid. Reconsider available evidence, but do not add filler merely to reach a profile target.
+- `candidate_not_dispositioned`: select the candidate once or add one explicit exclusion with a profile-allowed reason code and specific explanation.
+- `unsupported_exclusion_reason`: use a code declared by the active profile. Change profile policy only through a normal reviewed code change, never mid-run.
+- `failed` after plan attempt 2: the run is terminal and its lease is released. Preserve the workspace, use the latest report to correct inputs/instructions, and start a new owning run.
+- `already_valid`: profile, dossier, plan, and report hashes revalidated. Do not re-plan.

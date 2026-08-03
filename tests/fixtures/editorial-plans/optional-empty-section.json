@@ -1,0 +1,41 @@
+{
+  "contract_version": "1.0",
+  "prompt_version": "1.0.0",
+  "created_at": "2026-01-15T15:06:00Z",
+  "run_id": "marine-brief_2026-01-15_synthetic",
+  "profile_id": "marine-brief",
+  "episode_date": "2026-01-15",
+  "profile": null,
+  "evidence_dossier": {
+    "artifact_type": "evidence",
+    "path": "evidence-dossier.json",
+    "sha256": "sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"
+  },
+  "opening_approach": "Explain the strongest available habitat observation without forcing a methods section.",
+  "segments": [
+    {
+      "segment_id": "segment_reef",
+      "order": 1,
+      "candidate_id": "item_reef_plot",
+      "section": "habitat",
+      "editorial_angle": "Keep the observation narrow and evidence-first.",
+      "why_it_matters": "The optional section can remain empty without weakening the useful material.",
+      "required_claim_ids": ["claim_reef_growth"],
+      "optional_claim_ids": [],
+      "desired_duration_seconds": 300,
+      "lead_host": "Daniel",
+      "host_dynamic": "Daniel introduces the observation and Maya clarifies the evidence limit.",
+      "source_conflict_notes": [],
+      "transition_intent": "Close without manufacturing a second section."
+    }
+  ],
+  "exclusions": [
+    {
+      "candidate_id": "item_sensor_method",
+      "reason_code": "lower_importance",
+      "reason": "The optional methods section is omitted for this focused episode."
+    }
+  ],
+  "closing_takeaway": "Optional structure should never become filler.",
+  "planned_duration_seconds": 300
+}

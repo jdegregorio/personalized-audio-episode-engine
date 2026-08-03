@@ -72,6 +72,16 @@ uv run python scripts/record_collection.py --run <run-directory>
 
 The first invalid dossier receives one machine-readable repair opportunity; a second invalid attempt fails the run. Collection recovery is documented in [`docs/troubleshooting.md`](docs/troubleshooting.md).
 
+## Editorial planning workflow
+
+After valid collection, start the distinct editorial phase described by the skill's [`editorial-planning.md`](.agents/skills/produce-audio-episode/references/editorial-planning.md) reference. Read the complete profile and dossier, write one structured plan, then record it:
+
+```bash
+uv run python scripts/record_editorial_plan.py --run <run-directory>
+```
+
+The recorder binds the current profile/dossier hashes and editorial prompt version, checks every candidate disposition plus profile-defined sections, hosts, reason codes, item/duration bounds, and disagreement notes, and allows one recorded repair. A valid plan advances to the separate script phase; it does not contain dialogue or invoke another model.
+
 ## Security boundary
 
 The MVP feed contains public-news content but uses an unguessable URL. That URL is access material, not authentication. Never commit or paste credentials, tokenized object keys, runtime data, or complete feed URLs. Profiles containing personal or otherwise sensitive information are outside the MVP and require a separate authenticated or encrypted publication design.

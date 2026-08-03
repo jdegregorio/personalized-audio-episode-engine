@@ -74,6 +74,17 @@ editorial:
   maximum_total_items: 7
   allow_empty_sections:
     - local
+  exclusion_reason_codes:
+    - lower_importance
+    - duplicate_development
+    - weak_sourcing
+    - insufficient_novelty
+    - outside_audience_scope
+    - local_filler
+    - routine_sports_result
+    - excessive_uncertainty
+    - episode_length_constraint
+    - superseded_reporting
   policy:
     source_policy: fact_first
     preferred_publishers:
