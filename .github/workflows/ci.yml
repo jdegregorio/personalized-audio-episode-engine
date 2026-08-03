@@ -87,4 +87,10 @@ jobs:
       - run: uv sync --locked --all-extras --dev
       - run: uv lock --check
       - run: uv build
-      - run: uv run python -c "import audio_engine; print(audio_engine.__version__)"
+      - name: Import the built wheel
+        shell: bash
+        run: |
+          artifact_venv="${RUNNER_TEMP}/artifact-venv"
+          uv venv --python 3.12 "${artifact_venv}"
+          uv pip install --python "${artifact_venv}/bin/python" dist/*.whl
+          "${artifact_venv}/bin/python" -c "import audio_engine; print(audio_engine.__version__)"

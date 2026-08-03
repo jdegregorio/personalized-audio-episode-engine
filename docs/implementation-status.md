@@ -21,7 +21,7 @@ The approved scope and sequence live in [`plan.md`](../plan.md). This page recor
 ## PR 01 delivered surface
 
 - Python 3.12 `src` package and `uv` lock boundary.
-- Ruff, strict Pyright, pytest markers, coverage, build, integrity, portability, dependency-review, and CodeQL feedback.
+- Ruff, strict Pyright, pytest markers, coverage, isolated wheel import, integrity, portability, dependency-review, and CodeQL feedback.
 - Credential-free environment template and repository/runtime ignore policy.
 - Worktree-safe setup, Cloudflare bootstrap, CI, operations, and security-boundary documentation.
 - Pull-request evidence template and preserved contributor/Codex review gates.

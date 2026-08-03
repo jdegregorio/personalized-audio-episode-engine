@@ -17,7 +17,7 @@ The required workflow surface is deliberately small:
 | `Dependency review` | Pull-request dependency risk review |
 | `CodeQL (python)` | Python static security analysis |
 
-The CI workflow also checks `uv.lock` and builds the package. The repository tests its integrity guard with prohibited fake paths and confirms Ruff rejects a deliberately unformatted temporary Python file.
+The CI workflow also checks `uv.lock`, builds the wheel and source distribution, and imports the wheel from an isolated environment rather than the editable checkout. The repository tests its integrity guard with prohibited fake paths and confirms Ruff rejects a deliberately unformatted temporary Python file.
 
 ## Secret isolation
 

@@ -12,7 +12,10 @@ The supported development runtime is Python 3.12 on macOS or Ubuntu, managed by 
 uv sync --locked --all-extras --dev
 uv lock --check
 uv build
-uv run python -c "import audio_engine; print(audio_engine.__version__)"
+artifact_venv="$(mktemp -d)/venv"
+uv venv --python 3.12 "${artifact_venv}"
+uv pip install --python "${artifact_venv}/bin/python" dist/*.whl
+"${artifact_venv}/bin/python" -c "import audio_engine; print(audio_engine.__version__)"
 ```
 
 Run the complete PR 01 local gate:

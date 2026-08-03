@@ -92,13 +92,16 @@ Each PR starts from the latest `origin/main` in a new sibling worktree as requir
 uv sync --locked --all-extras --dev
 uv lock --check
 uv build
+artifact_venv="$(mktemp -d)/venv"
+uv venv --python 3.12 "${artifact_venv}"
+uv pip install --python "${artifact_venv}/bin/python" dist/*.whl
+"${artifact_venv}/bin/python" -c "import audio_engine; print(audio_engine.__version__)"
 uv run python scripts/check_repository.py
 uv run ruff format --check .
 uv run ruff check .
 uv run pyright
 uv run pytest -m "not live and not smoke" --cov=audio_engine --cov=scripts --cov-report=term-missing --cov-fail-under=85
 uv run pytest -m smoke
-uv run python -c "import audio_engine; print(audio_engine.__version__)"
 ```
 
 PR 02 adds `doctor.py`; PR 09 adds a live Gemini smoke; PR 11 adds the R2 probe and publication UAT; PR 13 activates and qualifies the local schedule. Until their owning PRs land, those checks are deliberately unavailable rather than silently simulated.

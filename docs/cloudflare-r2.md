@@ -73,6 +73,6 @@ Treat the complete value as a secret. Confirm refresh, download, playback, trans
 ## Rotation and rollback
 
 - Rotate a compromised runtime credential by creating a replacement bucket-scoped token, updating the external local file and GitHub environment, testing the replacement, then revoking the old token.
-- Rotate a leaked feed URL by generating a new feed token, republishing under the new prefixes, updating AntennaPod, and then removing or allowing lifecycle cleanup of old episode objects. Never publish both tokens in migration evidence.
+- Rotate a leaked feed URL by generating a new feed token, republishing under the new prefixes, and updating and validating the AntennaPod subscription. Then explicitly delete `feeds/<old-token>/feed.xml` with the owner-controlled dashboard or bucket-scoped object credential and confirm the compromised URL returns `404`; the lifecycle rule cannot remove that feed object. Remove old episode objects immediately when exposure must end, or allow the `episodes/` lifecycle rule to clean them up. Never publish either token in migration evidence.
 - Roll back live service by disabling the schedule, disabling bucket public access, and revoking the runtime token. Existing local audio and offline tests remain available.
 - If the lifecycle rule is wrong, disable publication until `R2_RETENTION_DAYS` and the exact `episodes/` prefix agree. Never broaden the rule to `feeds/`.

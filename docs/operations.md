@@ -10,6 +10,10 @@ Run from the active feature worktree:
 uv sync --locked --all-extras --dev
 uv lock --check
 uv build
+artifact_venv="$(mktemp -d)/venv"
+uv venv --python 3.12 "${artifact_venv}"
+uv pip install --python "${artifact_venv}/bin/python" dist/*.whl
+"${artifact_venv}/bin/python" -c "import audio_engine; print(audio_engine.__version__)"
 uv run python scripts/check_repository.py
 uv run ruff format --check .
 uv run ruff check .
