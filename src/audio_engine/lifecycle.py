@@ -48,7 +48,7 @@ from audio_engine.storage import (
     sha256_bytes,
     sha256_file,
 )
-from audio_engine.validation import load_artifact_file, validate_artifact_data
+from audio_engine.validation import ValidationReport, load_artifact_file, validate_artifact_data
 
 SKILL_VERSION = "1.0.0"
 
@@ -444,7 +444,9 @@ def record_collection_validation(
     manager: LeaseManager,
     run_id: str,
     *,
-    outcome: CollectionValidationState,
+    attempt: int,
+    method: CollectionMethod,
+    report: ValidationReport,
     now: datetime,
     dossier: EvidenceDossier | None = None,
     allowed_input_roots: Sequence[Path] = (),
@@ -459,18 +461,62 @@ def record_collection_validation(
             if state.collection_method is None:
                 raise LifecycleError("collection method must be selected before validation")
             previous = state.collection_validation
-            if previous == outcome and outcome.status == "valid":
-                _write_summary(workspace, state)
-                return state
             expected_attempt = 1
             if previous is not None:
                 if not previous.repair_allowed:
                     raise LifecycleError("collection validation does not allow another attempt")
                 expected_attempt = previous.attempt + 1
-            if outcome.attempt != expected_attempt:
+            if attempt != expected_attempt:
                 raise LifecycleError(f"collection validation attempt must be {expected_attempt}")
-            if outcome.status == "valid":
+            if report.artifact_type != "evidence":
+                raise LifecycleError("collection validation report must describe evidence")
+            if state.collection_method != method:
+                raise LifecycleError("collection method changed before validation was recorded")
+            if report.valid:
                 if dossier is None:
+                    raise LifecycleError("valid collection outcome requires an evidence dossier")
+                if (
+                    dossier.collection_method != method
+                    or dossier.prompt_version != state.prompt_versions.get("collection")
+                ):
+                    raise LifecycleError(
+                        "evidence collection provenance does not match active state"
+                    )
+            else:
+                if dossier is not None:
+                    raise LifecycleError("invalid collection outcome cannot persist a dossier")
+                if state.current_stage != "collection":
+                    raise LifecycleError("invalid collection outcome must remain in collection")
+            validation_filename = f"evidence-validation-attempt-{attempt}.json"
+            validation_path = resolve_within_roots(
+                workspace.run_directory / validation_filename,
+                [workspace.run_directory],
+                must_exist=False,
+            )
+            atomic_write_json(
+                validation_path,
+                {
+                    "attempt": attempt,
+                    "collection_method": state.collection_method.model_dump(mode="json"),
+                    "validated_at": _aware_utc(now).isoformat().replace("+00:00", "Z"),
+                    **report.to_dict(),
+                },
+            )
+            report_reference = ArtifactReference(
+                artifact_type="validation",
+                path=validation_filename,
+                sha256=sha256_file(validation_path),
+            )
+            outcome = CollectionValidationState(
+                attempt=attempt,
+                status="valid" if report.valid else "invalid",
+                error_count=len(report.errors),
+                warning_count=len(report.warnings),
+                repair_allowed=not report.valid and attempt == 1,
+                report=report_reference,
+            )
+            if outcome.status == "valid":
+                if dossier is None:  # pragma: no cover - checked before report persistence
                     raise LifecycleError("valid collection outcome requires an evidence dossier")
                 state, _ = _prepare_stage_artifact_owned(
                     workspace,
@@ -482,11 +528,6 @@ def record_collection_validation(
                 )
                 if state.current_stage != "editorial" or "evidence_dossier" not in state.artifacts:
                     raise LifecycleError("valid collection outcome requires a persisted dossier")
-            else:
-                if dossier is not None:
-                    raise LifecycleError("invalid collection outcome cannot persist a dossier")
-                if state.current_stage != "collection":
-                    raise LifecycleError("invalid collection outcome must remain in collection")
 
             artifacts = {**state.artifacts, "evidence_validation": outcome.report}
             update: dict[str, object] = {
@@ -514,6 +555,8 @@ def record_collection_validation(
             updated = _validated_state_update(state, update)
             _write_run_state(workspace, updated)
             _write_summary(workspace, updated)
+    except (SafetyError, StorageError) as error:
+        raise LifecycleError("collection validation could not be persisted") from error
     except LeaseError as error:
         raise LifecycleError(str(error)) from None
     if should_release:
@@ -522,6 +565,23 @@ def record_collection_validation(
         except LeaseError as error:
             raise LifecycleError(str(error)) from None
     return updated
+
+
+def refresh_run_summary(
+    workspace: RunWorkspace,
+    manager: LeaseManager,
+    run_id: str,
+) -> RunState:
+    """Regenerate the human summary without changing authoritative state."""
+    try:
+        with manager.mutation(workspace.episode_key, run_id):
+            state = load_run_state(workspace.state_path)
+            if state.run_id != run_id or state.status != "running":
+                raise LifecycleError("only the active run owner may refresh its summary")
+            _write_summary(workspace, state)
+            return state
+    except LeaseError as error:
+        raise LifecycleError(str(error)) from None
 
 
 def _prepare_stage_artifact_owned(

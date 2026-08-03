@@ -149,6 +149,47 @@ def test_select_cli_terminalizes_missing_required_capability(
     assert state.run_id == run_id
 
 
+@pytest.mark.parametrize(
+    "selection_args",
+    [
+        ["--preferred-capability", "missing_collector"],
+        [
+            "--capability",
+            "fixture_research=1.2.3.4",
+            "--preferred-capability",
+            "fixture_research",
+        ],
+    ],
+)
+def test_select_cli_keeps_invocation_errors_retryable(
+    selection_args: list[str],
+    synthetic_collection_profile_path: Path,
+    settings_values: dict[str, str],
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    _environment(monkeypatch, settings_values)
+    run_directory, _ = _initialize(synthetic_collection_profile_path, settings_values)
+
+    failed = select_main(["--run", str(run_directory), *selection_args])
+    output = json.loads(capsys.readouterr().err)
+    retryable = load_run_state(run_directory / "state.json")
+    manager = LeaseManager(
+        EngineSettings.from_mapping(settings_values).runtime_root,
+        maximum_age=timedelta(hours=6),
+    )
+
+    assert failed == 1
+    assert output["code"] == "collection_selection_failed"
+    assert retryable.status == "running"
+    assert retryable.current_stage == "collection"
+    assert manager.lease_path(retryable.episode_key).exists()
+
+    assert select_main(["--run", str(run_directory)]) == 0
+    selected = json.loads(capsys.readouterr().out)
+    assert selected["collection_method"]["type"] == "native_research"
+
+
 def test_record_cli_accepts_method_neutral_dossier(
     synthetic_collection_profile_path: Path,
     settings_values: dict[str, str],

@@ -26,10 +26,11 @@ from audio_engine.lifecycle import (
     RunWorkspace,
     load_run_state,
     record_collection_validation,
+    refresh_run_summary,
 )
 from audio_engine.profile import ProfileError, load_profile
 from audio_engine.safety import SafetyError, resolve_within_roots
-from audio_engine.storage import StorageError, atomic_write_json, sha256_file
+from audio_engine.storage import StorageError, sha256_file
 from audio_engine.validation import (
     ValidationReport,
     load_artifact_file,
@@ -43,6 +44,10 @@ NATIVE_RESEARCH_NAME = "Codex native web research"
 
 class CollectionError(RuntimeError):
     """A safe collection routing or recording failure."""
+
+
+class CollectionCapabilityUnavailable(CollectionError):
+    """The request cannot be collected with any allowed available route."""
 
 
 @dataclass(frozen=True)
@@ -128,7 +133,7 @@ def select_collection_method(
         names = ", ".join(missing_required[:5])
         if len(missing_required) > 5:
             names += f" (+{len(missing_required) - 5} more)"
-        raise CollectionError(
+        raise CollectionCapabilityUnavailable(
             f"required collection capability unavailable: {names}; install or configure it "
             "before retrying this profile"
         )
@@ -156,7 +161,7 @@ def select_collection_method(
 
     if request.allow_native_research_fallback and "public_web" in request.source_types:
         return CollectionMethod(type="native_research", name=NATIVE_RESEARCH_NAME, version=None)
-    raise CollectionError(
+    raise CollectionCapabilityUnavailable(
         "no suitable collection capability is available and native public-web fallback is not "
         "allowed; install or configure a required capability"
     )
@@ -185,13 +190,7 @@ def record_collection_attempt(
             request,
             allowed_input_roots,
         )
-        record_collection_validation(
-            workspace,
-            manager,
-            run_id,
-            outcome=state.collection_validation,
-            now=_aware_utc(now or datetime.now(UTC)),
-        )
+        refresh_run_summary(workspace, manager, run_id)
         return result
 
     previous = state.collection_validation
@@ -235,40 +234,8 @@ def record_collection_attempt(
         warnings = tuple(sorted((*report.warnings, *request_warnings)))
         report = ValidationReport("evidence", not errors, errors, warnings)
 
-    validation_filename = f"evidence-validation-attempt-{attempt}.json"
     validated_at = _aware_utc(now or datetime.now(UTC))
-    try:
-        with manager.mutation(workspace.episode_key, run_id):
-            validation_path = resolve_within_roots(
-                workspace.run_directory / validation_filename,
-                [workspace.run_directory],
-                must_exist=False,
-            )
-            atomic_write_json(
-                validation_path,
-                {
-                    "attempt": attempt,
-                    "collection_method": state.collection_method.model_dump(mode="json"),
-                    "validated_at": validated_at.isoformat().replace("+00:00", "Z"),
-                    **report.to_dict(),
-                },
-            )
-            report_reference = ArtifactReference(
-                artifact_type="validation",
-                path=validation_filename,
-                sha256=sha256_file(validation_path),
-            )
-    except (LeaseError, SafetyError, StorageError) as error:
-        raise CollectionError("collection validation report could not be persisted") from error
     repair_allowed = not report.valid and attempt == 1
-    outcome = CollectionValidationState(
-        attempt=attempt,
-        status="valid" if report.valid else "invalid",
-        error_count=len(report.errors),
-        warning_count=len(report.warnings),
-        repair_allowed=repair_allowed,
-        report=report_reference,
-    )
 
     if report.valid:
         if not isinstance(artifact, EvidenceDossier):  # pragma: no cover - validator narrows it
@@ -277,7 +244,9 @@ def record_collection_attempt(
             workspace,
             manager,
             run_id,
-            outcome=outcome,
+            attempt=attempt,
+            method=state.collection_method,
+            report=report,
             now=validated_at,
             dossier=artifact,
             allowed_input_roots=allowed_input_roots,
@@ -288,7 +257,9 @@ def record_collection_attempt(
         workspace,
         manager,
         run_id,
-        outcome=outcome,
+        attempt=attempt,
+        method=state.collection_method,
+        report=report,
         now=validated_at,
     )
     status: Literal["repair_required", "failed"] = "repair_required" if repair_allowed else "failed"

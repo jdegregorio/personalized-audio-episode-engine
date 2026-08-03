@@ -18,7 +18,9 @@ from audio_engine.artifacts import (
     ARTIFACT_MODELS,
     Artifact,
     ArtifactReference,
+    Candidate,
     Claim,
+    ClaimSupport,
     CollectionRequest,
     EditorialPlan,
     EpisodeScript,
@@ -213,6 +215,14 @@ def _evidence_issues(
         )
 
     for candidate_index, candidate in enumerate(dossier.candidates):
+        if not _candidate_has_supported_claim(candidate, claims, supports, sources):
+            errors.append(
+                _issue(
+                    "missing_candidate_evidence",
+                    f"/candidates/{candidate_index}/claim_ids",
+                    "candidate requires a linked claim with support from a listed source",
+                )
+            )
         for claim_index, claim_id in enumerate(candidate.claim_ids):
             claim = claims.get(claim_id)
             path = f"/candidates/{candidate_index}/claim_ids/{claim_index}"
@@ -412,6 +422,28 @@ def _evidence_issues(
     return errors, warnings
 
 
+def _candidate_has_supported_claim(
+    candidate: Candidate,
+    claims: Mapping[str, Claim],
+    supports: Mapping[str, ClaimSupport],
+    sources: Mapping[str, object],
+) -> bool:
+    for claim_id in candidate.claim_ids:
+        claim = claims.get(claim_id)
+        if claim is None or claim.candidate_id != candidate.candidate_id:
+            continue
+        for support_id in claim.support_ids:
+            support = supports.get(support_id)
+            if (
+                support is not None
+                and support.claim_id == claim_id
+                and support.source_id in candidate.source_ids
+                and support.source_id in sources
+            ):
+                return True
+    return False
+
+
 def validate_artifact_data(
     artifact_type: str,
     data: object,
@@ -506,6 +538,9 @@ def validate_dossier_against_request(
     errors: list[ValidationIssue] = []
     counts: dict[str, int] = defaultdict(int)
     declared = set(request.scope.sections)
+    claims = {claim.claim_id: claim for claim in dossier.claims}
+    supports = {support.support_id: support for support in dossier.claim_supports}
+    sources = {source.source_id: source for source in dossier.sources}
     for index, candidate in enumerate(dossier.candidates):
         section = candidate.classification.get("section")
         path = f"/candidates/{index}/classification/section"
@@ -525,7 +560,7 @@ def validate_dossier_against_request(
                     "candidate section is not declared in the collection request",
                 )
             )
-        else:
+        elif _candidate_has_supported_claim(candidate, claims, supports, sources):
             counts[section] += 1
 
     warnings = [

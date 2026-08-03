@@ -13,6 +13,7 @@ from pydantic import ValidationError
 from audio_engine.artifacts import RunFailure
 from audio_engine.collection import (
     COLLECTION_PROMPT_VERSION,
+    CollectionCapabilityUnavailable,
     CollectionError,
     load_collection_request,
     open_collection_run,
@@ -94,7 +95,7 @@ def main(argv: list[str] | None = None) -> int:
                 *args.failed_capability,
             ],
         )
-    except CollectionError as error:
+    except CollectionCapabilityUnavailable as error:
         try:
             mark_run_failed(
                 context.workspace,
@@ -115,6 +116,9 @@ def main(argv: list[str] | None = None) -> int:
             _print_error("collection_selection_failed", str(error))
             return 1
         _print_error("collection_capability_unavailable", str(error))
+        return 1
+    except CollectionError as error:
+        _print_error("collection_selection_failed", str(error))
         return 1
 
     try:

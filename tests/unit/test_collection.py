@@ -19,6 +19,7 @@ from audio_engine.collection import (
 from audio_engine.config import EngineSettings
 from audio_engine.leases import LeaseManager
 from audio_engine.lifecycle import (
+    LifecycleError,
     RunWorkspace,
     initialize_run,
     load_run_state,
@@ -345,6 +346,49 @@ def test_collection_recorder_reports_invalid_json_for_repair(
     assert [(error.code, error.path) for error in result.report.errors] == [("invalid_json", "/")]
 
 
+def test_collection_recorder_rejects_candidates_without_evidence(
+    synthetic_collection_profile_path: Path,
+    settings_values: dict[str, str],
+) -> None:
+    workspace, manager, state = _initialized(synthetic_collection_profile_path, settings_values)
+    record_collection_method(
+        workspace,
+        manager,
+        state.run_id,
+        method=CollectionMethod(
+            type="native_research", name="Codex native web research", version=None
+        ),
+        prompt_version="1.0.0",
+    )
+    dossier = _json("evidence-dossier.json")
+    for candidate in dossier["candidates"]:
+        candidate["claim_ids"] = []
+        candidate["source_ids"] = []
+    dossier["claims"] = []
+    dossier["claim_supports"] = []
+    dossier["sources"] = []
+    path = workspace.run_directory / "evidence-dossier.json"
+    path.write_text(json.dumps(dossier), encoding="utf-8")
+
+    result = record_collection_attempt(
+        workspace,
+        manager,
+        state.run_id,
+        candidate_path=path,
+        now=FIXED_NOW + timedelta(minutes=5),
+    )
+
+    assert result.status == "repair_required"
+    assert [error.code for error in result.report.errors] == [
+        "missing_candidate_evidence",
+        "missing_candidate_evidence",
+    ]
+    assert [warning.code for warning in result.report.warnings] == [
+        "candidate_target_shortfall",
+        "candidate_target_shortfall",
+    ]
+
+
 def test_collection_recorder_rejects_tampered_request(
     synthetic_collection_profile_path: Path,
     settings_values: dict[str, str],
@@ -452,7 +496,7 @@ def test_collection_does_not_write_validation_without_lease_ownership(
     path.write_text(json.dumps(_json("evidence-dossier.json")), encoding="utf-8")
     manager.release(state.episode_key, state.run_id)
 
-    with pytest.raises(CollectionError, match="could not be persisted"):
+    with pytest.raises(LifecycleError, match="lease does not exist"):
         record_collection_attempt(
             workspace,
             manager,
@@ -488,7 +532,7 @@ def test_collection_state_write_failure_does_not_advance_to_editorial(
 
     monkeypatch.setattr(lifecycle_module, "_write_run_state", fail_state_write)
 
-    with pytest.raises(StorageError, match="synthetic state failure"):
+    with pytest.raises(LifecycleError, match="could not be persisted"):
         record_collection_attempt(
             workspace,
             manager,
