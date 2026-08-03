@@ -26,6 +26,9 @@ def test_prohibited_paths_reject_runtime_secrets_credentials_and_audio() -> None
     paths = [
         "runtime/runs/state.json",
         ".env.local",
+        ".ENV",
+        ".Env.local",
+        ".ENV.EXAMPLE",
         "config/secrets.env",
         "credentials/private.pem",
         "episode.mp3",
@@ -56,11 +59,28 @@ def test_markdown_errors_accept_external_anchor_and_existing_links(tmp_path: Pat
     linked.write_text("# Linked\n", encoding="utf-8")
     document = tmp_path / "README.md"
     document.write_text(
-        "# Test\n\n[anchor](#test) [external](https://example.com) [local](linked.md#linked)\n",
+        "# Test\n\n[anchor](#test) [external](https://example.com) [local](linked.md#linked)\n"
+        "[local-ref]: linked.md#linked\n[external-ref]: https://example.com\n",
         encoding="utf-8",
     )
 
     assert markdown_errors(tmp_path, ["README.md", "linked.md"]) == []
+
+
+def test_markdown_errors_validate_reference_link_definitions(tmp_path: Path) -> None:
+    document = tmp_path / "README.md"
+    document.write_text(
+        "[missing][setup-doc]\n[escape][outside]\n\n"
+        "[setup-doc]: docs/missing.md\n[outside]: ../outside.md\n",
+        encoding="utf-8",
+    )
+
+    errors = markdown_errors(tmp_path, ["README.md"])
+
+    assert errors == [
+        "README.md: broken local link: docs/missing.md",
+        "README.md: link escapes repository: ../outside.md",
+    ]
 
 
 def test_markdown_errors_reject_missing_documented_script(tmp_path: Path) -> None:

@@ -9,6 +9,7 @@ from pathlib import Path
 from urllib.parse import unquote
 
 _LINK_PATTERN = re.compile(r"!?\[[^]]*]\((?P<target><[^>]+>|[^ )]+)")
+_REFERENCE_LINK_PATTERN = re.compile(r"(?m)^[ ]{0,3}\[(?!\^)[^]]+]:[ \t]*(?P<target><[^>\n]+>|\S+)")
 _SCRIPT_COMMAND_PATTERN = re.compile(r"uv run python (?P<path>scripts/[\w./-]+\.py)\b")
 _AUDIO_SUFFIXES = {".aac", ".flac", ".m4a", ".mp3", ".ogg", ".pcm", ".wav"}
 _COMMAND_DOCUMENTS = {"README.md"}
@@ -34,11 +35,12 @@ def prohibited_path_errors(paths: list[str]) -> list[str]:
         lowered_parts = tuple(part.lower() for part in path.parts)
         if raw_path == ".env.example":
             continue
+        lowered_name = path.name.lower()
         if lowered_parts and lowered_parts[0] == "runtime":
             errors.append(f"prohibited runtime artifact: {raw_path}")
-        elif path.name == ".env" or path.name.startswith(".env."):
+        elif lowered_name == ".env" or lowered_name.startswith(".env."):
             errors.append(f"prohibited environment file: {raw_path}")
-        elif path.name.lower() == "secrets.env" or path.suffix.lower() in {".key", ".pem"}:
+        elif lowered_name == "secrets.env" or path.suffix.lower() in {".key", ".pem"}:
             errors.append(f"prohibited credential file: {raw_path}")
         elif path.suffix.lower() in _AUDIO_SUFFIXES:
             errors.append(f"prohibited generated audio: {raw_path}")
@@ -58,7 +60,8 @@ def markdown_errors(root: Path, paths: list[str]) -> list[str]:
             if "\t" in line:
                 errors.append(f"{relative_path}:{line_number}: tab character")
 
-        for match in _LINK_PATTERN.finditer(text):
+        link_matches = (*_LINK_PATTERN.finditer(text), *_REFERENCE_LINK_PATTERN.finditer(text))
+        for match in link_matches:
             target = match.group("target").strip("<>")
             if (
                 not target
