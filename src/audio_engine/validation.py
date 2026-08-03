@@ -319,7 +319,11 @@ def _evidence_issues(
                     "claim support requires a short excerpt or precise locator",
                 )
             )
-        elif support.evidence.excerpt is None and source is not None and not source.is_primary:
+        elif (
+            support.evidence.excerpt is None
+            and source is not None
+            and source.originality.kind != "primary_source"
+        ):
             errors.append(
                 _issue(
                     "excerpt_required",

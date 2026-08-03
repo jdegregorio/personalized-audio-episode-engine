@@ -2,13 +2,14 @@
 
 from __future__ import annotations
 
-from datetime import date
+from datetime import date, datetime
 from pathlib import PurePosixPath
 from typing import Annotated, Literal, Self
 
 from pydantic import (
     AwareDatetime,
     BaseModel,
+    BeforeValidator,
     ConfigDict,
     Field,
     HttpUrl,
@@ -19,8 +20,27 @@ from pydantic import (
 
 ARTIFACT_CONTRACT_VERSION = "1.0"
 
+
+def _require_date_input(value: object) -> object:
+    if isinstance(value, datetime) or not isinstance(value, (str, date)):
+        raise ValueError("date must be an ISO string or date value")
+    return value
+
+
+def _require_datetime_input(value: object) -> object:
+    if not isinstance(value, (str, datetime)):
+        raise ValueError("datetime must be an ISO string or datetime value")
+    return value
+
+
 Identifier = Annotated[str, Field(pattern=r"^[a-z][a-z0-9_-]*$", max_length=80)]
 Version = Annotated[str, Field(pattern=r"^\d+\.\d+(?:\.\d+)?$", max_length=40)]
+JsonDate = Annotated[date, BeforeValidator(_require_date_input), Field(strict=False)]
+JsonAwareDatetime = Annotated[
+    AwareDatetime,
+    BeforeValidator(_require_datetime_input),
+    Field(strict=False),
+]
 ShortText = Annotated[str, Field(min_length=1, max_length=500)]
 LongText = Annotated[str, Field(min_length=1, max_length=10_000)]
 Sha256 = Annotated[str, Field(pattern=r"^sha256:[0-9a-f]{64}$")]
@@ -51,7 +71,7 @@ def _validate_safe_artifact_path(value: str) -> str:
 
 
 class _ContractModel(BaseModel):
-    model_config = ConfigDict(extra="forbid")
+    model_config = ConfigDict(extra="forbid", strict=True)
 
 
 class ArtifactReference(_ContractModel):
@@ -88,6 +108,17 @@ class SourcePolicy(_ContractModel):
     policy: dict[Identifier, JsonValue] = Field(default_factory=dict)
 
 
+class CollectionAudience(_ContractModel):
+    locale: ShortText
+    knowledge_level: Identifier
+    preferences: Annotated[list[LongText], Field(max_length=100)]
+
+
+class CollectionEditorialPriorities(_ContractModel):
+    exclusions: Annotated[list[LongText], Field(max_length=100)]
+    policy: dict[Identifier, JsonValue] = Field(default_factory=dict)
+
+
 class CollectionTargets(_ContractModel):
     by_section: dict[Identifier, Annotated[int, Field(ge=0, le=1_000)]]
     maximum_candidates: Annotated[int, Field(ge=1, le=5_000)]
@@ -105,17 +136,20 @@ class CollectionRequest(_ContractModel):
 
     contract_version: Literal["1.0"]
     prompt_version: Version | None
-    created_at: AwareDatetime
+    created_at: JsonAwareDatetime
     run_id: RunId
     profile_id: Identifier
-    episode_date: date
+    episode_date: JsonDate
     timezone: ShortText
     topic: LongText
     scope: RequestScope
+    audience: CollectionAudience
+    editorial_priorities: CollectionEditorialPriorities
     time_window: RequestTimeWindow
     source_types: Annotated[list[Identifier], Field(min_length=1, max_length=50)]
     suggested_capabilities: Annotated[list[Identifier], Field(max_length=50)]
     allow_native_research_fallback: bool
+    evidence_contract_version: Literal["1.0"]
     source_policy: SourcePolicy
     targets: CollectionTargets
     output_path: str
@@ -151,7 +185,7 @@ class Candidate(_ContractModel):
     candidate_id: CandidateId
     title: ShortText
     classification: dict[Identifier, JsonValue] = Field(default_factory=dict)
-    relevant_times: dict[Identifier, AwareDatetime | None] = Field(default_factory=dict)
+    relevant_times: dict[Identifier, JsonAwareDatetime | None] = Field(default_factory=dict)
     summary: LongText
     context: LongText
     why_it_matters: LongText
@@ -207,14 +241,21 @@ class EvidenceSource(_ContractModel):
     title: ShortText
     canonical_locator: Annotated[str, Field(min_length=1, max_length=2_000)]
     access_status: Literal["retrieved", "partial", "unavailable", "access_denied"]
-    retrieved_at: AwareDatetime
-    created_at: AwareDatetime | None
-    published_at: AwareDatetime | None
-    updated_at: AwareDatetime | None
+    retrieved_at: JsonAwareDatetime
+    created_at: JsonAwareDatetime | None
+    published_at: JsonAwareDatetime | None
+    updated_at: JsonAwareDatetime | None
     content_hash: Sha256 | None
     is_primary: bool
     originality: SourceOriginality
     notes: Annotated[str, Field(max_length=2_000)] | None
+
+    @model_validator(mode="after")
+    def consistent_primary_classification(self) -> Self:
+        classified_primary = self.originality.kind == "primary_source"
+        if self.is_primary != classified_primary:
+            raise ValueError("is_primary must agree with originality.kind")
+        return self
 
 
 class DossierLimits(_ContractModel):
@@ -243,8 +284,8 @@ class EvidenceDossier(_ContractModel):
     prompt_version: Version
     collection_request: ArtifactReference
     collection_method: CollectionMethod
-    collection_started_at: AwareDatetime
-    collection_completed_at: AwareDatetime
+    collection_started_at: JsonAwareDatetime
+    collection_completed_at: JsonAwareDatetime
     estimated_tokens: Annotated[int, Field(ge=0, le=2_000_000)]
     limits: DossierLimits
     candidates: Annotated[list[Candidate], Field(max_length=5_000)]
@@ -294,10 +335,10 @@ class EditorialPlan(_ContractModel):
 
     contract_version: Literal["1.0"]
     prompt_version: Version
-    created_at: AwareDatetime
+    created_at: JsonAwareDatetime
     run_id: RunId
     profile_id: Identifier
-    episode_date: date
+    episode_date: JsonDate
     evidence_dossier: ArtifactReference
     opening_approach: LongText
     segments: Annotated[list[PlannedSegment], Field(min_length=1, max_length=100)]
@@ -355,10 +396,10 @@ class EpisodeScript(_ContractModel):
 
     contract_version: Literal["1.0"]
     prompt_version: Version
-    created_at: AwareDatetime
+    created_at: JsonAwareDatetime
     run_id: RunId
     profile_id: Identifier
-    episode_date: date
+    episode_date: JsonDate
     evidence_dossier: ArtifactReference
     editorial_plan: ArtifactReference
     transcript: ArtifactReference
@@ -440,11 +481,11 @@ class PublishedEpisode(_ContractModel):
     run_id: RunId
     episode_key: EpisodeKey
     profile_id: Identifier
-    episode_date: date
+    episode_date: JsonDate
     guid: ShortText
     title: ShortText
     description: LongText
-    published_at: AwareDatetime
+    published_at: JsonAwareDatetime
     status: Literal["published"]
     episode_script: ArtifactReference
     audio: ArtifactReference
@@ -516,8 +557,8 @@ class RunState(_ContractModel):
     collection_method: CollectionMethod | None
     codex_model: ShortText | None
     gemini_model: ShortText | None
-    started_at: AwareDatetime
-    completed_at: AwareDatetime | None
+    started_at: JsonAwareDatetime
+    completed_at: JsonAwareDatetime | None
     current_stage: RunStage
     last_completed_valid_stage: RunStage | None
     status: Literal["running", "failed", "completed", "no_op"]

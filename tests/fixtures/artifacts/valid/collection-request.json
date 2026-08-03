@@ -14,6 +14,22 @@
     ],
     "notes": "Profile-defined synthetic scope; section identifiers are opaque to the engine."
   },
+  "audience": {
+    "locale": "en-US",
+    "knowledge_level": "informed_generalist",
+    "preferences": [
+      "Explain relevant context without assuming specialist knowledge."
+    ]
+  },
+  "editorial_priorities": {
+    "exclusions": [
+      "Exclude synthetic observations without material consequences."
+    ],
+    "policy": {
+      "prioritize_material_consequences": true,
+      "avoid_sensationalism": true
+    }
+  },
   "time_window": {
     "hours": 72
   },
@@ -25,6 +41,7 @@
     "research_library"
   ],
   "allow_native_research_fallback": true,
+  "evidence_contract_version": "1.0",
   "source_policy": {
     "prefer_primary": true,
     "preferred_publishers": [],
