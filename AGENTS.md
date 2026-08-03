@@ -10,6 +10,8 @@ Use a fresh worktree and `feature/` branch for every PR. Keep changes within the
 
 Never merge before at least one configured GitHub Codex review round completes. Use at most two Codex review rounds per PR: the initial review and, when useful, one rereview after changes. Examine every finding, then implement it, dismiss it with concrete rationale, or defer valid non-blocking work to an explicit owning item in `plan.md`; record the disposition and resolve the thread. After round two, do not request another Codex review. Re-run affected checks and perform final correctness and simplification reviews for any later changes.
 
+Do not skip or weaken required testing, smoke, UAT, or review when tooling or an environment is initially unavailable. Diagnose and independently repair in-scope blockers when access and authority permit, rerun the required evidence, and continue without asking the owner. Stop only when progress genuinely requires owner-only secrets, account/billing or permission changes, physical-device setup, or another action the agent cannot perform; state the exact prerequisite instead of substituting a weaker test.
+
 ## Production workflow constraints
 
 - Use `uv` for Python environments, dependency locking, and command execution.

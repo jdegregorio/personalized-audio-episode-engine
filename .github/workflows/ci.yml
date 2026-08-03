@@ -63,6 +63,10 @@ jobs:
         with:
           enable-cache: true
           python-version: "3.12"
+      - name: Install FFmpeg
+        run: |
+          sudo apt-get update
+          sudo apt-get install --yes --no-install-recommends ffmpeg
       - run: uv sync --locked --all-extras --dev
       - run: uv run pytest -m "smoke and not live"
       - run: uv run python -c "import audio_engine; print(audio_engine.__version__)"

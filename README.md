@@ -31,6 +31,14 @@ uv run pytest -m "smoke and not live"
 
 See [`docs/setup.md`](docs/setup.md) for workstation, account, and secret setup. Contributors must follow [`CONTRIBUTORS.md`](CONTRIBUTORS.md), including its worktree, review, evidence, and merge gates.
 
+Validate the prepared host without contacting Gemini or R2:
+
+```bash
+uv run python scripts/doctor.py --profile examples/profiles/world-us-seattle-news.yaml
+```
+
+Episode profiles are strict, versioned YAML data. See [`docs/profile-authoring.md`](docs/profile-authoring.md) and the committed [`schemas/episode-profile-v1.0.schema.json`](schemas/episode-profile-v1.0.schema.json).
+
 ## Security boundary
 
 The MVP feed contains public-news content but uses an unguessable URL. That URL is access material, not authentication. Never commit or paste credentials, tokenized object keys, runtime data, or complete feed URLs. Profiles containing personal or otherwise sensitive information are outside the MVP and require a separate authenticated or encrypted publication design.

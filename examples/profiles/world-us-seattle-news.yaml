@@ -1,0 +1,117 @@
+schema_version: "1.0"
+
+id: world-us-seattle-news
+version: "0.1.0"
+enabled: true
+
+identity:
+  feed_id: joe-daily-briefing
+  title_template: "World, U.S. & Seattle — {date}"
+  description: >
+    A calm, fact-first morning briefing covering major global,
+    United States, and Seattle-area news.
+
+episode:
+  topic: Major global, United States, and Seattle-area news
+  scope:
+    sections:
+      - id: global
+        description: Material international developments
+      - id: us
+        description: Material United States developments
+      - id: local
+        description: >
+          Selective Seattle, King County, Puget Sound, or directly relevant
+          Washington State developments
+    exclude:
+      - low-consequence celebrity or viral stories
+      - routine crime, weather, sports scores, and local filler
+
+audience:
+  timezone: America/Los_Angeles
+  locale: en-US
+  knowledge_level: informed_generalist
+  preferences:
+    - prioritize material consequences
+    - explain relevant context
+    - avoid sensationalism
+    - compare coverage when differences are meaningful
+    - keep local coverage selective
+
+collection:
+  source_types:
+    - public_web
+  suggested_capabilities:
+    - web_deep_research
+  required_capabilities: []
+  allow_native_research_fallback: true
+  evidence_contract_version: "1.0"
+  time_window:
+    recency_hours: 36
+  target_candidates:
+    global: 10
+    us: 10
+    local: 8
+  maximum_candidates: 40
+  maximum_sources: 100
+
+editorial:
+  target_minutes: 10
+  minimum_minutes: 7
+  maximum_minutes: 15
+  target_sections:
+    global:
+      minimum_items: 2
+      maximum_items: 3
+    us:
+      minimum_items: 2
+      maximum_items: 3
+    local:
+      minimum_items: 0
+      maximum_items: 2
+  maximum_total_items: 7
+  allow_empty_sections:
+    - local
+  policy:
+    source_policy: fact_first
+    preferred_publishers:
+      - Reuters
+      - Associated Press
+    coverage_divergence: when_material
+    local_sports: major_developments_only
+
+hosts:
+  format: two_speaker
+  relationship: flexible_symmetry
+  female:
+    name: Maya
+    voice: selected-gemini-voice
+    profile: calm, incisive, warm, concise
+  male:
+    name: Daniel
+    voice: selected-gemini-voice
+    profile: curious, analytical, grounded, concise
+
+performance:
+  style: calm_public_radio_conversation
+  pace: conversational
+  use_audio_tags: sparingly
+  prohibit_fake_personal_experience: true
+  prohibit_urls_in_speech: true
+
+tts:
+  provider: gemini
+  model: gemini-3.1-flash-tts-preview
+  safe_input_tokens: 7000
+  target_segment_minutes: 3
+  maximum_retries: 3
+
+publishing:
+  feed_title: "Joe's Daily Briefing"
+  language: en-US
+  provider: cloudflare_r2
+  private_path_env: PODCAST_FEED_TOKEN
+  endpoint_url_env: R2_ENDPOINT_URL
+  bucket_name_env: R2_BUCKET_NAME
+  base_url_env: PODCAST_BASE_URL
+  retention_days_env: R2_RETENTION_DAYS

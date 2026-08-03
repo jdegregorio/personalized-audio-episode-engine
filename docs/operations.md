@@ -1,6 +1,6 @@
 # Operations
 
-The engine is currently in the repository-foundation phase. Offline development is supported; production generation and publication are introduced and accepted only by their owning PRs in [`plan.md`](../plan.md).
+The engine currently supports validated environment configuration and topic-generic profile preflight. Run creation and production behavior are introduced only by their owning PRs in [`plan.md`](../plan.md).
 
 ## Development gate
 
@@ -24,6 +24,16 @@ uv run pytest -m "smoke and not live"
 
 The `not live and not smoke` suite is deterministic and must not read the owner's real environment file or access a network service. Smoke tests prove user-visible behavior at the smallest useful boundary. Live tests remain explicit and use the narrow `live-smoke` environment only after their implementation PR.
 
+## Environment preflight
+
+Load the owner-managed environment as described in [`setup.md`](setup.md), then run:
+
+```bash
+uv run python scripts/doctor.py --profile examples/profiles/world-us-seattle-news.yaml
+```
+
+`PASS` means local configuration and tools are structurally ready; it is not a live Gemini or R2 probe. A `FAIL` line names the setting, tool, root, profile, or required capability the operator must fix without echoing its value.
+
 ## Production invariants
 
 - One independent Codex run processes one profile.
@@ -36,6 +46,6 @@ The `not live and not smoke` suite is deterministic and must not read the owner'
 
 ## Rollback at this phase
 
-PR 01 adds no production runtime. Revert its squash commit to remove the foundation. If CI configuration itself prevents safe progress, temporarily disable only the affected required-check rule, repair it in a PR, and restore the rule immediately after the check is available. Do not weaken the pull-request, deletion, or non-fast-forward protections.
+No doctor check uploads data or creates a run. Revert the PR 02 squash commit to remove profile/configuration support. Configuration failures are corrected in the external environment or profile; do not bypass path, version, or redaction validation.
 
 Service-specific recovery and rotation are documented in [`cloudflare-r2.md`](cloudflare-r2.md) and will be expanded alongside their implementations.
