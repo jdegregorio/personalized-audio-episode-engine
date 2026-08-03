@@ -39,3 +39,11 @@ If collection is already valid, `record_collection.py` returns `already_valid` a
 - Balance, reaction, performance-tag, stock-phrase, takeaway, or preferred-duration warnings are visible quality signals. Repair them when useful; they block acceptance only when the active profile lists that code in `performance.fatal_warning_codes`.
 - `failed` after script attempt 2: the run is terminal and its lease is released. Preserve the workspace, use the latest report to correct the source/profile/instructions in a normal change, and start a new owning run.
 - `already_valid`: every profile/dossier/plan/script/transcript/report hash and current semantic relationship revalidated. Do not rewrite dialogue.
+
+## TTS preparation
+
+- `configured speech provider/model has no capability record`: use the implemented Gemini preview model or add a reviewed capability record with the new model's documented limits; never guess a limit during a run.
+- `configured safe input limit exceeds the model absolute limit`: lower the profile safe limit below the model capability; do not bypass preflight.
+- `one spoken turn exceeds the safe TTS input limit`: repair the structured script in a new valid script attempt/run so the spoken turn can be split naturally. Do not hand-edit transcript or generated prompt files.
+- A manifest/prompt/input hash or reconstruction mismatch means the recorded preparation is not resumable. Preserve the workspace for diagnosis; do not treat unreferenced files as valid state.
+- `already_prepared`: every input, manifest, prompt, estimate, host assignment, and transcript byte was revalidated. Do not rewrite or reprepare.

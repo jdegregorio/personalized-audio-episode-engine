@@ -16,7 +16,8 @@ Process exactly one enabled episode profile through the repository's durable, va
 5. Inspect authoritative `state.json` and load only the reference for its current stage.
 6. For `collection`, read [references/evidence-collection.md](references/evidence-collection.md).
 7. For `editorial`, start a distinct editorial phase and read [references/editorial-planning.md](references/editorial-planning.md). Later-stage detail remains unavailable until its owning implementation PR lands.
-8. For `script`, start a distinct script phase and read [references/scriptwriting.md](references/scriptwriting.md). TTS and later-stage detail remain unavailable until their owning implementation PRs land.
+8. For `script`, start a distinct script phase and read [references/scriptwriting.md](references/scriptwriting.md).
+9. For `tts`, read [references/tts-preparation.md](references/tts-preparation.md) and prepare deterministic provider inputs. Rendering and later-stage detail remain unavailable until their owning implementation PRs land.
 
 ## Non-negotiable rules
 

@@ -1,0 +1,75 @@
+{
+  "contract_version": "1.0",
+  "prompt_version": "1.0.0",
+  "created_at": "2026-01-15T15:15:00Z",
+  "run_id": "marine-brief_2026-01-15_synthetic",
+  "profile_id": "marine-brief",
+  "episode_date": "2026-01-15",
+  "provider": "gemini",
+  "model": "gemini-3.1-flash-tts-preview",
+  "safe_input_tokens": 7000,
+  "absolute_input_tokens": 8192,
+  "episode_script": {
+    "artifact_type": "script",
+    "path": "episode-script.json",
+    "sha256": "sha256:1111111111111111111111111111111111111111111111111111111111111111"
+  },
+  "transcript": {
+    "artifact_type": "transcript",
+    "path": "transcript.txt",
+    "sha256": "sha256:eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee"
+  },
+  "scene_description": "A calm public radio conversation for an informed generalist audience, delivered at a conversational pace.",
+  "hosts": [
+    {
+      "name": "Maya",
+      "voice": "selected-gemini-voice",
+      "description": "calm, incisive, warm, concise"
+    },
+    {
+      "name": "Daniel",
+      "voice": "selected-gemini-voice",
+      "description": "curious, analytical, grounded, concise"
+    }
+  ],
+  "segments": [
+    {
+      "segment_id": "tts_segment_001",
+      "order": 1,
+      "prompt": {
+        "artifact_type": "tts-prompt",
+        "path": "tts/segment-001.json",
+        "sha256": "sha256:fcc6e891ef6bbc1f01610589e05ddeca62cde0df7488e2dac575781d3b3d00aa"
+      },
+      "turn_ids": [
+        "turn_intro",
+        "turn_reef_fact",
+        "turn_reef_analysis"
+      ],
+      "planned_segment_ids": [
+        "segment_reef"
+      ],
+      "estimated_duration_seconds": 168,
+      "estimated_input_tokens": 339
+    },
+    {
+      "segment_id": "tts_segment_002",
+      "order": 2,
+      "prompt": {
+        "artifact_type": "tts-prompt",
+        "path": "tts/segment-002.json",
+        "sha256": "sha256:2ac9ff2efa57a8521031642b75beddc3af33173745fdf88aca7daa2e9f1e739b"
+      },
+      "turn_ids": [
+        "turn_transition",
+        "turn_sensor_fact",
+        "turn_outro"
+      ],
+      "planned_segment_ids": [
+        "segment_sensor"
+      ],
+      "estimated_duration_seconds": 132,
+      "estimated_input_tokens": 361
+    }
+  ]
+}

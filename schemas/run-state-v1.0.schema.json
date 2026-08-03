@@ -355,6 +355,40 @@
       ],
       "title": "ScriptValidationState",
       "type": "object"
+    },
+    "TtsPreparationState": {
+      "additionalProperties": false,
+      "properties": {
+        "episode_script": {
+          "$ref": "#/$defs/ArtifactReference"
+        },
+        "manifest": {
+          "$ref": "#/$defs/ArtifactReference"
+        },
+        "segment_count": {
+          "maximum": 10000,
+          "minimum": 1,
+          "title": "Segment Count",
+          "type": "integer"
+        },
+        "status": {
+          "const": "prepared",
+          "title": "Status",
+          "type": "string"
+        },
+        "transcript": {
+          "$ref": "#/$defs/ArtifactReference"
+        }
+      },
+      "required": [
+        "status",
+        "segment_count",
+        "episode_script",
+        "transcript",
+        "manifest"
+      ],
+      "title": "TtsPreparationState",
+      "type": "object"
     }
   },
   "$id": "urn:personalized-audio-episode-engine:schema:run-state:1.0",
@@ -611,6 +645,17 @@
       ],
       "title": "Status",
       "type": "string"
+    },
+    "tts_preparation": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/TtsPreparationState"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null
     }
   },
   "required": [

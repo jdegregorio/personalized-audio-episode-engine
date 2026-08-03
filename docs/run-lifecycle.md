@@ -35,11 +35,15 @@ An initialized owner creates:
     ├── transcript.txt                         # exact accepted-turn projection
     ├── script-validation-attempt-1.json       # every first script attempt
     ├── script-validation-attempt-2.json       # after one invalid script only
+    ├── tts/
+    │   ├── manifest.json                      # ordered preparation contract
+    │   ├── segment-001.json                   # exact transcript plus separate direction
+    │   └── ...
     ├── state.json
     └── summary.md
 ```
 
-The canonical episode key is `<profile-id>:<local-date>`. State records the profile/local date, profile/engine/skill/prompt versions, engine Git commit, observable models and collection method, collection/plan/script validation attempt/status/counts/report hashes, timestamps, current and last valid stages, artifact paths/hashes, failure details, final-audio validity, and redacted publication locations. Phase provenance starts empty until its owning phase records an attempt.
+The canonical episode key is `<profile-id>:<local-date>`. State records the profile/local date, profile/engine/skill/prompt versions, engine Git commit, observable models and collection method, collection/plan/script validation outcomes, TTS preparation inputs/manifest/segment count, timestamps, current and last valid stages, artifact paths/hashes, failure details, final-audio validity, and redacted publication locations. Phase provenance starts empty until its owning phase records an attempt.
 
 Files are written to a private temporary sibling, synchronized, and atomically renamed. A stage advances only after its artifact validates on both sides of the write, its declared run identity and upstream references match current state, each referenced upstream file still exists and revalidates at its recorded SHA-256, and the new hash is recorded. State is authoritative if a machine failure leaves an unreferenced file between the artifact and state renames. An identical validated retry leaves the artifact/state unchanged but regenerates `summary.md`, repairing a transient summary-write failure.
 
@@ -61,6 +65,8 @@ Collection method selection is recorded before retrieval. Failed optional capabi
 Editorial planning reads the complete valid dossier and profile. The first invalid plan remains at `editorial`, records a hashed report, and permits one focused repair; attempt 2 fails/releases. A valid attempt atomically persists the plan/report/state, advances to `script`, and surfaces target-shortfall warnings without turning profile targets into quotas. Resume rechecks plan/report and both input hashes before returning `already_valid`.
 
 Scriptwriting reads the complete valid dossier, plan, and profile in a separate Codex phase. The first invalid script remains at `script`, records a hashed report, and permits one focused repair; attempt 2 fails/releases. A valid attempt atomically persists the script, exact transcript projection, report, and state, advances to `tts`, and surfaces nonfatal conversational warnings. Resume rechecks every input and output hash plus current lineage, profile policy, and transcript equality before returning `already_valid`.
+
+TTS preparation remains at the `tts` stage because no audio has been rendered. It writes each versioned structured segment prompt atomically, writes the manifest last, then records the manifest/input hashes and segment count in state. State is authoritative if an interruption leaves unreferenced preparation files; a retry safely overwrites them. An unchanged rerun rechecks all hashes, speaker/voice consistency, estimates, ordering, and transcript reconstruction before returning `already_prepared` without rewriting valid files. Any changed accepted profile, dossier, plan, or script clears preparation and downstream audio/publication state.
 
 ## Lease and failure recovery
 

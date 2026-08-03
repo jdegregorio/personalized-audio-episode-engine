@@ -58,6 +58,25 @@
       "sha256": "sha256:2222222222222222222222222222222222222222222222222222222222222222"
     }
   },
+  "tts_preparation": {
+    "status": "prepared",
+    "segment_count": 2,
+    "episode_script": {
+      "artifact_type": "script",
+      "path": "episode-script.json",
+      "sha256": "sha256:ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff"
+    },
+    "transcript": {
+      "artifact_type": "transcript",
+      "path": "transcript.txt",
+      "sha256": "sha256:4444444444444444444444444444444444444444444444444444444444444444"
+    },
+    "manifest": {
+      "artifact_type": "tts-manifest",
+      "path": "tts/manifest.json",
+      "sha256": "sha256:5555555555555555555555555555555555555555555555555555555555555555"
+    }
+  },
   "codex_model": "synthetic-codex-model",
   "gemini_model": "synthetic-tts-model",
   "started_at": "2026-01-15T15:00:00Z",
@@ -106,6 +125,11 @@
       "artifact_type": "validation",
       "path": "script-validation-attempt-1.json",
       "sha256": "sha256:2222222222222222222222222222222222222222222222222222222222222222"
+    },
+    "tts_manifest": {
+      "artifact_type": "tts-manifest",
+      "path": "tts/manifest.json",
+      "sha256": "sha256:5555555555555555555555555555555555555555555555555555555555555555"
     },
     "published_episode": {
       "artifact_type": "published-episode",

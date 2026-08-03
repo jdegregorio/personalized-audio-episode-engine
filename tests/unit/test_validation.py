@@ -283,6 +283,7 @@ def test_invalid_json_shape_and_unknown_type_are_concise() -> None:
         "evidence",
         "plan",
         "script",
+        "tts-manifest",
         "published-episode",
         "run-state",
     }

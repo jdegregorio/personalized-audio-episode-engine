@@ -10,8 +10,8 @@ The approved scope and sequence live in [`plan.md`](../plan.md). This page recor
 | 04 | Run lifecycle, state, leases, and invalidation | Implemented on `main` |
 | 05 | Capability-aware collection skill | Implemented on `main` |
 | 06 | Editorial planning | Implemented on `main` |
-| 07 | Grounded two-host scripting | Implemented in PR 07 |
-| 08 | TTS preparation | Not started |
+| 07 | Grounded two-host scripting | Implemented on `main` |
+| 08 | TTS preparation | Implemented in PR 08 |
 | 09 | Gemini rendering and voice selection | Not started |
 | 10 | Audio assembly | Not started |
 | 11 | Cloudflare R2 publication | Not started |
@@ -72,3 +72,11 @@ Workflow mutation, research, speech, audio processing, publication behavior, and
 - Machine-readable conversational warnings for host balance, consecutive/reaction turns, performance cues, stock phrases, missing takeaways, and preferred-duration misses, with optional profile-owned fatal promotion.
 - Durable script validation reports, one repair, terminal exhaustion, verified resume, downstream invalidation, and exact transcript projection with recorded hashes.
 - Balanced, imbalanced, disputed-source, arbitrary-topic, and malicious-text golden coverage plus fixture end-to-end smoke through the `tts` stage.
+
+## PR 08 delivered surface
+
+- One provider-neutral renderer protocol plus an explicit capability record for the configured Gemini preview model; preparation performs no network call.
+- Conservative complete-prompt token estimation with the profile's 7,000-token safe limit and the model's 8,192-token absolute limit enforced before every emitted request.
+- Deterministic natural-boundary packing toward two-to-four-minute segments, with mid-discussion splitting only when required and fail-closed oversized turns.
+- Versioned manifest and atomic structured prompts containing stable hosts/voices/descriptions, scene, direction, position, minimal continuity, and exact transcript in separate fields.
+- Durable preparation hashes/state, exact turn/transcript reconstruction, tamper-checked no-rewrite resume, upstream invalidation, boundary/property coverage, and short/maximum-size CLI smoke.

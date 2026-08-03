@@ -1,0 +1,232 @@
+{
+  "$defs": {
+    "ArtifactReference": {
+      "additionalProperties": false,
+      "properties": {
+        "artifact_type": {
+          "maxLength": 80,
+          "pattern": "^[a-z][a-z0-9_-]*$",
+          "title": "Artifact Type",
+          "type": "string"
+        },
+        "path": {
+          "title": "Path",
+          "type": "string"
+        },
+        "sha256": {
+          "pattern": "^sha256:[0-9a-f]{64}$",
+          "title": "Sha256",
+          "type": "string"
+        }
+      },
+      "required": [
+        "artifact_type",
+        "path",
+        "sha256"
+      ],
+      "title": "ArtifactReference",
+      "type": "object"
+    },
+    "TtsHost": {
+      "additionalProperties": false,
+      "properties": {
+        "description": {
+          "maxLength": 500,
+          "minLength": 1,
+          "title": "Description",
+          "type": "string"
+        },
+        "name": {
+          "maxLength": 500,
+          "minLength": 1,
+          "title": "Name",
+          "type": "string"
+        },
+        "voice": {
+          "maxLength": 500,
+          "minLength": 1,
+          "title": "Voice",
+          "type": "string"
+        }
+      },
+      "required": [
+        "name",
+        "voice",
+        "description"
+      ],
+      "title": "TtsHost",
+      "type": "object"
+    },
+    "TtsManifestSegment": {
+      "additionalProperties": false,
+      "properties": {
+        "estimated_duration_seconds": {
+          "maximum": 10800,
+          "minimum": 1,
+          "title": "Estimated Duration Seconds",
+          "type": "integer"
+        },
+        "estimated_input_tokens": {
+          "maximum": 100000,
+          "minimum": 1,
+          "title": "Estimated Input Tokens",
+          "type": "integer"
+        },
+        "order": {
+          "maximum": 10000,
+          "minimum": 1,
+          "title": "Order",
+          "type": "integer"
+        },
+        "planned_segment_ids": {
+          "items": {
+            "pattern": "^segment_[A-Za-z0-9][A-Za-z0-9_-]*$",
+            "type": "string"
+          },
+          "maxItems": 1000,
+          "title": "Planned Segment Ids",
+          "type": "array"
+        },
+        "prompt": {
+          "$ref": "#/$defs/ArtifactReference"
+        },
+        "segment_id": {
+          "pattern": "^tts_[A-Za-z0-9][A-Za-z0-9_-]*$",
+          "title": "Segment Id",
+          "type": "string"
+        },
+        "turn_ids": {
+          "items": {
+            "pattern": "^turn_[A-Za-z0-9][A-Za-z0-9_-]*$",
+            "type": "string"
+          },
+          "maxItems": 10000,
+          "minItems": 1,
+          "title": "Turn Ids",
+          "type": "array"
+        }
+      },
+      "required": [
+        "segment_id",
+        "order",
+        "prompt",
+        "turn_ids",
+        "planned_segment_ids",
+        "estimated_duration_seconds",
+        "estimated_input_tokens"
+      ],
+      "title": "TtsManifestSegment",
+      "type": "object"
+    }
+  },
+  "$id": "urn:personalized-audio-episode-engine:schema:tts-manifest:1.0",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "properties": {
+    "absolute_input_tokens": {
+      "maximum": 100000,
+      "minimum": 1,
+      "title": "Absolute Input Tokens",
+      "type": "integer"
+    },
+    "contract_version": {
+      "const": "1.0",
+      "title": "Contract Version",
+      "type": "string"
+    },
+    "created_at": {
+      "format": "date-time",
+      "title": "Created At",
+      "type": "string"
+    },
+    "episode_date": {
+      "format": "date",
+      "title": "Episode Date",
+      "type": "string"
+    },
+    "episode_script": {
+      "$ref": "#/$defs/ArtifactReference"
+    },
+    "hosts": {
+      "items": {
+        "$ref": "#/$defs/TtsHost"
+      },
+      "maxItems": 2,
+      "minItems": 2,
+      "title": "Hosts",
+      "type": "array"
+    },
+    "model": {
+      "maxLength": 500,
+      "minLength": 1,
+      "title": "Model",
+      "type": "string"
+    },
+    "profile_id": {
+      "maxLength": 80,
+      "pattern": "^[a-z][a-z0-9_-]*$",
+      "title": "Profile Id",
+      "type": "string"
+    },
+    "prompt_version": {
+      "maxLength": 40,
+      "pattern": "^\\d+\\.\\d+(?:\\.\\d+)?$",
+      "title": "Prompt Version",
+      "type": "string"
+    },
+    "provider": {
+      "maxLength": 80,
+      "pattern": "^[a-z][a-z0-9_-]*$",
+      "title": "Provider",
+      "type": "string"
+    },
+    "run_id": {
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,199}$",
+      "title": "Run Id",
+      "type": "string"
+    },
+    "safe_input_tokens": {
+      "maximum": 100000,
+      "minimum": 1,
+      "title": "Safe Input Tokens",
+      "type": "integer"
+    },
+    "scene_description": {
+      "maxLength": 10000,
+      "minLength": 1,
+      "title": "Scene Description",
+      "type": "string"
+    },
+    "segments": {
+      "items": {
+        "$ref": "#/$defs/TtsManifestSegment"
+      },
+      "maxItems": 10000,
+      "minItems": 1,
+      "title": "Segments",
+      "type": "array"
+    },
+    "transcript": {
+      "$ref": "#/$defs/ArtifactReference"
+    }
+  },
+  "required": [
+    "contract_version",
+    "prompt_version",
+    "created_at",
+    "run_id",
+    "profile_id",
+    "episode_date",
+    "provider",
+    "model",
+    "safe_input_tokens",
+    "absolute_input_tokens",
+    "episode_script",
+    "transcript",
+    "scene_description",
+    "hosts",
+    "segments"
+  ],
+  "title": "TtsManifest",
+  "type": "object"
+}
