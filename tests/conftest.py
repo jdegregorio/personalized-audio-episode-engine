@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import copy
 from pathlib import Path
 from typing import Any, cast
 
@@ -40,3 +41,19 @@ def settings_values(tmp_path: Path) -> dict[str, str]:
         "AUDIO_ENGINE_STAGING_ROOT": str(staging_root),
         "AUDIO_ENGINE_INPUT_ROOTS": str(input_root),
     }
+
+
+@pytest.fixture
+def synthetic_profile_path(
+    example_profile_data: dict[str, Any], settings_values: dict[str, str]
+) -> Path:
+    data = copy.deepcopy(example_profile_data)
+    data["id"] = "synthetic-lifecycle"
+    data["identity"]["feed_id"] = "synthetic-lifecycle"
+    data["identity"]["title_template"] = "Synthetic lifecycle — {date}"
+    data["identity"]["description"] = "Synthetic, non-current lifecycle fixture."
+    data["episode"]["topic"] = "Synthetic lifecycle and concurrency observations"
+    input_root = Path(settings_values["AUDIO_ENGINE_INPUT_ROOTS"])
+    path = input_root / "synthetic-lifecycle.yaml"
+    path.write_text(yaml.safe_dump(data, sort_keys=False), encoding="utf-8")
+    return path

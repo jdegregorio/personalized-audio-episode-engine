@@ -666,7 +666,7 @@ Each PR's listed acceptance criteria are cumulative with the definition of done 
 - Complete all progressive-disclosure skill references for editorial planning, scriptwriting, TTS rendering, publishing, and failure recovery.
 - Wire documented stage commands and state transitions into one coherent Codex-driven workflow without adding an all-in-one custom CLI.
 - Implement `scripts/finalize_run.py --run <path>` for terminal success/failure, summary generation, state persistence before episode-lease release, and concise final locations.
-- Complete resume logic at collection, plan, script, each TTS segment, final audio, and pre-publication boundaries.
+- Complete resume logic at collection, plan, script, each TTS segment, final audio, and pre-publication boundaries. After acquiring episode ownership, initialization must locate and select the latest compatible failed or crash-interrupted workspace for the canonical episode key instead of creating a fresh run, then restore its last completed valid stage.
 - Ensure upstream hash changes invalidate dependent outputs while publication-only retry preserves valid audio.
 - Add an offline synthetic vertical-slice test using golden agent-authored artifacts, the fake renderer, and fake R2 adapter: profile → initialization → dossier → plan → script/transcript → TTS segments → MP3 → publication → final summary.
 - Complete README, setup, profile-authoring, command, troubleshooting, security/privacy, Cloudflare R2 operations, resume, implementation-status, and optional-capability documentation.
@@ -679,7 +679,7 @@ Each PR's listed acceptance criteria are cumulative with the definition of done 
 
 - The offline vertical slice becomes the required `pytest -m smoke` CI job and verifies actual output contents, hashes, stage ordering, feed entry, and one-screen summary.
 - Failure-matrix integration tests cover every row in PRD section 30 and assert last valid stage, preserved artifacts, non-publication when unsafe, and actionable recovery text.
-- Resume tests fail each boundary once, resume, and prove valid upstream artifact hashes/timestamps are unchanged.
+- Resume tests fail each boundary once, reacquire through `scripts/init_run.py`, select the prior workspace only after ownership, and prove its run identity plus valid upstream artifact hashes/timestamps are unchanged and no replacement run directory was created.
 - A repository audit test rejects topic-specific source clients, undocumented production shell commands, runtime artifacts, and broken skill-reference links.
 
 **Functional smoke and UAT**

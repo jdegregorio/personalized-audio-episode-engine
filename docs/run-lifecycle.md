@@ -1,0 +1,76 @@
+# Run lifecycle and recovery
+
+Run initialization is the first mutating workflow boundary. It validates the profile and configuration, resolves the profile-local episode date, claims the episode lease, and only then creates a run workspace.
+
+## Initialize a run
+
+Load the central environment described in [`setup.md`](setup.md), then run:
+
+```bash
+uv run python scripts/init_run.py \
+  --profile examples/profiles/world-us-seattle-news.yaml
+```
+
+The command emits one compact JSON object. An owning invocation reports `"result":"initialized"` with its run directory. A simultaneous invocation for the same profile and local date exits successfully with `"result":"no_op"`, a null run ID/directory, and no new run artifacts.
+
+The optional `AUDIO_ENGINE_MAX_RUN_AGE_SECONDS` setting controls stale recovery and defaults to 21,600 seconds (six hours). Values from 60 through 604,800 seconds are accepted. Set it longer than the expected gap between mutating workflow phases; every mutation verifies the run ID and refreshes the heartbeat.
+
+## Durable layout and provenance
+
+An initialized owner creates:
+
+```text
+<runtime-root>/
+├── locks/
+│   └── episode-<sha256-of-episode-key>.json
+└── runs/<local-date>/<profile-id>/<run-id>/
+    ├── collection-request.json
+    ├── state.json
+    └── summary.md
+```
+
+The canonical episode key is `<profile-id>:<local-date>`. State records the profile/local date, profile/engine/skill/prompt versions, engine Git commit, observable models and collection method, timestamps, current and last valid stages, artifact paths/hashes, failure details, final-audio validity, and redacted publication locations. Prompt and collection provenance starts empty until its owning phase selects them.
+
+Files are written to a private temporary sibling, synchronized, and atomically renamed. A stage advances only after its artifact validates on both sides of the write, its declared run identity and upstream references match current state, each referenced upstream file still exists and revalidates at its recorded SHA-256, and the new hash is recorded. State is authoritative if a machine failure leaves an unreferenced file between the artifact and state renames. An identical validated retry leaves the artifact/state unchanged but regenerates `summary.md`, repairing a transient summary-write failure.
+
+## Stages and invalidation
+
+PR 04 owns these transitions; later PRs add the remaining transition helpers:
+
+| Valid artifact write | Current stage after write | Last completed valid stage |
+| --- | --- | --- |
+| Collection request | `collection` | `initialized` |
+| Evidence dossier | `editorial` | `collection` |
+| Editorial plan | `script` | `editorial` |
+| Episode script | `tts` | `script` |
+
+Replacing an artifact with identical validated bytes preserves state. A changed hash replaces that artifact, retains valid upstream references, rolls the run back to the table's corresponding stage, and removes all downstream references. Profile changes roll back to `initialized`; dossier, plan, and script changes roll back to `editorial`, `script`, and `tts`, respectively. Final-audio and publication status return to pending/not started whenever an invalidated dependency could affect them.
+
+## Lease and failure recovery
+
+- A current nonterminal owner causes a successful no-op. No run directory is selected, created, or mutated.
+- Profile, Git, model, and initial-state validation completes in memory before lease acquisition, so preparation failure leaves neither a misleading live owner nor a partial workspace.
+- A lease is recoverable when its validated owner state is terminal or its heartbeat is strictly older than the configured maximum age. Exact expiry remains live.
+- Recovery atomically renames the old record to a unique `.stale-...json` quarantine file, then retries exclusive creation. Do not manually delete quarantine evidence.
+- A mutating helper holds the current lease's advisory lock from state read through artifact/state/summary persistence. Recovery waits for that critical section, then rechecks the replaced lease inode and refreshed heartbeat before deciding whether takeover is safe.
+- Corrupt, oversized, mismatched, or unsafe lease records fail closed. Inspect the record and runtime filesystem; do not bypass ownership checks.
+- Handled failures write redacted failure/recovery details to state and summary before releasing the lease. Unexpected crashes rely on stale recovery.
+- Only the recorded run ID may refresh or release a lease. A non-owner must not edit state or remove a lock.
+
+Run the repeatable lease/concurrency acceptance checks on macOS or Ubuntu:
+
+```bash
+uv run pytest -q \
+  tests/unit/test_leases.py::test_live_lease_cannot_be_recovered_at_exact_expiry \
+  tests/unit/test_leases.py::test_stale_lease_is_quarantined_before_new_owner \
+  tests/integration/test_run_concurrency.py
+uv run pytest -q -m "smoke and not live" tests/smoke/test_init_run.py
+```
+
+These use temporary roots, controlled clocks, synthetic profiles, and real processes/filesystem operations. They prove refusal before expiry, atomic quarantine after expiry, one owner/one artifact-free no-op for a shared episode key, one winner in a stale-recovery race, and independent owners for different keys.
+
+PR 12 owns complete cross-invocation resume. Until then, a handled failure preserves its workspace and releases ownership, but a later initialization creates a new run rather than selecting that prior workspace. The explicit PR 12 acceptance test will require post-ownership selection of the prior run without changing valid upstream hashes or timestamps.
+
+## Rollback
+
+Stop any active run before rolling code back. A normal handled failure releases its lease; otherwise wait for the configured stale threshold and let the current code quarantine it. Preserve run directories and quarantine files for diagnosis. Reverting the PR 04 squash commit removes initialization and lifecycle mutation while retaining PR 03 read-only validators; it does not remove external runtime data automatically.

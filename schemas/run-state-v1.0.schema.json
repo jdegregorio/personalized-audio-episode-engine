@@ -288,6 +288,33 @@
       "title": "Engine Git Commit",
       "type": "string"
     },
+    "engine_version": {
+      "anyOf": [
+        {
+          "maxLength": 40,
+          "pattern": "^\\d+\\.\\d+(?:\\.\\d+)?$",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Engine Version"
+    },
+    "episode_date": {
+      "anyOf": [
+        {
+          "format": "date",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Episode Date"
+    },
     "episode_key": {
       "pattern": "^[a-z][a-z0-9_-]*:\\d{4}-\\d{2}-\\d{2}$",
       "title": "Episode Key",

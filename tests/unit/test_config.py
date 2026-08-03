@@ -15,6 +15,7 @@ def test_settings_load_valid_environment(settings_values: dict[str, str]) -> Non
     assert settings.r2_retention_days == 30
     assert settings.podcast_feed_token.get_secret_value() == "t" * 43
     assert settings.input_roots == (Path(settings_values["AUDIO_ENGINE_INPUT_ROOTS"]),)
+    assert settings.maximum_run_age_seconds == 21600
 
 
 @pytest.mark.parametrize(
@@ -28,6 +29,7 @@ def test_settings_load_valid_environment(settings_values: dict[str, str]) -> Non
         ("PODCAST_BASE_URL", "https://example.invalid?token=unsafe"),
         ("R2_BUCKET_NAME", "Not_A_Bucket"),
         ("R2_RETENTION_DAYS", "0"),
+        ("AUDIO_ENGINE_MAX_RUN_AGE_SECONDS", "59"),
         ("AUDIO_ENGINE_RUNTIME_ROOT", "relative/runtime"),
     ],
 )

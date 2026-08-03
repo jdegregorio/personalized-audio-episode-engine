@@ -1,6 +1,6 @@
 # Operations
 
-The engine currently supports validated environment configuration, topic-generic profile preflight, and deterministic artifact/lineage validation. Run creation and production behavior are introduced only by their owning PRs in [`plan.md`](../plan.md).
+The engine supports validated environment/profile preflight, deterministic artifact/lineage validation, and owner-checked run initialization. Research, rendering, and publication arrive only in their owning PRs in [`plan.md`](../plan.md).
 
 ## Development gate
 
@@ -45,6 +45,17 @@ uv run python scripts/validate_artifact.py --type evidence --input <artifact-pat
 
 Fatal validation writes a concise JSON result to stderr and exits non-zero. Pass `--report <report-path>` to persist the complete validation result for a repair; the report path may not overwrite the input. Filesystem source locators require one or more explicit `--allowed-input-root <path>` arguments. See [`artifact-contracts.md`](artifact-contracts.md) for supported types and the boundary between structural validation and later phase policy.
 
+## Run initialization
+
+After loading the central environment, acquire ownership and create the collection request, state, and summary:
+
+```bash
+uv run python scripts/init_run.py \
+  --profile examples/profiles/world-us-seattle-news.yaml
+```
+
+The command returns compact JSON for either an initialized owner or a successful same-episode no-op. See [`run-lifecycle.md`](run-lifecycle.md) for the layout, state transitions, invalidation rules, concurrency UAT, stale recovery, and rollback procedure.
+
 ## Production invariants
 
 - One independent Codex run processes one profile.
@@ -57,6 +68,6 @@ Fatal validation writes a concise JSON result to stderr and exits non-zero. Pass
 
 ## Rollback at this phase
 
-No doctor or artifact validator uploads data or creates a run. Revert the PR 03 squash commit to remove artifact contracts while retaining PR 02 configuration/profile support. Invalid generated artifacts are repaired at their owning stage; do not bypass version, lineage, locator, or evidence validation.
+No current command contacts Gemini or R2. Initialization creates only local runtime files after acquiring an episode lease. Follow the lease-aware rollback in [`run-lifecycle.md`](run-lifecycle.md); do not manually remove a live lock. Invalid generated artifacts are repaired at their owning stage rather than bypassing version, lineage, locator, or evidence validation.
 
 Service-specific recovery and rotation are documented in [`cloudflare-r2.md`](cloudflare-r2.md) and will be expanded alongside their implementations.

@@ -48,6 +48,15 @@ uv run python scripts/validate_artifact.py --type evidence --input tests/fixture
 
 The supported artifact types, versioning policy, evidence lineage, safe locators, and optional full-report output are documented in [`docs/artifact-contracts.md`](docs/artifact-contracts.md).
 
+After loading the owner-managed environment, initialize one owner-checked local run:
+
+```bash
+uv run python scripts/init_run.py \
+  --profile examples/profiles/world-us-seattle-news.yaml
+```
+
+The run layout, lifecycle stages, invalidation, same-episode no-op behavior, and stale-lease recovery are documented in [`docs/run-lifecycle.md`](docs/run-lifecycle.md).
+
 ## Security boundary
 
 The MVP feed contains public-news content but uses an unguessable URL. That URL is access material, not authentication. Never commit or paste credentials, tokenized object keys, runtime data, or complete feed URLs. Profiles containing personal or otherwise sensitive information are outside the MVP and require a separate authenticated or encrypted publication design.

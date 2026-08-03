@@ -5,6 +5,8 @@
   "episode_key": "marine-brief:2026-01-15",
   "profile_id": "marine-brief",
   "profile_version": "0.1.0",
+  "episode_date": "2026-01-15",
+  "engine_version": "0.1.0",
   "engine_git_commit": "0123456789abcdef0123456789abcdef01234567",
   "skill_version": "1.0.0",
   "prompt_versions": {
