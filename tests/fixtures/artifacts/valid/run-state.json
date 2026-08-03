@@ -1,0 +1,72 @@
+{
+  "contract_version": "1.0",
+  "prompt_version": null,
+  "run_id": "marine-brief_2026-01-15_synthetic",
+  "episode_key": "marine-brief:2026-01-15",
+  "profile_id": "marine-brief",
+  "profile_version": "0.1.0",
+  "engine_git_commit": "0123456789abcdef0123456789abcdef01234567",
+  "skill_version": "1.0.0",
+  "prompt_versions": {
+    "collection": "1.0.0",
+    "editorial": "1.0.0",
+    "script": "1.0.0"
+  },
+  "collection_method": {
+    "type": "native_research",
+    "name": "Synthetic fixture research",
+    "version": null
+  },
+  "codex_model": "synthetic-codex-model",
+  "gemini_model": "synthetic-tts-model",
+  "started_at": "2026-01-15T15:00:00Z",
+  "completed_at": "2026-01-15T15:20:00Z",
+  "current_stage": "finalized",
+  "last_completed_valid_stage": "finalized",
+  "status": "completed",
+  "failure": null,
+  "artifacts": {
+    "collection_request": {
+      "artifact_type": "collection-request",
+      "path": "collection-request.json",
+      "sha256": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+    },
+    "evidence_dossier": {
+      "artifact_type": "evidence",
+      "path": "evidence-dossier.json",
+      "sha256": "sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"
+    },
+    "editorial_plan": {
+      "artifact_type": "plan",
+      "path": "editorial-plan.json",
+      "sha256": "sha256:dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd"
+    },
+    "episode_script": {
+      "artifact_type": "script",
+      "path": "episode-script.json",
+      "sha256": "sha256:ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff"
+    },
+    "published_episode": {
+      "artifact_type": "published-episode",
+      "path": "published-episode.json",
+      "sha256": "sha256:3333333333333333333333333333333333333333333333333333333333333333"
+    }
+  },
+  "final_audio_validation": {
+    "status": "valid",
+    "artifact": {
+      "artifact_type": "audio",
+      "path": "episode.mp3",
+      "sha256": "sha256:1111111111111111111111111111111111111111111111111111111111111111"
+    },
+    "duration_seconds": 300,
+    "message": "Synthetic fixture audio passed structural validation."
+  },
+  "publication": {
+    "status": "published",
+    "redacted_locations": [
+      "<redacted-object-location>"
+    ],
+    "message": "Synthetic publication fixture completed."
+  }
+}

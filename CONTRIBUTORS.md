@@ -45,6 +45,7 @@ uv venv --python 3.12 "${artifact_venv}"
 uv pip install --python "${artifact_venv}/bin/python" dist/*.whl
 "${artifact_venv}/bin/python" -c "import audio_engine; print(audio_engine.__version__)"
 uv run python scripts/check_repository.py
+uv run python scripts/check_artifacts.py
 uv run ruff format --check .
 uv run ruff check .
 uv run pyright

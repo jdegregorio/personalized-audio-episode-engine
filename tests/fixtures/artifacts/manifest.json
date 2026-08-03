@@ -1,0 +1,230 @@
+{
+  "valid": [
+    {
+      "type": "collection-request",
+      "file": "valid/collection-request.json"
+    },
+    {
+      "type": "evidence",
+      "file": "valid/evidence-dossier.json"
+    },
+    {
+      "type": "plan",
+      "file": "valid/editorial-plan.json"
+    },
+    {
+      "type": "script",
+      "file": "valid/episode-script.json"
+    },
+    {
+      "type": "published-episode",
+      "file": "valid/published-episode.json"
+    },
+    {
+      "type": "run-state",
+      "file": "valid/run-state.json"
+    }
+  ],
+  "invalid": [
+    {
+      "name": "missing claims",
+      "type": "evidence",
+      "base": "valid/evidence-dossier.json",
+      "operations": [
+        {
+          "op": "replace",
+          "path": "/claims",
+          "value": []
+        }
+      ],
+      "expected_code": "unknown_claim",
+      "expected_path": "/candidates/0/claim_ids/0"
+    },
+    {
+      "name": "missing sources",
+      "type": "evidence",
+      "base": "valid/evidence-dossier.json",
+      "operations": [
+        {
+          "op": "replace",
+          "path": "/sources",
+          "value": []
+        }
+      ],
+      "expected_code": "unknown_source",
+      "expected_path": "/candidates/0/source_ids/0"
+    },
+    {
+      "name": "missing claim supports",
+      "type": "evidence",
+      "base": "valid/evidence-dossier.json",
+      "operations": [
+        {
+          "op": "replace",
+          "path": "/claim_supports",
+          "value": []
+        }
+      ],
+      "expected_code": "missing_support",
+      "expected_path": "/claims/0/support_ids"
+    },
+    {
+      "name": "missing excerpt and locator",
+      "type": "evidence",
+      "base": "valid/evidence-dossier.json",
+      "operations": [
+        {
+          "op": "replace",
+          "path": "/claim_supports/0/evidence/excerpt",
+          "value": null
+        },
+        {
+          "op": "replace",
+          "path": "/claim_supports/0/evidence/locator",
+          "value": null
+        }
+      ],
+      "expected_code": "missing_evidence",
+      "expected_path": "/claim_supports/0/evidence"
+    },
+    {
+      "name": "missing retrieval timestamp",
+      "type": "evidence",
+      "base": "valid/evidence-dossier.json",
+      "operations": [
+        {
+          "op": "remove",
+          "path": "/sources/0/retrieved_at"
+        }
+      ],
+      "expected_code": "schema_error",
+      "expected_path": "/sources/0/retrieved_at"
+    },
+    {
+      "name": "missing access status",
+      "type": "evidence",
+      "base": "valid/evidence-dossier.json",
+      "operations": [
+        {
+          "op": "remove",
+          "path": "/sources/0/access_status"
+        }
+      ],
+      "expected_code": "schema_error",
+      "expected_path": "/sources/0/access_status"
+    },
+    {
+      "name": "false independent corroboration",
+      "type": "evidence",
+      "base": "valid/evidence-dossier.json",
+      "operations": [
+        {
+          "op": "replace",
+          "path": "/sources/1/canonical_locator",
+          "value": "https://sources.example.invalid/reports/reef-plot"
+        }
+      ],
+      "expected_code": "false_independence",
+      "expected_path": "/sources/0/originality/independence_group"
+    },
+    {
+      "name": "invalid identifier",
+      "type": "evidence",
+      "base": "valid/evidence-dossier.json",
+      "operations": [
+        {
+          "op": "replace",
+          "path": "/candidates/0/candidate_id",
+          "value": "../item_bad"
+        }
+      ],
+      "expected_code": "schema_error",
+      "expected_path": "/candidates/0/candidate_id"
+    },
+    {
+      "name": "duplicate identifier",
+      "type": "evidence",
+      "base": "valid/evidence-dossier.json",
+      "operations": [
+        {
+          "op": "replace",
+          "path": "/candidates/1/candidate_id",
+          "value": "item_reef_plot"
+        }
+      ],
+      "expected_code": "duplicate_id",
+      "expected_path": "/candidates/1/candidate_id"
+    },
+    {
+      "name": "unsupported contract version",
+      "type": "evidence",
+      "base": "valid/evidence-dossier.json",
+      "operations": [
+        {
+          "op": "replace",
+          "path": "/contract_version",
+          "value": "2.0"
+        }
+      ],
+      "expected_code": "unsupported_version",
+      "expected_path": "/contract_version"
+    },
+    {
+      "name": "oversized dossier",
+      "type": "evidence",
+      "base": "valid/evidence-dossier.json",
+      "operations": [
+        {
+          "op": "replace",
+          "path": "/estimated_tokens",
+          "value": 100001
+        }
+      ],
+      "expected_code": "dossier_limit_exceeded",
+      "expected_path": "/estimated_tokens"
+    },
+    {
+      "name": "malicious source path",
+      "type": "evidence",
+      "base": "valid/evidence-dossier.json",
+      "operations": [
+        {
+          "op": "replace",
+          "path": "/sources/0/canonical_locator",
+          "value": "../../etc/passwd"
+        }
+      ],
+      "expected_code": "unsafe_locator",
+      "expected_path": "/sources/0/canonical_locator"
+    },
+    {
+      "name": "naive retrieval timestamp",
+      "type": "evidence",
+      "base": "valid/evidence-dossier.json",
+      "operations": [
+        {
+          "op": "replace",
+          "path": "/sources/0/retrieved_at",
+          "value": "2026-01-15T15:02:00"
+        }
+      ],
+      "expected_code": "schema_error",
+      "expected_path": "/sources/0/retrieved_at"
+    },
+    {
+      "name": "invalid access status",
+      "type": "evidence",
+      "base": "valid/evidence-dossier.json",
+      "operations": [
+        {
+          "op": "replace",
+          "path": "/sources/0/access_status",
+          "value": "trusted"
+        }
+      ],
+      "expected_code": "schema_error",
+      "expected_path": "/sources/0/access_status"
+    }
+  ],
+  "rss": "valid/feed.xml"
+}

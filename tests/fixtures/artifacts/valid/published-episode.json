@@ -1,0 +1,70 @@
+{
+  "contract_version": "1.0",
+  "prompt_version": null,
+  "run_id": "marine-brief_2026-01-15_synthetic",
+  "episode_key": "marine-brief:2026-01-15",
+  "profile_id": "marine-brief",
+  "episode_date": "2026-01-15",
+  "guid": "marine-feed:marine-brief:2026-01-15",
+  "title": "Synthetic Marine Brief — 2026-01-15",
+  "description": "A copyright-safe fixture episode about fictional coastal research.",
+  "published_at": "2026-01-15T15:20:00Z",
+  "status": "published",
+  "episode_script": {
+    "artifact_type": "script",
+    "path": "episode-script.json",
+    "sha256": "sha256:ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff"
+  },
+  "audio": {
+    "artifact_type": "audio",
+    "path": "episode.mp3",
+    "sha256": "sha256:1111111111111111111111111111111111111111111111111111111111111111"
+  },
+  "transcript": {
+    "artifact_type": "transcript",
+    "path": "transcript.txt",
+    "sha256": "sha256:eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee"
+  },
+  "show_notes": {
+    "artifact_type": "show-notes",
+    "path": "show-notes.html",
+    "sha256": "sha256:2222222222222222222222222222222222222222222222222222222222222222"
+  },
+  "duration_seconds": 300,
+  "enclosure_bytes": 4800000,
+  "enclosure_media_type": "audio/mpeg",
+  "assets": [
+    {
+      "kind": "audio",
+      "object_key": "episodes/syntheticfeedtoken000000000000000000000000/marine-brief-2026-01-15/episode.mp3",
+      "public_url": "https://podcast.example.invalid/episodes/syntheticfeedtoken000000000000000000000000/marine-brief-2026-01-15/episode.mp3",
+      "media_type": "audio/mpeg",
+      "bytes": 4800000,
+      "sha256": "sha256:1111111111111111111111111111111111111111111111111111111111111111"
+    },
+    {
+      "kind": "transcript",
+      "object_key": "episodes/syntheticfeedtoken000000000000000000000000/marine-brief-2026-01-15/transcript.txt",
+      "public_url": "https://podcast.example.invalid/episodes/syntheticfeedtoken000000000000000000000000/marine-brief-2026-01-15/transcript.txt",
+      "media_type": "text/plain; charset=utf-8",
+      "bytes": 1200,
+      "sha256": "sha256:eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee"
+    },
+    {
+      "kind": "show_notes",
+      "object_key": "episodes/syntheticfeedtoken000000000000000000000000/marine-brief-2026-01-15/show-notes.html",
+      "public_url": "https://podcast.example.invalid/episodes/syntheticfeedtoken000000000000000000000000/marine-brief-2026-01-15/show-notes.html",
+      "media_type": "text/html; charset=utf-8",
+      "bytes": 1800,
+      "sha256": "sha256:2222222222222222222222222222222222222222222222222222222222222222"
+    },
+    {
+      "kind": "episode_metadata",
+      "object_key": "episodes/syntheticfeedtoken000000000000000000000000/marine-brief-2026-01-15/episode.json",
+      "public_url": "https://podcast.example.invalid/episodes/syntheticfeedtoken000000000000000000000000/marine-brief-2026-01-15/episode.json",
+      "media_type": "application/json",
+      "bytes": 2400,
+      "sha256": "sha256:3333333333333333333333333333333333333333333333333333333333333333"
+    }
+  ]
+}

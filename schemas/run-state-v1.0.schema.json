@@ -1,0 +1,428 @@
+{
+  "$defs": {
+    "ArtifactReference": {
+      "additionalProperties": false,
+      "properties": {
+        "artifact_type": {
+          "maxLength": 80,
+          "pattern": "^[a-z][a-z0-9_-]*$",
+          "title": "Artifact Type",
+          "type": "string"
+        },
+        "path": {
+          "title": "Path",
+          "type": "string"
+        },
+        "sha256": {
+          "pattern": "^sha256:[0-9a-f]{64}$",
+          "title": "Sha256",
+          "type": "string"
+        }
+      },
+      "required": [
+        "artifact_type",
+        "path",
+        "sha256"
+      ],
+      "title": "ArtifactReference",
+      "type": "object"
+    },
+    "CollectionMethod": {
+      "additionalProperties": false,
+      "properties": {
+        "name": {
+          "maxLength": 500,
+          "minLength": 1,
+          "title": "Name",
+          "type": "string"
+        },
+        "type": {
+          "maxLength": 80,
+          "pattern": "^[a-z][a-z0-9_-]*$",
+          "title": "Type",
+          "type": "string"
+        },
+        "version": {
+          "anyOf": [
+            {
+              "maxLength": 40,
+              "pattern": "^\\d+\\.\\d+(?:\\.\\d+)?$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Version"
+        }
+      },
+      "required": [
+        "type",
+        "name",
+        "version"
+      ],
+      "title": "CollectionMethod",
+      "type": "object"
+    },
+    "FinalAudioValidation": {
+      "additionalProperties": false,
+      "properties": {
+        "artifact": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/ArtifactReference"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "duration_seconds": {
+          "anyOf": [
+            {
+              "maximum": 10800,
+              "minimum": 1,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Duration Seconds"
+        },
+        "message": {
+          "anyOf": [
+            {
+              "maxLength": 500,
+              "minLength": 1,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Message"
+        },
+        "status": {
+          "enum": [
+            "pending",
+            "valid",
+            "invalid"
+          ],
+          "title": "Status",
+          "type": "string"
+        }
+      },
+      "required": [
+        "status",
+        "artifact",
+        "duration_seconds",
+        "message"
+      ],
+      "title": "FinalAudioValidation",
+      "type": "object"
+    },
+    "PublicationState": {
+      "additionalProperties": false,
+      "properties": {
+        "message": {
+          "anyOf": [
+            {
+              "maxLength": 500,
+              "minLength": 1,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Message"
+        },
+        "redacted_locations": {
+          "items": {
+            "maxLength": 500,
+            "minLength": 1,
+            "type": "string"
+          },
+          "maxItems": 20,
+          "title": "Redacted Locations",
+          "type": "array"
+        },
+        "status": {
+          "enum": [
+            "not_started",
+            "deferred",
+            "published",
+            "failed"
+          ],
+          "title": "Status",
+          "type": "string"
+        }
+      },
+      "required": [
+        "status",
+        "redacted_locations",
+        "message"
+      ],
+      "title": "PublicationState",
+      "type": "object"
+    },
+    "RunFailure": {
+      "additionalProperties": false,
+      "properties": {
+        "code": {
+          "maxLength": 80,
+          "pattern": "^[a-z][a-z0-9_-]*$",
+          "title": "Code",
+          "type": "string"
+        },
+        "message": {
+          "maxLength": 500,
+          "minLength": 1,
+          "title": "Message",
+          "type": "string"
+        },
+        "recovery_guidance": {
+          "maxLength": 10000,
+          "minLength": 1,
+          "title": "Recovery Guidance",
+          "type": "string"
+        },
+        "stage": {
+          "enum": [
+            "initialized",
+            "collection",
+            "editorial",
+            "script",
+            "tts",
+            "audio",
+            "publication",
+            "finalized"
+          ],
+          "title": "Stage",
+          "type": "string"
+        }
+      },
+      "required": [
+        "stage",
+        "code",
+        "message",
+        "recovery_guidance"
+      ],
+      "title": "RunFailure",
+      "type": "object"
+    }
+  },
+  "$id": "urn:personalized-audio-episode-engine:schema:run-state:1.0",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "properties": {
+    "artifacts": {
+      "patternProperties": {
+        "^[a-z][a-z0-9_-]*$": {
+          "$ref": "#/$defs/ArtifactReference"
+        }
+      },
+      "propertyNames": {
+        "maxLength": 80
+      },
+      "title": "Artifacts",
+      "type": "object"
+    },
+    "codex_model": {
+      "anyOf": [
+        {
+          "maxLength": 500,
+          "minLength": 1,
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "title": "Codex Model"
+    },
+    "collection_method": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/CollectionMethod"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "completed_at": {
+      "anyOf": [
+        {
+          "format": "date-time",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "title": "Completed At"
+    },
+    "contract_version": {
+      "const": "1.0",
+      "title": "Contract Version",
+      "type": "string"
+    },
+    "current_stage": {
+      "enum": [
+        "initialized",
+        "collection",
+        "editorial",
+        "script",
+        "tts",
+        "audio",
+        "publication",
+        "finalized"
+      ],
+      "title": "Current Stage",
+      "type": "string"
+    },
+    "engine_git_commit": {
+      "pattern": "^[0-9a-f]{7,40}$",
+      "title": "Engine Git Commit",
+      "type": "string"
+    },
+    "episode_key": {
+      "pattern": "^[a-z][a-z0-9_-]*:\\d{4}-\\d{2}-\\d{2}$",
+      "title": "Episode Key",
+      "type": "string"
+    },
+    "failure": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/RunFailure"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "final_audio_validation": {
+      "$ref": "#/$defs/FinalAudioValidation"
+    },
+    "gemini_model": {
+      "anyOf": [
+        {
+          "maxLength": 500,
+          "minLength": 1,
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "title": "Gemini Model"
+    },
+    "last_completed_valid_stage": {
+      "anyOf": [
+        {
+          "enum": [
+            "initialized",
+            "collection",
+            "editorial",
+            "script",
+            "tts",
+            "audio",
+            "publication",
+            "finalized"
+          ],
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "title": "Last Completed Valid Stage"
+    },
+    "profile_id": {
+      "maxLength": 80,
+      "pattern": "^[a-z][a-z0-9_-]*$",
+      "title": "Profile Id",
+      "type": "string"
+    },
+    "profile_version": {
+      "maxLength": 40,
+      "pattern": "^\\d+\\.\\d+(?:\\.\\d+)?$",
+      "title": "Profile Version",
+      "type": "string"
+    },
+    "prompt_version": {
+      "title": "Prompt Version",
+      "type": "null"
+    },
+    "prompt_versions": {
+      "patternProperties": {
+        "^[a-z][a-z0-9_-]*$": {
+          "maxLength": 40,
+          "pattern": "^\\d+\\.\\d+(?:\\.\\d+)?$",
+          "type": "string"
+        }
+      },
+      "propertyNames": {
+        "maxLength": 80
+      },
+      "title": "Prompt Versions",
+      "type": "object"
+    },
+    "publication": {
+      "$ref": "#/$defs/PublicationState"
+    },
+    "run_id": {
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,199}$",
+      "title": "Run Id",
+      "type": "string"
+    },
+    "skill_version": {
+      "maxLength": 40,
+      "pattern": "^\\d+\\.\\d+(?:\\.\\d+)?$",
+      "title": "Skill Version",
+      "type": "string"
+    },
+    "started_at": {
+      "format": "date-time",
+      "title": "Started At",
+      "type": "string"
+    },
+    "status": {
+      "enum": [
+        "running",
+        "failed",
+        "completed",
+        "no_op"
+      ],
+      "title": "Status",
+      "type": "string"
+    }
+  },
+  "required": [
+    "contract_version",
+    "prompt_version",
+    "run_id",
+    "episode_key",
+    "profile_id",
+    "profile_version",
+    "engine_git_commit",
+    "skill_version",
+    "prompt_versions",
+    "collection_method",
+    "codex_model",
+    "gemini_model",
+    "started_at",
+    "completed_at",
+    "current_stage",
+    "last_completed_valid_stage",
+    "status",
+    "failure",
+    "artifacts",
+    "final_audio_validation",
+    "publication"
+  ],
+  "title": "RunState",
+  "type": "object"
+}

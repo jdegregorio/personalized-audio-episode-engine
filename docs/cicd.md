@@ -8,7 +8,7 @@ The required workflow surface is deliberately small:
 
 | Check | Responsibility |
 | --- | --- |
-| `Repository integrity` | Secret/runtime path policy, Markdown style, local links, and documented script paths |
+| `Repository integrity` | Secret/runtime path policy, Markdown/local-command checks, generated-schema drift, and valid/invalid golden artifact fixtures |
 | `Lint and type check` | Ruff formatting/lint and strict Pyright |
 | `Offline tests` | Unit/contract/integration tests with at least 85% deterministic Python line coverage |
 | `Functional smoke` | Smallest documented runnable behavior using synthetic inputs |
@@ -17,7 +17,7 @@ The required workflow surface is deliberately small:
 | `Dependency review` | Pull-request dependency risk review |
 | `CodeQL (python)` | Python static security analysis |
 
-The CI workflow also checks `uv.lock`, builds the wheel and source distribution, and imports the wheel from an isolated environment rather than the editable checkout. The repository tests its integrity guard with prohibited fake paths and confirms Ruff rejects a deliberately unformatted temporary Python file.
+The CI workflow also checks `uv.lock`, builds the wheel and source distribution, and imports the wheel from an isolated environment rather than the editable checkout. The repository tests its integrity guard with prohibited fake paths, confirms Ruff rejects a deliberately unformatted temporary Python file, and runs `scripts/check_artifacts.py` so committed schemas and synthetic fixture expectations cannot drift from their Pydantic models and semantic validators.
 
 ## Secret isolation
 

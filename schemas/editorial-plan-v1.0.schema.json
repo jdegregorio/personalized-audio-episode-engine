@@ -1,0 +1,267 @@
+{
+  "$defs": {
+    "ArtifactReference": {
+      "additionalProperties": false,
+      "properties": {
+        "artifact_type": {
+          "maxLength": 80,
+          "pattern": "^[a-z][a-z0-9_-]*$",
+          "title": "Artifact Type",
+          "type": "string"
+        },
+        "path": {
+          "title": "Path",
+          "type": "string"
+        },
+        "sha256": {
+          "pattern": "^sha256:[0-9a-f]{64}$",
+          "title": "Sha256",
+          "type": "string"
+        }
+      },
+      "required": [
+        "artifact_type",
+        "path",
+        "sha256"
+      ],
+      "title": "ArtifactReference",
+      "type": "object"
+    },
+    "ExcludedCandidate": {
+      "additionalProperties": false,
+      "properties": {
+        "candidate_id": {
+          "pattern": "^item_[A-Za-z0-9][A-Za-z0-9_-]*$",
+          "title": "Candidate Id",
+          "type": "string"
+        },
+        "reason": {
+          "maxLength": 500,
+          "minLength": 1,
+          "title": "Reason",
+          "type": "string"
+        },
+        "reason_code": {
+          "maxLength": 80,
+          "pattern": "^[a-z][a-z0-9_-]*$",
+          "title": "Reason Code",
+          "type": "string"
+        }
+      },
+      "required": [
+        "candidate_id",
+        "reason_code",
+        "reason"
+      ],
+      "title": "ExcludedCandidate",
+      "type": "object"
+    },
+    "PlannedSegment": {
+      "additionalProperties": false,
+      "properties": {
+        "candidate_id": {
+          "pattern": "^item_[A-Za-z0-9][A-Za-z0-9_-]*$",
+          "title": "Candidate Id",
+          "type": "string"
+        },
+        "desired_duration_seconds": {
+          "maximum": 3600,
+          "minimum": 1,
+          "title": "Desired Duration Seconds",
+          "type": "integer"
+        },
+        "editorial_angle": {
+          "maxLength": 10000,
+          "minLength": 1,
+          "title": "Editorial Angle",
+          "type": "string"
+        },
+        "host_dynamic": {
+          "maxLength": 10000,
+          "minLength": 1,
+          "title": "Host Dynamic",
+          "type": "string"
+        },
+        "lead_host": {
+          "maxLength": 500,
+          "minLength": 1,
+          "title": "Lead Host",
+          "type": "string"
+        },
+        "optional_claim_ids": {
+          "items": {
+            "pattern": "^claim_[A-Za-z0-9][A-Za-z0-9_-]*$",
+            "type": "string"
+          },
+          "maxItems": 1000,
+          "title": "Optional Claim Ids",
+          "type": "array"
+        },
+        "order": {
+          "maximum": 1000,
+          "minimum": 1,
+          "title": "Order",
+          "type": "integer"
+        },
+        "required_claim_ids": {
+          "items": {
+            "pattern": "^claim_[A-Za-z0-9][A-Za-z0-9_-]*$",
+            "type": "string"
+          },
+          "maxItems": 1000,
+          "minItems": 1,
+          "title": "Required Claim Ids",
+          "type": "array"
+        },
+        "section": {
+          "anyOf": [
+            {
+              "maxLength": 80,
+              "pattern": "^[a-z][a-z0-9_-]*$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Section"
+        },
+        "segment_id": {
+          "pattern": "^segment_[A-Za-z0-9][A-Za-z0-9_-]*$",
+          "title": "Segment Id",
+          "type": "string"
+        },
+        "source_conflict_notes": {
+          "items": {
+            "maxLength": 10000,
+            "minLength": 1,
+            "type": "string"
+          },
+          "maxItems": 100,
+          "title": "Source Conflict Notes",
+          "type": "array"
+        },
+        "transition_intent": {
+          "maxLength": 10000,
+          "minLength": 1,
+          "title": "Transition Intent",
+          "type": "string"
+        },
+        "why_it_matters": {
+          "maxLength": 10000,
+          "minLength": 1,
+          "title": "Why It Matters",
+          "type": "string"
+        }
+      },
+      "required": [
+        "segment_id",
+        "order",
+        "candidate_id",
+        "section",
+        "editorial_angle",
+        "why_it_matters",
+        "required_claim_ids",
+        "optional_claim_ids",
+        "desired_duration_seconds",
+        "lead_host",
+        "host_dynamic",
+        "source_conflict_notes",
+        "transition_intent"
+      ],
+      "title": "PlannedSegment",
+      "type": "object"
+    }
+  },
+  "$id": "urn:personalized-audio-episode-engine:schema:editorial-plan:1.0",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "properties": {
+    "closing_takeaway": {
+      "maxLength": 10000,
+      "minLength": 1,
+      "title": "Closing Takeaway",
+      "type": "string"
+    },
+    "contract_version": {
+      "const": "1.0",
+      "title": "Contract Version",
+      "type": "string"
+    },
+    "created_at": {
+      "format": "date-time",
+      "title": "Created At",
+      "type": "string"
+    },
+    "episode_date": {
+      "format": "date",
+      "title": "Episode Date",
+      "type": "string"
+    },
+    "evidence_dossier": {
+      "$ref": "#/$defs/ArtifactReference"
+    },
+    "exclusions": {
+      "items": {
+        "$ref": "#/$defs/ExcludedCandidate"
+      },
+      "maxItems": 5000,
+      "title": "Exclusions",
+      "type": "array"
+    },
+    "opening_approach": {
+      "maxLength": 10000,
+      "minLength": 1,
+      "title": "Opening Approach",
+      "type": "string"
+    },
+    "planned_duration_seconds": {
+      "maximum": 10800,
+      "minimum": 1,
+      "title": "Planned Duration Seconds",
+      "type": "integer"
+    },
+    "profile_id": {
+      "maxLength": 80,
+      "pattern": "^[a-z][a-z0-9_-]*$",
+      "title": "Profile Id",
+      "type": "string"
+    },
+    "prompt_version": {
+      "maxLength": 40,
+      "pattern": "^\\d+\\.\\d+(?:\\.\\d+)?$",
+      "title": "Prompt Version",
+      "type": "string"
+    },
+    "run_id": {
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,199}$",
+      "title": "Run Id",
+      "type": "string"
+    },
+    "segments": {
+      "items": {
+        "$ref": "#/$defs/PlannedSegment"
+      },
+      "maxItems": 100,
+      "minItems": 1,
+      "title": "Segments",
+      "type": "array"
+    }
+  },
+  "required": [
+    "contract_version",
+    "prompt_version",
+    "created_at",
+    "run_id",
+    "profile_id",
+    "episode_date",
+    "evidence_dossier",
+    "opening_approach",
+    "segments",
+    "exclusions",
+    "closing_takeaway",
+    "planned_duration_seconds"
+  ],
+  "title": "EditorialPlan",
+  "type": "object"
+}

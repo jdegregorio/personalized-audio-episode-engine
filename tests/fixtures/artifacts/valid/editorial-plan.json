@@ -1,0 +1,53 @@
+{
+  "contract_version": "1.0",
+  "prompt_version": "1.0.0",
+  "created_at": "2026-01-15T15:06:00Z",
+  "run_id": "marine-brief_2026-01-15_synthetic",
+  "profile_id": "marine-brief",
+  "episode_date": "2026-01-15",
+  "evidence_dossier": {
+    "artifact_type": "evidence",
+    "path": "evidence-dossier.json",
+    "sha256": "sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"
+  },
+  "opening_approach": "Introduce two synthetic examples of how field observations depend on measurement methods.",
+  "segments": [
+    {
+      "segment_id": "segment_reef",
+      "order": 1,
+      "candidate_id": "item_reef_plot",
+      "section": "habitat",
+      "editorial_angle": "Explain the narrow observation before discussing its significance.",
+      "why_it_matters": "It shows how directly auditable evidence supports a bounded conclusion.",
+      "required_claim_ids": [
+        "claim_reef_growth"
+      ],
+      "optional_claim_ids": [],
+      "desired_duration_seconds": 180,
+      "lead_host": "Maya",
+      "host_dynamic": "Maya establishes the observation and Daniel tests its limitations.",
+      "source_conflict_notes": [],
+      "transition_intent": "Move from the observation to the method used to interpret measurements."
+    },
+    {
+      "segment_id": "segment_sensor",
+      "order": 2,
+      "candidate_id": "item_sensor_method",
+      "section": "methods",
+      "editorial_angle": "Connect calibration frequency to confidence in comparisons.",
+      "why_it_matters": "Method changes can alter how later observations should be interpreted.",
+      "required_claim_ids": [
+        "claim_sensor_interval"
+      ],
+      "optional_claim_ids": [],
+      "desired_duration_seconds": 120,
+      "lead_host": "Daniel",
+      "host_dynamic": "Daniel leads the method explanation and Maya restates the practical consequence.",
+      "source_conflict_notes": [],
+      "transition_intent": "Close by linking careful sourcing and careful measurement."
+    }
+  ],
+  "exclusions": [],
+  "closing_takeaway": "Good summaries preserve both what was observed and how it was measured.",
+  "planned_duration_seconds": 300
+}

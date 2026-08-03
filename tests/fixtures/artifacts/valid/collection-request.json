@@ -1,0 +1,45 @@
+{
+  "contract_version": "1.0",
+  "prompt_version": null,
+  "created_at": "2026-01-15T15:00:00Z",
+  "run_id": "marine-brief_2026-01-15_synthetic",
+  "profile_id": "marine-brief",
+  "episode_date": "2026-01-15",
+  "timezone": "America/Los_Angeles",
+  "topic": "Synthetic coastal habitat research and instrumentation updates",
+  "scope": {
+    "sections": [
+      "habitat",
+      "methods"
+    ],
+    "notes": "Profile-defined synthetic scope; section identifiers are opaque to the engine."
+  },
+  "time_window": {
+    "hours": 72
+  },
+  "source_types": [
+    "public_web",
+    "connector_resource"
+  ],
+  "suggested_capabilities": [
+    "research_library"
+  ],
+  "allow_native_research_fallback": true,
+  "source_policy": {
+    "prefer_primary": true,
+    "preferred_publishers": [],
+    "multiple_sources_for_consequential_claims": false,
+    "policy": {
+      "synthetic_only": true
+    }
+  },
+  "targets": {
+    "by_section": {
+      "habitat": 3,
+      "methods": 2
+    },
+    "maximum_candidates": 10,
+    "maximum_sources": 20
+  },
+  "output_path": "/synthetic/run/evidence-dossier.json"
+}
