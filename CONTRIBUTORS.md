@@ -56,6 +56,12 @@ Also run `doctor.py` and the offline vertical slice once their owning PRs introd
 
 Default GitHub Actions must be secret-free and cover repository/document integrity, Markdown links and documented commands, package build/import, Ruff, Pyright, unit/contract/integration tests, offline functional smoke, Python 3.12 portability, dependency review, and CodeQL. Required jobs fail closed. Live Gemini or R2 probes are explicit local or `main`-restricted jobs and receive only the secrets they need.
 
+## Unblocking work without weakening evidence
+
+Required test, smoke, UAT, and review evidence is never skipped because a tool, dependency, environment, or service is initially unavailable. Contributors must diagnose the failure and independently apply the smallest safe in-scope repair when they have the access and authority to do so, then rerun the affected gate and continue the PR without waiting for owner approval.
+
+Stop and request owner help only when the remaining blocker genuinely requires an action the contributor cannot perform, such as providing or rotating a secret, completing account or billing setup, approving an external permission, configuring a physical device, or making an unavailable owner-only product choice. Report the exact missing prerequisite and do not substitute mocks, reduce coverage, waive a gate, or proceed to dependent PRs while required evidence remains incomplete.
+
 ## Test and acceptance layers
 
 Each PR supplies the layers applicable to its behavior:
