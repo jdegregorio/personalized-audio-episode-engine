@@ -225,6 +225,17 @@
     "evidence_dossier": {
       "$ref": "#/$defs/ArtifactReference"
     },
+    "profile": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/ArtifactReference"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null
+    },
     "profile_id": {
       "maxLength": 80,
       "pattern": "^[a-z][a-z0-9_-]*$",

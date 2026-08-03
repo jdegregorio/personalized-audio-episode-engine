@@ -165,7 +165,7 @@ The implementation must preserve these boundaries throughout the sequence:
 
 ## 2. Delivery contract
 
-[`CONTRIBUTORS.md`](CONTRIBUTORS.md) is the canonical worktree, SDLC, testing, documentation, review, and merge policy for every PR in this sequence. In particular, every PR uses a fresh worktree and receives one or at most two GitHub Codex review rounds. Every finding must be implemented, dismissed with recorded rationale, or deferred by adding explicit scope and acceptance evidence to its owning future PR below; every thread is then resolved. Changes after round two receive final checks plus correctness and simplification review without triggering a third Codex round.
+[`CONTRIBUTORS.md`](CONTRIBUTORS.md) is the canonical worktree, SDLC, testing, documentation, review, and merge policy for every PR in this sequence. Every PR uses a fresh worktree. During accelerated MVP delivery, PR 06 through PR 13 merge after required tests, real UAT, GitHub checks, and final correctness and simplification passes; they do not request, wait for, or act on GitHub Codex auto-review. Closed-PR feedback is triaged into a separate post-MVP backlog later.
 
 ## 3. Single MVP PR sequence
 
@@ -231,7 +231,7 @@ Each PR's listed acceptance criteria are cumulative with the definition of done 
 - A direct feature push to protected `main` is disallowed after repository settings are applied.
 - No workflow receives production secrets on ordinary `pull_request` events.
 - The documented worktree, correctness review, simplification review, test, release, rollback, and secret-handling rules are actionable.
-- The PR template enforces the one-or-two-round Codex review limit, requires an implement/rationale/plan-deferral disposition for every finding, and records reviewed commit SHAs, correctness/simplification findings, retained-complexity rationale, and final pass decisions.
+- The PR template records the applicable review policy, reviewed commit SHAs, correctness/simplification findings, retained-complexity rationale, and final pass decisions. The original one-or-two-round Codex limit remains historical PR 01 behavior and is superseded for PR 06 through PR 13 by the accelerated policy above.
 
 **PRD traceability:** TR-054; NFR-050–054, NFR-060–061, NFR-070–071, NFR-090–094; sections 19, 25, 26, and 28.
 

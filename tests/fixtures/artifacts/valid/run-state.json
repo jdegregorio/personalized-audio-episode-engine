@@ -46,6 +46,18 @@
       "sha256": "sha256:eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee"
     }
   },
+  "script_validation": {
+    "attempt": 1,
+    "status": "valid",
+    "error_count": 0,
+    "warning_count": 0,
+    "repair_allowed": false,
+    "report": {
+      "artifact_type": "validation",
+      "path": "script-validation-attempt-1.json",
+      "sha256": "sha256:2222222222222222222222222222222222222222222222222222222222222222"
+    }
+  },
   "codex_model": "synthetic-codex-model",
   "gemini_model": "synthetic-tts-model",
   "started_at": "2026-01-15T15:00:00Z",
@@ -84,6 +96,16 @@
       "artifact_type": "script",
       "path": "episode-script.json",
       "sha256": "sha256:ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff"
+    },
+    "transcript": {
+      "artifact_type": "transcript",
+      "path": "transcript.txt",
+      "sha256": "sha256:4444444444444444444444444444444444444444444444444444444444444444"
+    },
+    "script_validation": {
+      "artifact_type": "validation",
+      "path": "script-validation-attempt-1.json",
+      "sha256": "sha256:2222222222222222222222222222222222222222222222222222222222222222"
     },
     "published_episode": {
       "artifact_type": "published-episode",

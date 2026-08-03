@@ -419,6 +419,7 @@ class EpisodeScript(_ContractModel):
     run_id: RunId
     profile_id: Identifier
     episode_date: JsonDate
+    profile: ArtifactReference | None = None
     evidence_dossier: ArtifactReference
     editorial_plan: ArtifactReference
     transcript: ArtifactReference
@@ -445,9 +446,13 @@ class EpisodeScript(_ContractModel):
             raise ValueError("script segment IDs must be unique")
         if sorted(orders) != list(range(1, len(orders) + 1)):
             raise ValueError("script segment order must be contiguous from 1")
-        assigned_turn_ids = [turn_id for segment in self.segments for turn_id in segment.turn_ids]
-        if sorted(assigned_turn_ids) != sorted(turn_ids):
-            raise ValueError("every script turn must appear in exactly one segment")
+        assigned_turn_ids = [
+            turn_id
+            for segment in sorted(self.segments, key=lambda item: item.order)
+            for turn_id in segment.turn_ids
+        ]
+        if assigned_turn_ids != turn_ids:
+            raise ValueError("script segments must contain every turn exactly once in script order")
         if any(
             segment.estimated_input_tokens > self.safe_input_tokens for segment in self.segments
         ):
@@ -597,6 +602,27 @@ class PlanValidationState(_ContractModel):
         return self
 
 
+class ScriptValidationState(_ContractModel):
+    attempt: Annotated[int, Field(ge=1, le=2)]
+    status: Literal["valid", "invalid"]
+    error_count: Annotated[int, Field(ge=0, le=10_000)]
+    warning_count: Annotated[int, Field(ge=0, le=10_000)]
+    repair_allowed: bool
+    report: ArtifactReference
+
+    @model_validator(mode="after")
+    def consistent_outcome(self) -> Self:
+        if self.report.artifact_type != "validation":
+            raise ValueError("script validation report must have type validation")
+        if self.status == "valid" and (self.error_count or self.repair_allowed):
+            raise ValueError("valid script validation cannot contain errors or allow repair")
+        if self.status == "invalid" and not self.error_count:
+            raise ValueError("invalid script validation requires at least one error")
+        if self.attempt == 2 and self.repair_allowed:
+            raise ValueError("second script validation attempt cannot allow another repair")
+        return self
+
+
 class RunState(_ContractModel):
     model_config = ConfigDict(
         extra="forbid",
@@ -621,6 +647,7 @@ class RunState(_ContractModel):
     failed_collection_capabilities: list[Identifier] = Field(default_factory=list)
     collection_validation: CollectionValidationState | None = None
     plan_validation: PlanValidationState | None = None
+    script_validation: ScriptValidationState | None = None
     codex_model: ShortText | None
     gemini_model: ShortText | None
     started_at: JsonAwareDatetime

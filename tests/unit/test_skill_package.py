@@ -23,6 +23,7 @@ def test_skill_package_is_concise_linked_and_command_complete() -> None:
         "workflow.md",
         "evidence-collection.md",
         "editorial-planning.md",
+        "scriptwriting.md",
         "run-state.md",
     }
     references = SKILL_ROOT / "references"
@@ -40,6 +41,7 @@ def test_skill_package_is_concise_linked_and_command_complete() -> None:
         "scripts/init_run.py",
         "scripts/record_collection.py",
         "scripts/record_editorial_plan.py",
+        "scripts/record_script.py",
         "scripts/select_collection_method.py",
     }
     repository_root = SKILL_ROOT.parents[2]
@@ -74,3 +76,14 @@ def test_editorial_reference_preserves_the_single_judgment_phase() -> None:
     assert "Do not write host dialogue" in instructions
     assert "Do not add numerical scoring" in instructions
     assert "every dossier candidate" in instructions
+
+
+def test_script_reference_preserves_grounding_and_projection() -> None:
+    instructions = (SKILL_ROOT / "references" / "scriptwriting.md").read_text(encoding="utf-8")
+
+    assert "complete authoritative episode profile" in instructions
+    assert "evidence-dossier.json" in instructions
+    assert "editorial-plan.json" in instructions
+    assert "Every fact or analysis turn" in instructions
+    assert "Do not speak URLs" in instructions
+    assert "generated deterministically" in instructions

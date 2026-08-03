@@ -86,6 +86,7 @@ def _script_for(state: RunState) -> dict[str, Any]:
     data["run_id"] = state.run_id
     data["profile_id"] = state.profile_id
     data["episode_date"] = state.episode_date.isoformat() if state.episode_date else "2026-01-15"
+    data["profile"] = state.artifacts["profile"].model_dump(mode="json")
     data["evidence_dossier"] = state.artifacts["evidence_dossier"].model_dump(mode="json")
     data["editorial_plan"] = state.artifacts["editorial_plan"].model_dump(mode="json")
     return data
@@ -369,6 +370,7 @@ def test_stage_artifacts_must_bind_identity_and_upstream_hashes(
             state.run_id,
             artifact_key="episode_script",
             data=mismatched_script,
+            allowed_input_roots=[synthetic_profile_path.parent],
         )
     final = persist_stage_artifact(
         workspace,
@@ -376,6 +378,7 @@ def test_stage_artifacts_must_bind_identity_and_upstream_hashes(
         state.run_id,
         artifact_key="episode_script",
         data=_script_for(state),
+        allowed_input_roots=[synthetic_profile_path.parent],
     )
 
     assert final.current_stage == "tts"
@@ -516,8 +519,8 @@ def test_non_owner_cannot_write_stage_artifact(
                 "plan_validation",
                 "episode_script",
             },
-            "tts",
             "script",
+            "editorial",
         ),
     ],
 )

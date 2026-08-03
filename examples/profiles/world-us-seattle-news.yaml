@@ -111,6 +111,7 @@ performance:
   use_audio_tags: sparingly
   prohibit_fake_personal_experience: true
   prohibit_urls_in_speech: true
+  fatal_warning_codes: []
 
 tts:
   provider: gemini

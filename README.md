@@ -82,6 +82,16 @@ uv run python scripts/record_editorial_plan.py --run <run-directory>
 
 The recorder binds the current profile/dossier hashes and editorial prompt version, checks every candidate disposition plus profile-defined sections, hosts, reason codes, item/duration bounds, and disagreement notes, and allows one recorded repair. A valid plan advances to the separate script phase; it does not contain dialogue or invoke another model.
 
+## Scriptwriting workflow
+
+In a separate Codex phase, follow the skill's [`scriptwriting.md`](.agents/skills/produce-audio-episode/references/scriptwriting.md) reference. Read the complete profile, dossier, and plan, write the structured two-host script, then record it:
+
+```bash
+uv run python scripts/record_script.py --run <run-directory>
+```
+
+The recorder binds current input hashes and script prompt version, checks claim and source lineage, required attribution and qualifications, disagreement, speaker/voice configuration, spoken-text safety, duration, conversational-quality warnings, and TTS input limits. It allows one recorded repair and deterministically writes `transcript.txt` from the accepted turns, so the spoken projection cannot diverge from the auditable script. A valid script advances to `tts`; it does not call Gemini.
+
 ## Security boundary
 
 The MVP feed contains public-news content but uses an unguessable URL. That URL is access material, not authentication. Never commit or paste credentials, tokenized object keys, runtime data, or complete feed URLs. Profiles containing personal or otherwise sensitive information are outside the MVP and require a separate authenticated or encrypted publication design.

@@ -32,6 +32,26 @@ from audio_engine.safety import SafetyError, resolve_within_roots
 ARTIFACT_TYPES = tuple(ARTIFACT_MODELS)
 _URI_SCHEME = re.compile(r"^[a-z][a-z0-9+.-]*$")
 _UNSAFE_URI_SCHEMES = frozenset({"data", "file", "javascript"})
+_SPOKEN_URL = re.compile(
+    r"(?:https?://|www\.|\b[a-z0-9](?:[a-z0-9-]*\.)+[a-z]{2,63}\b)", re.IGNORECASE
+)
+_SPOKEN_CITATION = re.compile(
+    r"(?:\[[^\]\r\n]+\]|【\d+[^】]*】|cite|turn\d+(?:search|news)\d+|"
+    r"\(\s*[^)]*,\s*\d{4}\s*\))",
+    re.IGNORECASE,
+)
+_FAKE_PERSONAL_EXPERIENCE = re.compile(
+    r"(?:\b(?:i|we)\s+(?:read|saw|watched|attended|witnessed|experienced|visited)\b|"
+    r"\bin my experience\b)",
+    re.IGNORECASE,
+)
+_DISAGREEMENT_LANGUAGE = re.compile(
+    r"\b(?:but|while|however|disagree|conflict|uncertain|unverified|"
+    r"not independently verified|emphasis|differ(?:s|ed|ent)?)\b",
+    re.IGNORECASE,
+)
+_WORD = re.compile(r"\b[\w’'-]+\b", re.UNICODE)
+_STOCK_PHRASES = ("that's fascinating", "absolutely", "great question")
 
 
 @dataclass(frozen=True, order=True)
@@ -844,6 +864,8 @@ def validate_script_against_plan_and_dossier(
     candidates = {candidate.candidate_id: candidate for candidate in dossier.candidates}
     supports = {support.support_id: support for support in dossier.claim_supports}
     sources = {source.source_id: source for source in dossier.sources}
+    claim_text: dict[str, list[str]] = defaultdict(list)
+    planned_text: dict[str, list[str]] = defaultdict(list)
 
     for turn_index, turn in enumerate(script.turns):
         planned = (
@@ -875,6 +897,24 @@ def validate_script_against_plan_and_dossier(
                     "script candidate does not match its planned segment",
                 )
             )
+        if turn.turn_type in {"fact", "analysis"} and not turn.claim_ids:
+            issues.append(
+                _issue(
+                    "missing_claim_lineage",
+                    f"/turns/{turn_index}/claim_ids",
+                    "fact and analysis turns require claim lineage",
+                )
+            )
+        if turn.claim_ids and (turn.candidate_id is None or turn.planned_segment_id is None):
+            issues.append(
+                _issue(
+                    "incomplete_turn_lineage",
+                    f"/turns/{turn_index}",
+                    "turns with claims require candidate and planned-segment IDs",
+                )
+            )
+        if turn.planned_segment_id is not None:
+            planned_text[turn.planned_segment_id].append(turn.text)
         for claim_index, claim_id in enumerate(turn.claim_ids):
             path = f"/turns/{turn_index}/claim_ids/{claim_index}"
             claim = claims.get(claim_id)
@@ -885,6 +925,18 @@ def validate_script_against_plan_and_dossier(
                 issues.append(
                     _issue("claim_candidate_mismatch", path, "claim belongs to another candidate")
                 )
+            if planned is not None and claim_id not in {
+                *planned.required_claim_ids,
+                *planned.optional_claim_ids,
+            }:
+                issues.append(
+                    _issue(
+                        "claim_not_planned",
+                        path,
+                        "script claim is not allowed by its planned segment",
+                    )
+                )
+            claim_text[claim_id].append(turn.text)
             for support_id in claim.support_ids:
                 support = supports.get(support_id)
                 if support is None or support.source_id not in sources:
@@ -897,7 +949,119 @@ def validate_script_against_plan_and_dossier(
                     )
                     break
 
+    for claim_id, texts in claim_text.items():
+        claim = claims.get(claim_id)
+        if claim is None:
+            continue
+        spoken = " ".join(texts)
+        if claim.required_attribution and not _contains_spoken_phrase(
+            spoken, claim.required_attribution
+        ):
+            issues.append(
+                _issue(
+                    "missing_required_attribution",
+                    "/turns",
+                    f"spoken treatment of {claim_id!r} omits its required attribution",
+                )
+            )
+        for qualification in claim.qualifications:
+            if not _contains_spoken_phrase(spoken, qualification):
+                issues.append(
+                    _issue(
+                        "missing_qualification",
+                        "/turns",
+                        f"spoken treatment of {claim_id!r} omits a required qualification",
+                    )
+                )
+
+    disagreement_segment_ids = {
+        segment.segment_id for segment in plan.segments if segment.source_conflict_notes
+    }
+    for turn in script.turns:
+        if (
+            any(
+                claim_id in claims
+                and (
+                    claims[claim_id].status == "disputed"
+                    or any(
+                        supports[support_id].support_type == "disputed"
+                        for support_id in claims[claim_id].support_ids
+                        if support_id in supports
+                    )
+                )
+                for claim_id in turn.claim_ids
+            )
+            and turn.planned_segment_id is not None
+        ):
+            disagreement_segment_ids.add(turn.planned_segment_id)
+    for segment_id in sorted(disagreement_segment_ids):
+        if not _DISAGREEMENT_LANGUAGE.search(" ".join(planned_text[segment_id])):
+            issues.append(
+                _issue(
+                    "missing_disagreement_treatment",
+                    "/turns",
+                    (
+                        f"planned segment {segment_id!r} does not state its disagreement "
+                        "or uncertainty"
+                    ),
+                )
+            )
+
+    for segment in plan.segments:
+        referenced_claims = {
+            claim_id
+            for turn in script.turns
+            if turn.planned_segment_id == segment.segment_id
+            for claim_id in turn.claim_ids
+        }
+        for claim_id in sorted(set(segment.required_claim_ids) - referenced_claims):
+            issues.append(
+                _issue(
+                    "missing_required_planned_claim",
+                    "/turns",
+                    f"planned required claim {claim_id!r} is not used by its script segment",
+                )
+            )
+
+    assigned_planned_segments = [
+        planned_segment_id
+        for segment in script.segments
+        for planned_segment_id in segment.planned_segment_ids
+    ]
+    expected_planned_segments = [segment.segment_id for segment in plan.segments]
+    if assigned_planned_segments != expected_planned_segments:
+        issues.append(
+            _issue(
+                "planned_segment_coverage",
+                "/segments",
+                "script boundaries must contain every planned segment exactly once in plan order",
+            )
+        )
+    referenced_planned_segments = {
+        turn.planned_segment_id for turn in script.turns if turn.planned_segment_id is not None
+    }
+    for segment_id in sorted(set(planned_segments) - referenced_planned_segments):
+        issues.append(
+            _issue(
+                "planned_segment_missing_turn",
+                "/turns",
+                f"planned segment {segment_id!r} has no script turn",
+            )
+        )
+
+    turns = {turn.turn_id: turn for turn in script.turns}
     for segment_index, segment in enumerate(script.segments):
+        declared_plans = set(segment.planned_segment_ids)
+        for turn_index, turn_id in enumerate(segment.turn_ids):
+            planned_segment_id = turns[turn_id].planned_segment_id
+            if planned_segment_id is not None and planned_segment_id not in declared_plans:
+                issues.append(
+                    _issue(
+                        "script_segment_plan_mismatch",
+                        f"/segments/{segment_index}/turn_ids/{turn_index}",
+                        "turn's planned segment is not declared by its script boundary",
+                    )
+                )
         for planned_index, planned_segment_id in enumerate(segment.planned_segment_ids):
             if planned_segment_id not in planned_segments:
                 issues.append(
@@ -908,3 +1072,224 @@ def validate_script_against_plan_and_dossier(
                     )
                 )
     return tuple(sorted(issues))
+
+
+def validate_script_against_profile(
+    script: EpisodeScript,
+    plan: EditorialPlan,
+    profile: EpisodeProfile,
+) -> tuple[tuple[ValidationIssue, ...], tuple[ValidationIssue, ...]]:
+    """Validate deterministic spoken-output and profile policy boundaries."""
+    errors: list[ValidationIssue] = []
+    warnings: list[ValidationIssue] = []
+    configured_speakers = {
+        profile.hosts.female.name: profile.hosts.female.voice,
+        profile.hosts.male.name: profile.hosts.male.voice,
+    }
+    script_speakers = {speaker.name: speaker.voice for speaker in script.speakers}
+    if script_speakers != configured_speakers:
+        errors.append(
+            _issue(
+                "speaker_configuration_mismatch",
+                "/speakers",
+                "script speaker names and voices must exactly match the profile",
+            )
+        )
+    used_speakers = {turn.speaker for turn in script.turns}
+    if used_speakers != set(configured_speakers):
+        errors.append(
+            _issue(
+                "configured_speaker_unused",
+                "/turns",
+                "both configured speakers must appear in the script",
+            )
+        )
+    if script.safe_input_tokens != profile.tts.safe_input_tokens:
+        errors.append(
+            _issue(
+                "tts_limit_mismatch",
+                "/safe_input_tokens",
+                "script safe-input limit must match the profile",
+            )
+        )
+    minimum_seconds = profile.editorial.minimum_minutes * 60
+    maximum_seconds = profile.editorial.maximum_minutes * 60
+    if not minimum_seconds <= script.estimated_duration_seconds <= maximum_seconds:
+        errors.append(
+            _issue(
+                "script_duration_out_of_bounds",
+                "/estimated_duration_seconds",
+                "script duration is outside the profile minimum and maximum",
+            )
+        )
+
+    performance_count = 0
+    reaction_count = 0
+    word_counts: dict[str, int] = defaultdict(int)
+    consecutive_speaker: str | None = None
+    consecutive_count = 0
+    warned_consecutive = False
+    all_text: list[str] = []
+    for index, turn in enumerate(script.turns):
+        path = f"/turns/{index}/text"
+        all_text.append(turn.text)
+        word_counts[turn.speaker] += len(_WORD.findall(turn.text))
+        if turn.text != turn.text.strip() or "\n" in turn.text or "\r" in turn.text:
+            errors.append(
+                _issue(
+                    "invalid_spoken_text",
+                    path,
+                    "spoken text must be one trimmed line",
+                )
+            )
+        if _SPOKEN_URL.search(turn.text):
+            errors.append(_issue("spoken_url", path, "spoken text cannot contain a URL"))
+        if _SPOKEN_CITATION.search(turn.text):
+            errors.append(
+                _issue("spoken_citation", path, "spoken text cannot contain citation syntax")
+            )
+        if (
+            profile.performance.prohibit_fake_personal_experience
+            and _FAKE_PERSONAL_EXPERIENCE.search(turn.text)
+        ):
+            errors.append(
+                _issue(
+                    "fake_personal_experience",
+                    path,
+                    "spoken text cannot claim fabricated host experience",
+                )
+            )
+        if turn.performance_cue is not None:
+            performance_count += 1
+            cue_path = f"/turns/{index}/performance_cue"
+            if turn.performance_cue != turn.performance_cue.strip() or any(
+                character in turn.performance_cue for character in "[]\r\n"
+            ):
+                errors.append(
+                    _issue(
+                        "invalid_performance_cue",
+                        cue_path,
+                        "performance cues must be trimmed text without brackets or newlines",
+                    )
+                )
+        if turn.turn_type == "reaction":
+            reaction_count += 1
+        if turn.speaker == consecutive_speaker:
+            consecutive_count += 1
+        else:
+            consecutive_speaker = turn.speaker
+            consecutive_count = 1
+        if consecutive_count > 3 and not warned_consecutive:
+            warnings.append(
+                _issue(
+                    "consecutive_host_turns",
+                    f"/turns/{index}",
+                    "one host has more than three consecutive turns",
+                )
+            )
+            warned_consecutive = True
+
+    if profile.performance.use_audio_tags == "never" and performance_count:
+        errors.append(
+            _issue(
+                "performance_cue_forbidden",
+                "/turns",
+                "the profile prohibits performance cues",
+            )
+        )
+    elif profile.performance.use_audio_tags == "sparingly" and performance_count > max(
+        1, len(script.turns) // 4
+    ):
+        warnings.append(
+            _issue(
+                "excessive_performance_tags",
+                "/turns",
+                "performance cues appear on more than a sparse share of turns",
+            )
+        )
+    if reaction_count > max(2, len(script.turns) // 5):
+        warnings.append(
+            _issue(
+                "excessive_reaction_turns",
+                "/turns",
+                "reaction-only turns exceed the conversational warning threshold",
+            )
+        )
+    total_words = sum(word_counts.values())
+    if total_words and any(count / total_words > 0.70 for count in word_counts.values()):
+        warnings.append(
+            _issue(
+                "host_word_share",
+                "/turns",
+                "one host speaks more than 70 percent of scripted words",
+            )
+        )
+    combined_text = " ".join(all_text).casefold()
+    if any(combined_text.count(phrase) > 1 for phrase in _STOCK_PHRASES):
+        warnings.append(
+            _issue(
+                "repeated_stock_phrase",
+                "/turns",
+                "a discouraged stock phrase is repeated",
+            )
+        )
+    for segment in plan.segments:
+        segment_turns = [
+            turn for turn in script.turns if turn.planned_segment_id == segment.segment_id
+        ]
+        if not any(turn.turn_type in {"analysis", "outro"} for turn in segment_turns):
+            warnings.append(
+                _issue(
+                    "missing_segment_takeaway",
+                    "/turns",
+                    f"planned segment {segment.segment_id!r} has no analysis or outro takeaway",
+                )
+            )
+    preferred_tolerance = max(30, round(plan.planned_duration_seconds * 0.15))
+    if abs(script.estimated_duration_seconds - plan.planned_duration_seconds) > preferred_tolerance:
+        warnings.append(
+            _issue(
+                "script_duration_preferred",
+                "/estimated_duration_seconds",
+                "script duration differs materially from the editorial plan",
+            )
+        )
+
+    fatal_codes = set(profile.performance.fatal_warning_codes)
+    promoted = [warning for warning in warnings if warning.code in fatal_codes]
+    remaining = [warning for warning in warnings if warning.code not in fatal_codes]
+    return tuple(sorted((*errors, *promoted))), tuple(sorted(remaining))
+
+
+def render_transcript(script: EpisodeScript) -> str:
+    """Project the exact validated spoken turns into deterministic TTS text."""
+    lines: list[str] = []
+    for turn in script.turns:
+        cue = f"[{turn.performance_cue}] " if turn.performance_cue is not None else ""
+        lines.append(f"{turn.speaker}: {cue}{turn.text}")
+    return "\n".join(lines) + "\n"
+
+
+def validate_transcript_projection(
+    script: EpisodeScript,
+    transcript: str,
+) -> tuple[ValidationIssue, ...]:
+    """Require the transcript to equal the deterministic structured-script projection."""
+    if not transcript.strip():
+        return (_issue("empty_transcript", "/transcript", "transcript cannot be empty"),)
+    if transcript != render_transcript(script):
+        return (
+            _issue(
+                "transcript_mismatch",
+                "/transcript",
+                "transcript must exactly match the structured-script projection",
+            ),
+        )
+    return ()
+
+
+def _contains_spoken_phrase(spoken: str, required: str) -> bool:
+    def normalize(value: str) -> str:
+        return " ".join(re.findall(r"\w+", value.casefold()))
+
+    return normalize(required) in normalize(spoken)

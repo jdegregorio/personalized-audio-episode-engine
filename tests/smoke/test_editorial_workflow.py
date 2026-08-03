@@ -9,6 +9,7 @@ from audio_engine.lifecycle import load_run_state
 from scripts.init_run import main as init_main
 from scripts.record_collection import main as record_collection_main
 from scripts.record_editorial_plan import main as record_editorial_main
+from scripts.record_script import main as record_script_main
 from scripts.select_collection_method import main as select_main
 
 FIXTURE_ROOT = Path(__file__).parents[1] / "fixtures" / "artifacts" / "valid"
@@ -29,7 +30,7 @@ _SETTING_NAMES = {
 
 
 @pytest.mark.smoke
-def test_documented_editorial_path_records_and_resumes(
+def test_documented_editorial_and_script_path_records_and_resumes(
     synthetic_collection_profile_path: Path,
     settings_values: dict[str, str],
     monkeypatch: pytest.MonkeyPatch,
@@ -63,3 +64,18 @@ def test_documented_editorial_path_records_and_resumes(
     assert state.current_stage == "script"
     assert state.plan_validation is not None
     assert state.plan_validation.status == "valid"
+
+    script = json.loads((FIXTURE_ROOT / "episode-script.json").read_text(encoding="utf-8"))
+    (run_directory / "episode-script.json").write_text(json.dumps(script), encoding="utf-8")
+    assert record_script_main(["--run", str(run_directory)]) == 0
+    script_accepted = json.loads(capsys.readouterr().out)
+    assert record_script_main(["--run", str(run_directory)]) == 0
+    script_resumed = json.loads(capsys.readouterr().out)
+    state = load_run_state(run_directory / "state.json")
+
+    assert script_accepted["status"] == "accepted"
+    assert script_resumed["status"] == "already_valid"
+    assert state.current_stage == "tts"
+    assert state.script_validation is not None
+    assert state.script_validation.status == "valid"
+    assert state.artifacts["transcript"].path == "transcript.txt"

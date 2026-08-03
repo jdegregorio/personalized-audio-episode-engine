@@ -57,6 +57,34 @@ def test_profile_rejects_duplicate_editorial_identifiers(
         validate_profile_data(example_profile_data)
 
 
+def test_profile_rejects_duplicate_fatal_script_warnings(
+    example_profile_data: dict[str, Any],
+) -> None:
+    example_profile_data["performance"]["fatal_warning_codes"] = [
+        "host_word_share",
+        "host_word_share",
+    ]
+
+    with pytest.raises(ProfileError, match="fatal warning codes must be unique"):
+        validate_profile_data(example_profile_data)
+
+
+def test_profile_rejects_unknown_fatal_script_warning(
+    example_profile_data: dict[str, Any],
+) -> None:
+    example_profile_data["performance"]["fatal_warning_codes"] = ["unknown_warning"]
+
+    with pytest.raises(ProfileError, match="performance.fatal_warning_codes"):
+        validate_profile_data(example_profile_data)
+
+
+def test_profile_requires_distinct_host_names(example_profile_data: dict[str, Any]) -> None:
+    example_profile_data["hosts"]["male"]["name"] = example_profile_data["hosts"]["female"]["name"]
+
+    with pytest.raises(ProfileError, match="configured host names must be distinct"):
+        validate_profile_data(example_profile_data)
+
+
 def test_profile_rejects_unsupported_or_unquoted_version(
     example_profile_data: dict[str, Any],
 ) -> None:

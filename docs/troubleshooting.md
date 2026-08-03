@@ -29,3 +29,13 @@ If collection is already valid, `record_collection.py` returns `already_valid` a
 - `unsupported_exclusion_reason`: use a code declared by the active profile. Change profile policy only through a normal reviewed code change, never mid-run.
 - `failed` after plan attempt 2: the run is terminal and its lease is released. Preserve the workspace, use the latest report to correct inputs/instructions, and start a new owning run.
 - `already_valid`: profile, dossier, plan, and report hashes revalidated. Do not re-plan.
+
+## Script validation
+
+- `repair_required`: open `script-validation-attempt-1.json`, correct only the listed schema, lineage, spoken-policy, duration, speaker, or fatal-warning defects in `episode-script.json`, then rerun `record_script.py` once. Do not hand-edit `transcript.txt`.
+- `missing_required_attribution` or `missing_qualification`: preserve the dossier wording in one or more turns that reference that claim. Do not weaken the dossier to fit drafted prose.
+- `missing_disagreement_treatment`: explicitly preserve the documented conflict or uncertainty in a turn belonging to that planned segment.
+- `spoken_url`, `spoken_citation`, or `fake_personal_experience`: rewrite the host sentence naturally without reading links, citation markers, or invented firsthand activity aloud.
+- Balance, reaction, performance-tag, stock-phrase, takeaway, or preferred-duration warnings are visible quality signals. Repair them when useful; they block acceptance only when the active profile lists that code in `performance.fatal_warning_codes`.
+- `failed` after script attempt 2: the run is terminal and its lease is released. Preserve the workspace, use the latest report to correct the source/profile/instructions in a normal change, and start a new owning run.
+- `already_valid`: every profile/dossier/plan/script/transcript/report hash and current semantic relationship revalidated. Do not rewrite dialogue.

@@ -8,9 +8,9 @@ The approved scope and sequence live in [`plan.md`](../plan.md). This page recor
 | 02 | Configuration, profile loading, path safety, and doctor | Implemented on `main` |
 | 03 | Artifact contracts, validators, and fixtures | Implemented on `main` |
 | 04 | Run lifecycle, state, leases, and invalidation | Implemented on `main` |
-| 05 | Capability-aware collection skill | Implemented in PR 05 |
-| 06 | Editorial planning | Implemented in PR 06 |
-| 07 | Grounded two-host scripting | Not started |
+| 05 | Capability-aware collection skill | Implemented on `main` |
+| 06 | Editorial planning | Implemented on `main` |
+| 07 | Grounded two-host scripting | Implemented in PR 07 |
 | 08 | TTS preparation | Not started |
 | 09 | Gemini rendering and voice selection | Not started |
 | 10 | Audio assembly | Not started |
@@ -24,7 +24,7 @@ The approved scope and sequence live in [`plan.md`](../plan.md). This page recor
 - Ruff, strict Pyright, pytest markers, coverage, isolated wheel import, integrity, portability, dependency-review, and CodeQL feedback.
 - Credential-free environment template and repository/runtime ignore policy.
 - Worktree-safe setup, Cloudflare bootstrap, CI, operations, and security-boundary documentation.
-- Pull-request evidence template and the canonical one-or-two-round Codex review/disposition gate.
+- Pull-request evidence template plus correctness and simplification review records; the current accelerated-MVP review policy is in `CONTRIBUTORS.md`.
 
 Workflow mutation, research, speech, audio processing, publication behavior, and scheduling remain deliberately unavailable until their ordered implementation PRs.
 
@@ -64,3 +64,11 @@ Workflow mutation, research, speech, audio processing, publication behavior, and
 - One recorder that binds prompt and input hashes, validates complete selected/excluded dispositions plus profile-owned sections, hosts, reason codes, bounds, and disagreement notes, and advances only valid plans.
 - Durable plan validation reports, one repair, terminal exhaustion, verified resume, and hash-based invalidation when accepted dossier or plan bytes change.
 - Ordinary, shorter-useful, optional-empty-section, source-disagreement, and arbitrary non-news golden-plan coverage.
+
+## PR 07 delivered surface
+
+- A distinct scriptwriting skill phase that consumes the complete profile, dossier, and plan without a fact-check model, scoring engine, or provider integration.
+- Deterministic validation for plan/candidate/claim/support/source lineage, required attribution and qualifications, disagreement, exactly two configured speakers/voices, spoken-text safety, duration, and TTS limits.
+- Machine-readable conversational warnings for host balance, consecutive/reaction turns, performance cues, stock phrases, missing takeaways, and preferred-duration misses, with optional profile-owned fatal promotion.
+- Durable script validation reports, one repair, terminal exhaustion, verified resume, downstream invalidation, and exact transcript projection with recorded hashes.
+- Balanced, imbalanced, disputed-source, arbitrary-topic, and malicious-text golden coverage plus fixture end-to-end smoke through the `tts` stage.
