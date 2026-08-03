@@ -70,11 +70,14 @@ Result:
 
 ## Codex auto-review disposition
 
-- [ ] Codex auto-review visibly completed for the final SHA.
-- [ ] Every review comment/thread was examined.
-- [ ] Actionable feedback was implemented and verified, or received a concrete recorded rationale.
-- [ ] All threads are resolved or explicitly dismissed after rationale.
-- [ ] No stale final-SHA review, pending change request, failed required check, or unresolved thread remains.
+- Round 1 reviewed commit SHA:
+- Round 2 reviewed commit SHA, or `not required`:
+- Deferred findings and owning `plan.md` items, or `none`:
+- [ ] At least one and no more than two GitHub Codex review rounds completed.
+- [ ] Every finding received a recorded implement, rationale, or plan-deferral disposition.
+- [ ] All threads are resolved after their dispositions.
+- [ ] If round 2 caused later changes, affected checks plus final correctness and simplification reviews cover the final SHA; no third Codex review was requested.
+- [ ] No pending change request, failed required check, undispositioned finding, or unresolved thread remains.
 
 ## Merge readiness
 

@@ -165,7 +165,7 @@ The implementation must preserve these boundaries throughout the sequence:
 
 ## 2. Delivery contract
 
-[`CONTRIBUTORS.md`](CONTRIBUTORS.md) is the canonical worktree, SDLC, testing, documentation, review, and merge policy for every PR in this sequence. In particular, every PR uses a fresh worktree and may not merge until the configured Codex auto-review has completed and every comment is resolved or adequately dismissed with a recorded rationale.
+[`CONTRIBUTORS.md`](CONTRIBUTORS.md) is the canonical worktree, SDLC, testing, documentation, review, and merge policy for every PR in this sequence. In particular, every PR uses a fresh worktree and receives one or at most two GitHub Codex review rounds. Every finding must be implemented, dismissed with recorded rationale, or deferred by adding explicit scope and acceptance evidence to its owning future PR below; every thread is then resolved. Changes after round two receive final checks plus correctness and simplification review without triggering a third Codex round.
 
 ## 3. Single MVP PR sequence
 
@@ -231,7 +231,7 @@ Each PR's listed acceptance criteria are cumulative with the definition of done 
 - A direct feature push to protected `main` is disallowed after repository settings are applied.
 - No workflow receives production secrets on ordinary `pull_request` events.
 - The documented worktree, correctness review, simplification review, test, release, rollback, and secret-handling rules are actionable.
-- The PR template prevents merge before Codex auto-review completes and every comment is resolved or adequately dismissed, and records the reviewed commit SHA, correctness/simplification findings, retained-complexity rationale, and final pass decisions.
+- The PR template enforces the one-or-two-round Codex review limit, requires an implement/rationale/plan-deferral disposition for every finding, and records reviewed commit SHAs, correctness/simplification findings, retained-complexity rationale, and final pass decisions.
 
 **PRD traceability:** TR-054; NFR-050–054, NFR-060–061, NFR-070–071, NFR-090–094; sections 19, 25, 26, and 28.
 

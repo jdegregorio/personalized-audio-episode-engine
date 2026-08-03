@@ -24,6 +24,6 @@ The approved scope and sequence live in [`plan.md`](../plan.md). This page recor
 - Ruff, strict Pyright, pytest markers, coverage, isolated wheel import, integrity, portability, dependency-review, and CodeQL feedback.
 - Credential-free environment template and repository/runtime ignore policy.
 - Worktree-safe setup, Cloudflare bootstrap, CI, operations, and security-boundary documentation.
-- Pull-request evidence template and preserved contributor/Codex review gates.
+- Pull-request evidence template and the canonical one-or-two-round Codex review/disposition gate.
 
 Product schemas, workflow state, research, speech, audio processing, publication, and scheduling remain deliberately unavailable until their ordered implementation PRs.

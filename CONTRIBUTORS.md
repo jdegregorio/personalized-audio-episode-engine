@@ -83,15 +83,20 @@ Reject unrelated churn, speculative frameworks, duplicated or overly nested logi
 
 ## Codex auto-review merge gate
 
-Open PRs as ready for review so the configured Codex auto-review can run. A PR must not merge until:
+Open PRs as ready for review so the configured GitHub Codex review can run. Use no more than two Codex review rounds per PR:
 
-1. The Codex auto-review has visibly completed for the PR.
-2. Every review comment and thread has been examined.
-3. Actionable feedback is implemented and verified, or the contributor replies with a concrete rationale explaining why no change is appropriate.
-4. Addressed threads are resolved; non-actionable feedback is resolved or dismissed only after that rationale is recorded. Silent dismissal is not adequate.
-5. No unresolved review thread, pending change request, failed required check, or stale final-SHA review remains.
+1. Run the initial review after the scoped implementation and applicable checks are ready.
+2. If that review causes changes or a rereview would materially reduce risk, run one final rereview. Do not request a third Codex review.
 
-If review feedback changes the branch, rerun affected local and GitHub checks and ensure the final commit receives the required review coverage. When GitHub supports enforcement, the `main` ruleset should require conversation resolution; this written gate remains mandatory even when repository settings cannot enforce every part automatically.
+Examine every comment and thread from those rounds and record one explicit disposition:
+
+- Implement and verify findings that block the current scope, acceptance criteria, correctness, security, privacy, durability, or release safety.
+- Resolve or dismiss immaterial, incorrect, or non-actionable findings only after replying with a concrete rationale.
+- Defer valid but non-blocking work only by updating `plan.md` in the same PR with the owning future PR, expected behavior, and acceptance evidence, then link that disposition in the thread.
+
+Resolve every thread after its disposition; silent dismissal is not adequate. If the second review causes further changes, rerun affected local and GitHub checks plus the final correctness and simplification reviews, but do not request a third Codex review. A Codex review that predates those bounded follow-up changes is therefore intentional and is not a stale-review blocker. No PR may merge with a pending change request, failed required check, or undispositioned review finding.
+
+The `main` ruleset requires conversation resolution. This written two-round gate remains mandatory even when repository settings cannot enforce the review-round limit or quality of each disposition.
 
 ## Documentation and release discipline
 
@@ -106,7 +111,7 @@ A PR is complete only when:
 - Its scoped requirements and acceptance criteria pass.
 - Affected documentation matches the implementation.
 - Applicable local, CI, smoke, UAT, failure, and recovery checks pass.
-- Correctness, simplification, and Codex auto-review gates pass for the final SHA.
-- Every review comment is resolved or adequately dismissed under the policy above.
+- Correctness and simplification reviews cover the final SHA; the Codex review gate is complete within its two-round limit.
+- Every Codex finding has a recorded implement, rationale, or plan-deferral disposition, and every thread is resolved.
 - No secret, runtime artifact, live-news dependency, source-specific client, unrelated refactor, or deferred documentation is included.
 - The branch is current with its merged predecessor and is safe to squash-merge.

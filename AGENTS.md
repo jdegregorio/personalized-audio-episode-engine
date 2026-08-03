@@ -8,7 +8,7 @@ Before changing this repository, read and follow:
 
 Use a fresh worktree and `feature/` branch for every PR. Keep changes within the declared scope and update affected documentation in the same PR.
 
-Never merge a PR before the configured Codex auto-review has completed and every review comment has been implemented and resolved, or answered with a concrete rationale and explicitly resolved or dismissed. Re-run affected checks and review after changes so the final commit is covered.
+Never merge before at least one configured GitHub Codex review round completes. Use at most two Codex review rounds per PR: the initial review and, when useful, one rereview after changes. Examine every finding, then implement it, dismiss it with concrete rationale, or defer valid non-blocking work to an explicit owning item in `plan.md`; record the disposition and resolve the thread. After round two, do not request another Codex review. Re-run affected checks and perform final correctness and simplification reviews for any later changes.
 
 ## Production workflow constraints
 

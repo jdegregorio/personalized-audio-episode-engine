@@ -33,6 +33,7 @@ Do not add overlapping rulesets, CODEOWNERS, a merge queue, deployment reviewers
 
 - Reproduce a failed check locally with the exact documented command.
 - Fix the smallest owning defect and rerun affected local checks.
-- Push the fix and wait for all required checks and Codex review on the new final SHA.
+- Push the fix and wait for all required checks. Request at most one Codex rereview after the initial round.
+- If round two causes changes, disposition its findings, rerun affected checks and final correctness/simplification reviews, and do not request a third Codex review.
 - Do not bypass a red check by weakening a test or marking a required job optional.
 - If a platform outage prevents a required check from completing, wait or rerun it; do not merge without evidence.
