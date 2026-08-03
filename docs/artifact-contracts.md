@@ -11,7 +11,7 @@ Pipeline handoffs are strict JSON files with `contract_version: "1.0"`. The Pyda
 | `plan` | [`editorial-plan-v1.0.schema.json`](../schemas/editorial-plan-v1.0.schema.json) | Ordered candidate selection, claim requirements, treatment, exclusions, and host intent |
 | `script` | [`episode-script-v1.0.schema.json`](../schemas/episode-script-v1.0.schema.json) | Two-speaker turns, claim lineage, planned-segment references, and TTS boundaries |
 | `tts-manifest` | [`tts-manifest-v1.0.schema.json`](../schemas/tts-manifest-v1.0.schema.json) | Ordered prompt references, stable host/direction configuration, token limits, and exact turn coverage |
-| `published-episode` | [`published-episode-v1.0.schema.json`](../schemas/published-episode-v1.0.schema.json) | Validated publication metadata and asset references; upload behavior arrives in PR 11 |
+| `published-episode` | [`published-episode-v1.0.schema.json`](../schemas/published-episode-v1.0.schema.json) | Validated publication metadata and four public asset references |
 | `run-state` | [`run-state-v1.0.schema.json`](../schemas/run-state-v1.0.schema.json) | Minimal operational recovery state, provenance, artifact hashes, and publication outcome |
 
 Unknown required versions fail with `unsupported_version`. JSON scalar types are strict, while ISO date and timezone-aware datetime strings retain their schema-defined parsing. Adding compatible optional fields requires an intentional model/schema update and contract tests; incompatible changes require a new contract version. PR 04 adds optional episode/engine provenance fields to v1.0 for compatibility, while every newly initialized run populates both and validates the episode key against the profile/local date.
@@ -53,6 +53,8 @@ During TTS preparation, `prepare_tts.py` revalidates that accepted script bounda
 During rendering, `state.json.tts_rendering` records ordered successful segments with prompt/raw/WAV hashes, provider media type, PCM/WAV parameters, duration, attempt count, and completion time. Each success is durable before the next request. A failed status names only the missing segment and redacted recovery guidance; a complete status contains every manifest segment and advances to `audio`.
 
 During assembly, `state.json.final_audio_validation` is valid only with the matching `artifacts.final_audio` reference and complete `audio/mpeg`/MP3, duration, sample-rate, channel, byte, and decode metadata. The canonical path is `episode.mp3`. A valid result advances to `publication`; an invalid result contains no publishable artifact reference and leaves the completed segment state intact for retry.
+
+During initialization resume and finalization, the engine rechecks the current profile hash plus every file referenced by state, including validation reports, manifest prompts, completed raw/WAV segments, final audio, show notes, and published metadata. Resume preserves the existing run ID and restores only a compatible failed/crash-interrupted workspace. Final success is represented within the existing v1.0 run-state contract as `status: completed`, `current_stage: finalized`, `last_completed_valid_stage: finalized`, and a completion timestamp; no second orchestration artifact or schema is introduced.
 
 ## Synthetic fixtures
 

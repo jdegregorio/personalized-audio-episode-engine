@@ -15,12 +15,13 @@ Process exactly one enabled episode profile through the repository's durable, va
 4. Stop successfully when initialization reports `no_op`; do not inspect, create, or mutate another owner's workspace.
 5. Inspect authoritative `state.json` and load only the reference for its current stage.
 6. For `collection`, read [references/evidence-collection.md](references/evidence-collection.md).
-7. For `editorial`, start a distinct editorial phase and read [references/editorial-planning.md](references/editorial-planning.md). Later-stage detail remains unavailable until its owning implementation PR lands.
+7. For `editorial`, start a distinct editorial phase and read [references/editorial-planning.md](references/editorial-planning.md).
 8. For `script`, start a distinct script phase and read [references/scriptwriting.md](references/scriptwriting.md).
 9. For `tts` without `tts_preparation`, read [references/tts-preparation.md](references/tts-preparation.md) and prepare deterministic provider inputs.
 10. For `tts` with valid preparation, read [references/tts-rendering.md](references/tts-rendering.md) and render only missing segments.
 11. For `audio`, read [references/audio-assembly.md](references/audio-assembly.md) and assemble only the validated rendered segments.
 12. For `publication`, read [references/publication.md](references/publication.md), publish only after final-audio revalidation, and resume publication without rerendering.
+13. After successful publication, read [references/finalization.md](references/finalization.md) and finalize before reporting success. If an invocation must stop while state is still `running`, use the same reference to persist failure and release ownership before reporting recovery guidance.
 
 ## Non-negotiable rules
 

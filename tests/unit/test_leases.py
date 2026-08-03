@@ -78,6 +78,28 @@ def test_lease_acquire_noop_refresh_and_owner_only_release(tmp_path: Path) -> No
     assert not manager.lease_path(acquired.lease.episode_key).exists()
 
 
+def test_new_owner_can_atomically_transfer_lease_to_resumed_run(tmp_path: Path) -> None:
+    runtime = tmp_path / "runtime"
+    runtime.mkdir()
+    current = [datetime(2026, 1, 15, 15, 0, tzinfo=UTC)]
+    manager = LeaseManager(
+        runtime,
+        maximum_age=timedelta(hours=1),
+        clock=lambda: _clock(current),
+    )
+    episode_key = "synthetic-lifecycle:2026-01-15"
+    manager.acquire(episode_key, "provisional_run")
+
+    current[0] += timedelta(minutes=1)
+    transferred = manager.transfer(episode_key, "provisional_run", "resumed_run")
+
+    assert transferred.run_id == "resumed_run"
+    assert transferred.last_heartbeat_at == current[0]
+    with pytest.raises(LeaseError, match="another run"):
+        manager.refresh(episode_key, "provisional_run")
+    manager.release(episode_key, "resumed_run")
+
+
 def test_contender_retries_lease_visible_before_creator_locks(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,

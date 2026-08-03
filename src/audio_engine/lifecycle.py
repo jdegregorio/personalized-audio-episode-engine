@@ -83,7 +83,7 @@ class RunWorkspace:
 
 @dataclass(frozen=True)
 class InitializationResult:
-    result: Literal["initialized", "no_op"]
+    result: Literal["initialized", "resumed", "no_op"]
     episode_key: str
     run_id: str | None
     run_directory: Path | None
@@ -97,6 +97,32 @@ class InitializationResult:
             "run_directory": str(self.run_directory) if self.run_directory else None,
             "run_id": self.run_id,
         }
+
+
+@dataclass(frozen=True)
+class FinalizationResult:
+    status: Literal["completed", "already_completed", "failed"]
+    episode_key: str
+    run_id: str
+    run_directory: Path
+    summary_path: Path
+    redacted_locations: tuple[str, ...]
+
+    def to_dict(self) -> dict[str, object]:
+        return {
+            "episode_key": self.episode_key,
+            "redacted_locations": list(self.redacted_locations),
+            "run_directory": str(self.run_directory),
+            "run_id": self.run_id,
+            "status": self.status,
+            "summary_path": str(self.summary_path),
+        }
+
+
+@dataclass(frozen=True)
+class _ExistingRun:
+    workspace: RunWorkspace
+    state: RunState
 
 
 @dataclass(frozen=True)
@@ -131,6 +157,24 @@ def _downstream_of(artifact_key: str) -> frozenset[str]:
 
 
 _FINAL_OUTPUT_KEYS = frozenset({"final_audio", "published_episode"})
+_STRUCTURED_RESUME_ARTIFACTS = frozenset(
+    {
+        "collection-request",
+        "evidence",
+        "plan",
+        "script",
+        "tts-manifest",
+        "published-episode",
+    }
+)
+_NON_RESUMABLE_FAILURE_CODES = frozenset(
+    {
+        "collection_validation_failed",
+        "initialization_failed",
+        "plan_validation_failed",
+        "script_validation_failed",
+    }
+)
 _ARTIFACT_RULES: dict[str, _ArtifactStageRule] = {
     "collection_request": _ArtifactStageRule(
         "collection-request",
@@ -229,13 +273,54 @@ def initialize_run(
         return InitializationResult("no_op", episode_key, None, None)
 
     workspace: RunWorkspace | None = None
+    active_run_id = run_id
     try:
-        with manager.mutation(episode_key, run_id):
+        existing = _select_existing_run(
+            settings.runtime_root,
+            profile,
+            resolved_profile_path,
+            episode_date=episode_date,
+            allowed_input_roots=allowed_profile_roots,
+        )
+        if existing is not None and existing.state.status in {"completed", "no_op"}:
+            manager.release(episode_key, run_id)
+            return InitializationResult(
+                "no_op",
+                episode_key,
+                None,
+                None,
+                acquisition.recovered,
+            )
+        if existing is not None:
+            manager.transfer(episode_key, run_id, existing.state.run_id)
+            active_run_id = existing.state.run_id
+            workspace = existing.workspace
+            with manager.mutation(episode_key, active_run_id):
+                current = load_run_state(workspace.state_path)
+                resumed = _validated_state_update(
+                    current,
+                    {
+                        "completed_at": None,
+                        "failure": None,
+                        "status": "running",
+                    },
+                )
+                _write_run_state(workspace, resumed)
+                _write_summary(workspace, resumed)
+            return InitializationResult(
+                "resumed",
+                episode_key,
+                active_run_id,
+                workspace.run_directory,
+                acquisition.recovered,
+            )
+
+        with manager.mutation(episode_key, active_run_id):
             run_directory = _create_run_directory(
                 settings.runtime_root,
                 episode_date,
                 profile.id,
-                run_id,
+                active_run_id,
             )
             title = profile.identity.title_template.replace("{date}", episode_date.isoformat())
             workspace = RunWorkspace(run_directory, title, episode_key)
@@ -243,14 +328,14 @@ def initialize_run(
             _write_summary(workspace, state)
             request = build_collection_request(
                 profile,
-                run_id=run_id,
+                run_id=active_run_id,
                 episode_date=episode_date,
                 now=now,
                 run_directory=run_directory,
             )
             state, _ = _prepare_stage_artifact_owned(
                 workspace,
-                run_id,
+                active_run_id,
                 artifact_key="collection_request",
                 rule=_ARTIFACT_RULES["collection_request"],
                 data=request.model_dump(mode="json"),
@@ -262,10 +347,10 @@ def initialize_run(
         terminal_persisted = False
         if workspace is None:
             with suppress(LeaseError):
-                manager.release(episode_key, run_id)
+                manager.release(episode_key, active_run_id)
         else:
             try:
-                with manager.mutation(episode_key, run_id):
+                with manager.mutation(episode_key, active_run_id):
                     failed_base = (
                         load_run_state(workspace.state_path)
                         if workspace.state_path.is_file()
@@ -291,7 +376,7 @@ def initialize_run(
                 terminal_persisted = False
         if terminal_persisted:
             with suppress(LeaseError):
-                manager.release(episode_key, run_id)
+                manager.release(episode_key, active_run_id)
         raise LifecycleError(
             "run initialization failed; inspect the run summary or recover the stale lease"
         ) from None
@@ -299,10 +384,154 @@ def initialize_run(
     return InitializationResult(
         "initialized",
         episode_key,
-        run_id,
+        active_run_id,
         workspace.run_directory,
         acquisition.recovered,
     )
+
+
+def _select_existing_run(
+    runtime_root: Path,
+    profile: EpisodeProfile,
+    profile_path: Path,
+    *,
+    episode_date: date,
+    allowed_input_roots: Sequence[Path],
+) -> _ExistingRun | None:
+    runs_directory = runtime_root / "runs" / episode_date.isoformat() / profile.id
+    if not runs_directory.is_dir():
+        return None
+    candidates: list[_ExistingRun] = []
+    for state_path in runs_directory.glob("*/state.json"):
+        try:
+            state = load_run_state(state_path)
+            if (
+                state.episode_key != canonical_episode_key(profile.id, episode_date)
+                or state.profile_id != profile.id
+                or state.episode_date != episode_date
+            ):
+                raise LifecycleError("existing run identity does not match its runtime path")
+            profile_reference = state.artifacts.get("profile")
+            if (
+                state.profile_version != profile.version
+                or profile_reference is None
+                or profile_reference.artifact_type != "profile"
+                or Path(profile_reference.path) != profile_path
+                or profile_reference.sha256 != sha256_file(profile_path)
+            ):
+                continue
+            if (
+                state.status == "failed"
+                and state.failure is not None
+                and state.failure.code in _NON_RESUMABLE_FAILURE_CODES
+            ):
+                continue
+            if state.status in {"completed", "no_op"} and (
+                state.current_stage != "finalized"
+                or state.last_completed_valid_stage != "finalized"
+                or state.final_audio_validation.status != "valid"
+                or state.publication.status != "published"
+            ):
+                raise LifecycleError("completed run state is not safely finalized")
+            if state.status == "running" and state.current_stage == "finalized":
+                raise LifecycleError("running state cannot already be finalized")
+            title = profile.identity.title_template.replace("{date}", episode_date.isoformat())
+            workspace = RunWorkspace(state_path.parent, title, state.episode_key)
+            if not _workspace_artifacts_are_valid(
+                workspace,
+                state,
+                profile_path=profile_path,
+                allowed_input_roots=allowed_input_roots,
+            ):
+                raise LifecycleError("existing run artifacts are not safe to resume")
+            candidates.append(_ExistingRun(workspace, state))
+        except LifecycleError:
+            raise
+        except (OSError, SafetyError, StorageError, ValueError) as error:
+            raise LifecycleError("existing run state is unreadable or unsafe") from error
+    completed = [item for item in candidates if item.state.status in {"completed", "no_op"}]
+    eligible = completed or [
+        item for item in candidates if item.state.status in {"running", "failed"}
+    ]
+    return max(eligible, key=lambda item: (item.state.started_at, item.state.run_id), default=None)
+
+
+def _workspace_artifacts_are_valid(
+    workspace: RunWorkspace,
+    state: RunState,
+    *,
+    profile_path: Path,
+    allowed_input_roots: Sequence[Path],
+) -> bool:
+    profile_reference = state.artifacts.get("profile")
+    if (
+        profile_reference is None
+        or profile_reference.artifact_type != "profile"
+        or Path(profile_reference.path) != profile_path
+        or sha256_file(profile_path) != profile_reference.sha256
+    ):
+        return False
+
+    references = list(state.artifacts.values())
+    for validation in (
+        state.collection_validation,
+        state.plan_validation,
+        state.script_validation,
+    ):
+        if validation is not None:
+            references.append(validation.report)
+    if state.tts_preparation is not None:
+        references.extend(
+            (
+                state.tts_preparation.episode_script,
+                state.tts_preparation.transcript,
+                state.tts_preparation.manifest,
+            )
+        )
+    if state.tts_rendering is not None:
+        for segment in state.tts_rendering.completed_segments:
+            references.extend((segment.prompt, segment.raw_audio, segment.audio))
+
+    seen: set[tuple[str, str, str]] = set()
+    manifest: TtsManifest | None = None
+    for reference in references:
+        identity = (reference.artifact_type, reference.path, reference.sha256)
+        if identity in seen or reference.artifact_type == "profile":
+            continue
+        seen.add(identity)
+        path = Path(reference.path)
+        if path.is_absolute():
+            return False
+        resolved = resolve_within_roots(
+            workspace.run_directory / path,
+            [workspace.run_directory],
+            must_exist=True,
+        )
+        if sha256_file(resolved) != reference.sha256:
+            return False
+        if reference.artifact_type in _STRUCTURED_RESUME_ARTIFACTS:
+            artifact, report = load_artifact_file(
+                reference.artifact_type,
+                resolved,
+                allowed_input_roots=allowed_input_roots,
+                allowed_output_roots=[workspace.run_directory],
+            )
+            if not report.valid or artifact is None:
+                return False
+            if reference.artifact_type == "tts-manifest":
+                if not isinstance(artifact, TtsManifest):
+                    return False
+                manifest = artifact
+    if manifest is not None:
+        for segment in manifest.segments:
+            prompt_path = resolve_within_roots(
+                workspace.run_directory / segment.prompt.path,
+                [workspace.run_directory],
+                must_exist=True,
+            )
+            if sha256_file(prompt_path) != segment.prompt.sha256:
+                return False
+    return True
 
 
 def build_collection_request(
@@ -1687,6 +1916,187 @@ def mark_run_failed(
     except LeaseError as error:
         raise LifecycleError(str(error)) from None
     return failed
+
+
+def finalize_run(
+    run_directory: Path,
+    *,
+    settings: EngineSettings,
+    repo_root: Path,
+    clock: Callable[[], datetime] | None = None,
+) -> FinalizationResult:
+    """Persist terminal success or actionable failure before releasing ownership."""
+    now = _aware_utc((clock or (lambda: datetime.now(UTC)))())
+    allowed_profile_roots = [repo_root / "examples" / "profiles", *settings.input_roots]
+    try:
+        resolved_run = resolve_within_roots(
+            run_directory,
+            [settings.runtime_root],
+            must_exist=True,
+        )
+        state = load_run_state(resolved_run / "state.json")
+        profile_reference = state.artifacts.get("profile")
+        if profile_reference is None or profile_reference.artifact_type != "profile":
+            raise LifecycleError("run state has no valid profile reference")
+        profile_path = resolve_within_roots(
+            Path(profile_reference.path),
+            allowed_profile_roots,
+            must_exist=True,
+        )
+        profile = load_profile(profile_path, allowed_roots=allowed_profile_roots)
+        episode_date = state.episode_date
+        if episode_date is None:
+            raise LifecycleError("run state has no episode date")
+        title = profile.identity.title_template.replace("{date}", episode_date.isoformat())
+        workspace = RunWorkspace(resolved_run, title, state.episode_key)
+        manager = LeaseManager(
+            settings.runtime_root,
+            maximum_age=timedelta(seconds=settings.maximum_run_age_seconds),
+            clock=clock,
+        )
+    except (LeaseError, ProfileError, SafetyError, StorageError, ValueError) as error:
+        raise LifecycleError("run directory, state, or profile is invalid") from error
+
+    if state.status in {"completed", "no_op"}:
+        return _finalization_result("already_completed", workspace, state)
+    if state.status == "failed":
+        return _finalization_result("failed", workspace, state)
+
+    valid_artifacts = False
+    try:
+        valid_artifacts = _workspace_artifacts_are_valid(
+            workspace,
+            state,
+            profile_path=profile_path,
+            allowed_input_roots=allowed_profile_roots,
+        )
+    except (LifecycleError, OSError, SafetyError, StorageError, ValueError):
+        valid_artifacts = False
+    ready = (
+        valid_artifacts
+        and state.current_stage == "publication"
+        and state.last_completed_valid_stage == "publication"
+        and state.final_audio_validation.status == "valid"
+        and state.publication.status == "published"
+        and "show_notes" in state.artifacts
+        and "published_episode" in state.artifacts
+    )
+    if not ready:
+        failure = _finalization_failure(state, valid_artifacts=valid_artifacts)
+        failed = mark_run_failed(
+            workspace,
+            manager,
+            state.run_id,
+            failure=failure,
+            now=now,
+            sensitive_values=(
+                settings.r2_access_key_id.get_secret_value(),
+                settings.r2_secret_access_key.get_secret_value(),
+                str(settings.r2_endpoint_url),
+            ),
+            feed_token=settings.podcast_feed_token.get_secret_value(),
+        )
+        return _finalization_result("failed", workspace, failed)
+
+    try:
+        with manager.mutation(workspace.episode_key, state.run_id):
+            current = load_run_state(workspace.state_path)
+            if (
+                current.status != "running"
+                or current.current_stage != "publication"
+                or current.last_completed_valid_stage != "publication"
+                or current.final_audio_validation.status != "valid"
+                or current.publication.status != "published"
+            ):
+                raise LifecycleError("run changed before finalization")
+            completed = _validated_state_update(
+                current,
+                {
+                    "completed_at": now,
+                    "current_stage": "finalized",
+                    "last_completed_valid_stage": "finalized",
+                    "status": "completed",
+                },
+            )
+            _write_run_state(workspace, completed)
+            _write_summary(workspace, completed)
+        manager.release(workspace.episode_key, state.run_id)
+    except LeaseError as error:
+        raise LifecycleError(str(error)) from None
+    return _finalization_result("completed", workspace, completed)
+
+
+def _finalization_result(
+    status: Literal["completed", "already_completed", "failed"],
+    workspace: RunWorkspace,
+    state: RunState,
+) -> FinalizationResult:
+    return FinalizationResult(
+        status=status,
+        episode_key=state.episode_key,
+        run_id=state.run_id,
+        run_directory=workspace.run_directory,
+        summary_path=workspace.summary_path,
+        redacted_locations=tuple(state.publication.redacted_locations),
+    )
+
+
+def _finalization_failure(state: RunState, *, valid_artifacts: bool) -> RunFailure:
+    if not valid_artifacts:
+        return RunFailure(
+            stage=state.current_stage,
+            code="resume_validation_failed",
+            message="A persisted artifact required for safe resume is missing or invalid.",
+            recovery_guidance=(
+                "Inspect the run summary and recorded hashes, restore the valid artifact, then "
+                "reinitialize the same profile."
+            ),
+        )
+    if state.current_stage == "publication" and state.publication.status in {"deferred", "failed"}:
+        return RunFailure(
+            stage="publication",
+            code="publication_incomplete",
+            message=state.publication.message or "Publication did not complete.",
+            recovery_guidance=(
+                "Reinitialize the same profile, rerun publish_episode.py only, then finalize; "
+                "the validated audio must remain unchanged."
+            ),
+        )
+    if state.current_stage == "tts" and state.tts_rendering is not None:
+        return RunFailure(
+            stage="tts",
+            code="tts_incomplete",
+            message=state.tts_rendering.message or "TTS rendering did not complete.",
+            recovery_guidance=(
+                "Reinitialize the same profile and rerun render_audio.py; completed segments "
+                "remain reusable."
+            ),
+        )
+    if state.current_stage == "audio":
+        return RunFailure(
+            stage="audio",
+            code="audio_incomplete",
+            message=state.final_audio_validation.message or "Final audio did not validate.",
+            recovery_guidance=(
+                "Reinitialize the same profile and rerun assemble_audio.py without rerendering "
+                "validated segments."
+            ),
+        )
+    command = {
+        "collection": "record_collection.py",
+        "editorial": "record_editorial_plan.py",
+        "script": "record_script.py",
+        "tts": "prepare_tts.py",
+        "publication": "publish_episode.py",
+    }.get(state.current_stage, "the documented stage command")
+    return RunFailure(
+        stage=state.current_stage,
+        code=f"{state.current_stage}_incomplete",
+        message=f"The run stopped before the {state.current_stage} stage completed.",
+        recovery_guidance=(
+            f"Reinitialize the same profile, inspect state.json, and resume with {command}."
+        ),
+    )
 
 
 def load_run_state(path: Path) -> RunState:

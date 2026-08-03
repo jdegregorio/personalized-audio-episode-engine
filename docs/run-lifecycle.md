@@ -1,6 +1,6 @@
 # Run lifecycle and recovery
 
-Run initialization is the first mutating workflow boundary. It validates the profile and configuration, resolves the profile-local episode date, claims the episode lease, and only then creates a run workspace.
+Run initialization is the first mutating workflow boundary. It validates the profile and configuration, resolves the profile-local episode date, claims the episode lease, and only then selects a compatible workspace or creates a new one.
 
 ## Initialize a run
 
@@ -11,7 +11,7 @@ uv run python scripts/init_run.py \
   --profile examples/profiles/world-us-seattle-news.yaml
 ```
 
-The command emits one compact JSON object. An owning invocation reports `"result":"initialized"` with its run directory. A simultaneous invocation for the same profile and local date exits successfully with `"result":"no_op"`, a null run ID/directory, and no new run artifacts.
+The command emits one compact JSON object. `"result":"initialized"` owns a new run directory. `"result":"resumed"` owns the same prior compatible failed/crash-interrupted directory and run ID after validating its profile plus every state-referenced file. A simultaneous live owner or completed same-day episode returns `"result":"no_op"` with a null run ID/directory and no new artifacts.
 
 The optional `AUDIO_ENGINE_MAX_RUN_AGE_SECONDS` setting controls stale recovery and defaults to 21,600 seconds (six hours). Values from 60 through 604,800 seconds are accepted. Set it longer than the expected gap between mutating workflow phases; every mutation verifies the run ID and refreshes the heartbeat.
 
@@ -55,8 +55,6 @@ Files are written to a private temporary sibling, synchronized, and atomically r
 
 ## Stages and invalidation
 
-PR 04 owns these transitions; later PRs add the remaining transition helpers:
-
 | Valid artifact write | Current stage after write | Last completed valid stage |
 | --- | --- | --- |
 | Collection request | `collection` | `initialized` |
@@ -66,6 +64,7 @@ PR 04 owns these transitions; later PRs add the remaining transition helpers:
 | Complete rendered segment set | `audio` | `tts` |
 | Validated final MP3 | `publication` | `audio` |
 | Verified conditional feed publication | `publication` | `publication` |
+| Terminal finalization | `finalized` | `finalized` |
 
 Replacing an artifact with identical validated bytes preserves state. A changed hash replaces that artifact, retains valid upstream references, rolls the run back to the owning validation stage, and removes all downstream references. Profile changes roll back to `initialized`; an accepted dossier replacement clears collection, plan, and script validation and returns to `collection`; an accepted plan replacement clears plan/script validation and returns to `editorial`; an accepted script replacement clears script validation and returns to `script`. Final-audio and publication status return to pending/not started whenever an invalidated dependency could affect them.
 
@@ -81,7 +80,9 @@ TTS rendering also remains at `tts` until every manifest segment is complete. Fo
 
 Final audio assembly runs only from the complete rendered prefix. It rechecks each exact ordered WAV with FFprobe and full decode, concatenates and encodes through bounded FFmpeg processes, validates the final mono 48 kHz MP3 against the summed segment duration, and atomically promotes `episode.mp3`. Only then are its hash and full validation metadata recorded and state advanced to `publication`. Failure records recovery guidance at `audio`, removes any publishable final reference, and preserves every rendered segment. An unchanged rerun at `publication` fully revalidates the MP3 and returns without rewriting it.
 
-Publication revalidates that complete lineage and MP3 before any network mutation. It uploads and verifies all four episode assets before taking the feed lock and re-reading the current feed. The episode lease is always owned first; code never acquires an episode lease while holding the feed lock. Existing feeds use their latest ETag with `If-Match`, initial feeds use `If-None-Match: *`, and three conflicts cause resumable deferral rather than overwrite. Feed-lock timeout follows the same rule. Success leaves `current_stage` at `publication` for PR 12 finalization, advances `last_completed_valid_stage` to `publication`, and records only local artifact hashes plus redacted remote locations.
+Publication revalidates that complete lineage and MP3 before any network mutation. It uploads and verifies all four episode assets before taking the feed lock and re-reading the current feed. The episode lease is always owned first; code never acquires an episode lease while holding the feed lock. Existing feeds use their latest ETag with `If-Match`, initial feeds use `If-None-Match: *`, and three conflicts cause resumable deferral rather than overwrite. Feed-lock timeout follows the same rule. Success leaves `current_stage` and `last_completed_valid_stage` at `publication` and records only local artifact hashes plus redacted remote locations.
+
+Finalization revalidates every recorded local reference. Published work atomically persists `status: completed`, `completed_at`, and the `finalized` stage plus a regenerated one-screen summary before releasing the lease. If an owning invocation stops earlier, finalization records a stage-specific failure/recovery action before release. A later initializer can then restore the last valid stage without rewriting artifacts; publication-only recovery preserves the exact validated MP3.
 
 ## Lease and failure recovery
 
@@ -90,6 +91,8 @@ Publication revalidates that complete lineage and MP3 before any network mutatio
 - A lease is recoverable when its validated owner state is terminal or its heartbeat is strictly older than the configured maximum age. Exact expiry remains live.
 - A contender that observes the zero-byte `O_EXCL` creation window yields briefly and retries within the bounded acquisition loop; persistent empty leases still fail closed. Nonempty malformed records are never treated as recoverable.
 - Recovery atomically renames the old record to a unique `.stale-...json` quarantine file, then retries exclusive creation. Do not manually delete quarantine evidence.
+- After acquiring a new provisional lease, initialization inspects only that episode's workspaces. It returns a completed compatible episode as `no_op`; otherwise it atomically transfers ownership to the latest resumable run ID before clearing terminal failure and regenerating its summary.
+- Compatibility requires the same profile ID/version/date and exact current profile hash plus valid, safe, hash-matching state references. Exhausted second dossier/plan/script validation and initialization failure are intentionally non-resumable; a new run may be created after their released lease.
 - A mutating helper holds the current lease's advisory lock from state read through artifact/state/summary persistence. Recovery waits for that critical section, then rechecks the replaced lease inode and refreshed heartbeat before deciding whether takeover is safe.
 - Corrupt, oversized, mismatched, or unsafe lease records fail closed. Inspect the record and runtime filesystem; do not bypass ownership checks.
 - Handled failures write redacted failure/recovery details to state and summary before releasing the lease. Unexpected crashes rely on stale recovery.
@@ -101,14 +104,15 @@ Run the repeatable lease/concurrency acceptance checks on macOS or Ubuntu:
 uv run pytest -q \
   tests/unit/test_leases.py::test_live_lease_cannot_be_recovered_at_exact_expiry \
   tests/unit/test_leases.py::test_stale_lease_is_quarantined_before_new_owner \
-  tests/integration/test_run_concurrency.py
-uv run pytest -q -m "smoke and not live" tests/smoke/test_init_run.py
+  tests/integration/test_run_concurrency.py \
+  tests/integration/test_cross_invocation_resume.py
+uv run pytest -q -m "smoke and not live" \
+  tests/smoke/test_init_run.py \
+  tests/smoke/test_audio_assembly_workflow.py
 ```
 
-These use temporary roots, controlled clocks, synthetic profiles, and real processes/filesystem operations. They prove refusal before expiry, atomic quarantine after expiry, one owner/one artifact-free no-op for a shared episode key, one winner in a stale-recovery race, and independent owners for different keys.
-
-PR 12 owns complete cross-invocation resume. Until then, a handled failure preserves its workspace and releases ownership, but a later initialization creates a new run rather than selecting that prior workspace. The explicit PR 12 acceptance test will require post-ownership selection of the prior run without changing valid upstream hashes or timestamps.
+These use temporary roots, controlled clocks, synthetic profiles, fake speech/R2 adapters, real FFmpeg, and real process/filesystem operations. They prove refusal before expiry, atomic quarantine, one owner/one artifact-free no-op, one winner in a stale-recovery race, independent episode owners, same-workspace resume at every stage boundary, unchanged hashes/timestamps, publication-only recovery, terminal finalization, and the complete offline feed/summary result.
 
 ## Rollback
 
-Stop any active run before rolling code back. A normal handled failure releases its lease; otherwise wait for the configured stale threshold and let the current code quarantine it. Preserve run directories and quarantine files for diagnosis. Reverting the PR 04 squash commit removes initialization and lifecycle mutation while retaining PR 03 read-only validators; it does not remove external runtime data automatically.
+Finalize an active run before rolling code back. If a crash prevents that, wait for the configured stale threshold and let the current code quarantine its lease. Preserve run directories and quarantine files for diagnosis. Code rollback does not remove external runtime data automatically; use a version that understands the recorded contract before resuming it.

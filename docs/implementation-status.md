@@ -14,8 +14,8 @@ The approved scope and sequence live in [`plan.md`](../plan.md). This page recor
 | 08 | TTS preparation | Implemented on `main` |
 | 09 | Gemini rendering and voice selection | Implemented on `main` |
 | 10 | Audio assembly | Implemented on `main` |
-| 11 | Cloudflare R2 publication | Implemented in PR 11 |
-| 12 | Complete offline vertical slice | Not started |
+| 11 | Cloudflare R2 publication | Implemented on `main` |
+| 12 | Complete offline vertical slice | Implemented in PR 12 |
 | 13 | Scheduled execution and release qualification | Not started |
 
 ## PR 01 delivered surface
@@ -106,3 +106,12 @@ Later workflow capabilities remain deliberately unavailable until their ordered 
 - Episode-lease-first local feed locking, latest-feed reread, `If-Match`/`If-None-Match: *`, bounded re-read/reapply on 412, safe deferral, harmless orphan assets, and preservation of concurrent revisions.
 - Publication state and local artifact hashing without remote token disclosure, plus explicit recovery that preserves valid audio across asset, public-read, lock, and conditional-write failures.
 - Offline asset-order/idempotency/concurrency smoke, deterministic two-host initial-feed race coverage, R2 adapter tests, and a main-only disposable R2 probe that receives no Gemini credential or feed token.
+
+## PR 12 delivered surface
+
+- Post-ownership selection of the latest compatible failed/crash-interrupted workspace, atomic provisional-to-resumed lease transfer, preserved run identity, and completed-episode no-op behavior.
+- Cross-invocation validation of the current profile and every state-referenced file, with non-resumable validation exhaustion isolated to a fresh run instead of weakening its repair limit.
+- One `finalize_run.py` boundary that persists completed or actionable failed state plus the one-screen summary before releasing ownership, and remains idempotent after completion.
+- Progressive-disclosure skill routing through collection, editorial, script, TTS, audio, publication, and finalization without an all-in-one CLI, background service, queue, or orchestration framework.
+- Deterministic resume coverage at collection, editorial, script, unprepared/prepared/partially rendered TTS, audio, and pre-publication boundaries with unchanged artifact hashes/timestamps and no replacement workspace.
+- Complete synthetic offline smoke from profile initialization through golden agent-authored evidence/plan/script, fake speech, real FFmpeg MP3 assembly, fake R2 feed publication, publication-only recovery, final state, and redacted summary.

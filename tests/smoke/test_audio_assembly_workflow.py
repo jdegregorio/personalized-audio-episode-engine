@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import xml.etree.ElementTree as ET
+from datetime import timedelta
 from pathlib import Path
 
 import pytest
@@ -9,7 +10,8 @@ import pytest
 import scripts.render_audio as render_audio_script
 from audio_engine.audio import FfmpegTools
 from audio_engine.config import EngineSettings
-from audio_engine.lifecycle import load_run_state
+from audio_engine.leases import LeaseManager
+from audio_engine.lifecycle import initialize_run, load_run_state
 from audio_engine.publication import (
     MemoryObjectStore,
     PreconditionFailed,
@@ -17,7 +19,7 @@ from audio_engine.publication import (
     publish_episode,
     validate_rss,
 )
-from audio_engine.storage import sha256_bytes
+from audio_engine.storage import sha256_bytes, sha256_file
 from audio_engine.tts import (
     SpeechRendererCapabilities,
     SpeechResponse,
@@ -25,8 +27,9 @@ from audio_engine.tts import (
     renderer_capabilities,
 )
 from scripts.assemble_audio import main as assemble_audio_main
+from scripts.finalize_run import main as finalize_run_main
 from scripts.render_audio import main as render_audio_main
-from tests.tts_support import configure_environment, ready_tts_run
+from tests.tts_support import FIXED_NOW, configure_environment, ready_tts_run
 
 PCM = b"\x00\x00" * 24_000 * 20
 
@@ -165,6 +168,26 @@ def test_documented_audio_and_offline_publication_create_a_resumable_podcast(
     assert not any(key.startswith("feeds/") for key in conflicting.objects)
     assert len(conflicting.objects) == 4
 
+    final_audio_hash = deferred_state.artifacts["final_audio"].sha256
+    final_audio_modified = final_path.stat().st_mtime_ns
+    assert finalize_run_main(["--run", str(run_directory)]) == 1
+    failed_finalization = json.loads(capsys.readouterr().err)
+    assert failed_finalization["status"] == "failed"
+
+    resumed = initialize_run(
+        synthetic_collection_profile_path,
+        settings=settings,
+        repo_root=Path(__file__).parents[2],
+        clock=lambda: FIXED_NOW + timedelta(hours=1),
+        run_id_factory=lambda profile_id, day, now: f"{profile_id}_{day}_replacement",
+    )
+    assert resumed.result == "resumed"
+    assert resumed.run_directory == run_directory
+    assert load_run_state(run_directory / "state.json").artifacts["final_audio"].sha256 == (
+        final_audio_hash
+    )
+    assert final_path.stat().st_mtime_ns == final_audio_modified
+
     store = _ExternalRaceStore()
     published = publish_episode(
         run_directory,
@@ -201,3 +224,55 @@ def test_documented_audio_and_offline_publication_create_a_resumable_podcast(
     ]
     assert (run_directory / "show-notes.html").is_file()
     assert (run_directory / "published-episode.json").is_file()
+
+    assert finalize_run_main(["--run", str(run_directory)]) == 0
+    finalized = json.loads(capsys.readouterr().out)
+    final_state = load_run_state(run_directory / "state.json")
+    summary = (run_directory / "summary.md").read_text(encoding="utf-8")
+    manager = LeaseManager(settings.runtime_root, maximum_age=timedelta(hours=6))
+    assert finalized["status"] == "completed"
+    assert finalized["redacted_locations"] == [
+        "private podcast feed",
+        "published episode assets",
+    ]
+    assert final_state.status == "completed"
+    assert final_state.current_stage == "finalized"
+    assert final_state.last_completed_valid_stage == "finalized"
+    assert "Overall result: completed" in summary
+    assert "Valid audio created: yes" in summary
+    assert "Publication succeeded: yes" in summary
+    assert "Published locations: private podcast feed, published episode assets" in summary
+    assert len(summary.splitlines()) <= 20
+    assert not manager.lease_path(final_state.episode_key).exists()
+    assert set(final_state.artifacts) == {
+        "profile",
+        "collection_request",
+        "evidence_dossier",
+        "evidence_validation",
+        "editorial_plan",
+        "plan_validation",
+        "episode_script",
+        "transcript",
+        "script_validation",
+        "tts_manifest",
+        "final_audio",
+        "show_notes",
+        "published_episode",
+    }
+    for key, reference in final_state.artifacts.items():
+        if key == "profile":
+            continue
+        assert sha256_file(run_directory / reference.path) == reference.sha256
+
+    assert finalize_run_main(["--run", str(run_directory)]) == 0
+    assert json.loads(capsys.readouterr().out)["status"] == "already_completed"
+
+    no_op = initialize_run(
+        synthetic_collection_profile_path,
+        settings=settings,
+        repo_root=Path(__file__).parents[2],
+        clock=lambda: FIXED_NOW + timedelta(hours=2),
+        run_id_factory=lambda profile_id, day, now: f"{profile_id}_{day}_after_completion",
+    )
+    assert no_op.result == "no_op"
+    assert len(list(run_directory.parent.glob("*/state.json"))) == 1

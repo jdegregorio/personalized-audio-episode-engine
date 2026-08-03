@@ -24,6 +24,6 @@ uv run python scripts/select_collection_method.py \
   --preferred-capability <name>
 ```
 
-Omit `=<version>` when the capability exposes none. If an optional capability fails, rerun selection with `--failed-capability <name>` and redeclare every surviving suitable `--capability`. Failed names persist in run state and cannot be reselected; the command uses another declared suitable capability or allowed native fallback. A missing profile-required capability fails before editorial work with configuration guidance.
+Omit `=<version>` when the capability exposes none. If an optional capability fails, rerun selection with `--failed-capability <name>` and redeclare every surviving suitable `--capability`. Failed names persist in run state and across compatible cross-invocation resume, so they cannot loop back into selection; the command uses another declared suitable capability or allowed native fallback. A missing profile-required capability fails before editorial work with configuration guidance and is not replaced by a weaker mock.
 
 Do not place capability credentials, private resource locators, or retrieved source dumps in the repository, command line, validation evidence, or pull-request comments.

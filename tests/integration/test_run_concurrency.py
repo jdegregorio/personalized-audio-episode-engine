@@ -77,8 +77,11 @@ def test_concurrent_stale_recoverers_converge_on_one_new_owner(
         environment,
     )
 
-    assert sorted(result["result"] for result in results) == ["initialized", "no_op"]
-    assert len(list(runtime_root.rglob("state.json"))) == 2
+    assert sorted(result["result"] for result in results) == ["no_op", "resumed"]
+    resumed = next(result for result in results if result["result"] == "resumed")
+    assert resumed["run_id"] == first[0]["run_id"]
+    assert resumed["run_directory"] == first[0]["run_directory"]
+    assert len(list(runtime_root.rglob("state.json"))) == 1
     assert len(list((runtime_root / "locks").glob("episode-*.stale-*.json"))) == 1
 
 

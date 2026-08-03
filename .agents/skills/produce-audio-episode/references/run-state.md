@@ -48,6 +48,8 @@ The assembler validates all ordered WAVs, writes a temporary MP3, probes and ful
 - At `audio`, run `assemble_audio.py`. A failed assembly preserves all rendered segments and remains at `audio`; correct the local tool/input issue and rerun without rendering again.
 - At `publication`, an unchanged `assemble_audio.py` rerun returns `already_assembled` only after rechecking the MP3 hash, technical metadata, and full decode. Do not publish if that check rolls state back to `audio`.
 - At `publication` with valid audio, run `publish_episode.py`. A deferred or failed publication reruns only this command; uploaded orphan assets are harmless and valid audio must remain unchanged. `already_published` still revalidates the assets and upserts exactly one stable GUID.
-- In a failed state, stop and use the recorded recovery guidance. Do not acquire or mutate the released workspace manually.
+- After a command failure, inspect state. If it remains `running`, use `finalize_run.py` to persist terminal failure and release ownership; commands that already terminalized a second invalid dossier/plan/script need no extra mutation.
+- On a later invocation, always reacquire through `init_run.py`. It returns `resumed` only after selecting the latest compatible failed/crash-interrupted workspace under ownership, preserving its run ID and validated files. Non-resumable validation exhaustion starts a new owning run; completed work returns `no_op`.
+- At `publication` after `published` or `already_published`, run `finalize_run.py`. Completed state uses stage `finalized`, releases the lease, and is idempotent.
 
 All state changes go through documented commands while the run owns the episode lease. Never hand-edit state, hashes, summaries, reports, or leases.

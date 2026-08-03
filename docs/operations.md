@@ -1,6 +1,6 @@
 # Operations
 
-The engine supports validated environment/profile preflight, deterministic artifact/lineage validation, owner-checked run initialization, capability-neutral evidence collection, profile-driven editorial planning, grounded two-host scriptwriting, token-bounded TTS preparation/rendering, validated FFmpeg assembly, and conditional Cloudflare R2 podcast publication.
+The engine supports validated environment/profile preflight, deterministic artifact/lineage validation, owner-checked run initialization/resume, capability-neutral evidence collection, profile-driven editorial planning, grounded two-host scriptwriting, token-bounded TTS preparation/rendering, validated FFmpeg assembly, conditional Cloudflare R2 podcast publication, and terminal finalization.
 
 ## Development gate
 
@@ -54,7 +54,7 @@ uv run python scripts/init_run.py \
   --profile examples/profiles/world-us-seattle-news.yaml
 ```
 
-The command returns compact JSON for either an initialized owner or a successful same-episode no-op. See [`run-lifecycle.md`](run-lifecycle.md) for the layout, state transitions, invalidation rules, concurrency UAT, stale recovery, and rollback procedure.
+The command returns compact JSON for `initialized`, `resumed`, or `no_op`. Resume selection occurs only after exclusive ownership and returns the prior compatible run ID/directory after validating every referenced file. `no_op` creates no workspace when another owner is live and returns no completed same-day episode for mutation. See [`run-lifecycle.md`](run-lifecycle.md) for the layout, state transitions, invalidation rules, concurrency UAT, stale recovery, and rollback procedure.
 
 ## Evidence collection
 
@@ -140,6 +140,18 @@ The publisher fully revalidates final audio, writes deterministic HTML notes and
 
 `deferred` exits `2` and means the lock or three conditional attempts did not converge. Rerun only publication; valid audio and harmless orphan assets are retained. `already_published` is a successful verified same-day upsert, not a duplicate.
 
+## Finalization and resume
+
+After `published`/`already_published`, or when an owning invocation must stop while state remains `running`, run:
+
+```bash
+uv run python scripts/finalize_run.py --run <run-directory>
+```
+
+The command validates recorded local artifacts before terminal success, writes `state.json` and the one-screen `summary.md`, then releases the episode lease. Successful publication becomes `status: completed` at `current_stage: finalized`. Incomplete work becomes `status: failed` with its last valid stage and one exact recovery command; it exits non-zero but preserves valid artifacts. Run `init_run.py` with the same profile in a later invocation: `resumed` restores that same compatible run ID/directory, while non-resumable second-invalid dossier/plan/script failures intentionally start a new run.
+
+Read the user-facing outcome from `summary.md`. It reports audio/publication status, warnings, local output directory, redacted publication labels, and recovery without exposing a tokenized URL.
+
 ## Production invariants
 
 - One independent Codex run processes one profile.
@@ -147,11 +159,12 @@ The publisher fully revalidates final audio, writes deterministic HTML notes and
 - Use only documented repository commands. A production run never writes ad hoc source code.
 - Production runs do not modify tracked code, dependencies, schemas, profiles, or documentation.
 - Resume valid work rather than rerunning successful external operations.
+- Persist terminal state through `finalize_run.py` before intentionally ending an owning invocation.
 - Never log credentials, tokenized object keys, or complete feed URLs.
 - Default CI cannot synthesize speech or publish objects because it receives no production secrets.
 
 ## Rollback at this phase
 
-`render_audio.py` contacts Gemini and `publish_episode.py` contacts R2. Stop either safely; validated local artifacts remain authoritative. A publication interruption may leave episode objects that are not referenced by the feed; let the `episodes/` lifecycle rule remove them and rerun publication without touching audio. Never manually overwrite `feed.xml`, delete a live lock, or edit state.
+`render_audio.py` contacts Gemini and `publish_episode.py` contacts R2. If an invocation must stop, finalize its running state first; validated local artifacts remain authoritative and the next initializer can reacquire them. A publication interruption may leave episode objects that are not referenced by the feed; let the `episodes/` lifecycle rule remove them and rerun publication without touching audio. Never manually overwrite `feed.xml`, delete a live lock, or edit state.
 
 Service-specific recovery and rotation are documented in [`cloudflare-r2.md`](cloudflare-r2.md).

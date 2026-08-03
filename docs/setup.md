@@ -140,6 +140,18 @@ Play and inspect the WAV before moving that exact temporary directory to Trash. 
 
 Codex native web research requires no separately installed collector. Configure optional research skills, tools, connectors, or MCP servers outside a production run and verify they are visible before selecting them. For a profile's explicitly required capabilities, keep `AUDIO_ENGINE_AVAILABLE_CAPABILITIES` aligned for preflight and pass only actually available, suitable capabilities to `scripts/select_collection_method.py`. See [`optional-collectors.md`](optional-collectors.md).
 
+## Complete one workflow safely
+
+From the repository root, invoke the [`produce-audio-episode`](../.agents/skills/produce-audio-episode/SKILL.md) skill with exactly one enabled profile. The skill runs the documented doctor and initializer, routes from `state.json`, and uses the small stage commands in [`operations.md`](operations.md). It never creates an ad hoc orchestration script or modifies repository source during production.
+
+Always capture `run_directory` from `init_run.py`. `initialized` starts a new workspace, `resumed` returns the same compatible failed/crash-interrupted workspace after ownership and hash validation, and `no_op` means another live owner or a completed same-day episode requires no mutation. End every owning invocation with:
+
+```bash
+uv run python scripts/finalize_run.py --run <run-directory>
+```
+
+After publication this records terminal success. If a stage cannot complete, it records an actionable failure before releasing the lease, allowing the next initializer to resume the last valid stage. Never move runtime data into the checkout, copy generated audio into test fixtures, or place a private feed URL in `summary.md` or shared evidence.
+
 ## Troubleshooting and rollback
 
 - If `uv sync --locked` reports drift, do not regenerate the lock outside a dependency-owning PR.
