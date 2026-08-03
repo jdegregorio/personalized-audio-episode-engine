@@ -101,7 +101,7 @@ uv run ruff format --check .
 uv run ruff check .
 uv run pyright
 uv run pytest -m "not live and not smoke" --cov=audio_engine --cov=scripts --cov-report=term-missing --cov-fail-under=85
-uv run pytest -m smoke
+uv run pytest -m "smoke and not live"
 ```
 
 PR 02 adds `doctor.py`; PR 09 adds a live Gemini smoke; PR 11 adds the R2 probe and publication UAT; PR 13 activates and qualifies the local schedule. Until their owning PRs land, those checks are deliberately unavailable rather than silently simulated.

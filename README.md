@@ -26,7 +26,7 @@ uv run ruff format --check .
 uv run ruff check .
 uv run pyright
 uv run pytest -m "not live and not smoke" --cov=audio_engine --cov=scripts --cov-report=term-missing --cov-fail-under=85
-uv run pytest -m smoke
+uv run pytest -m "smoke and not live"
 ```
 
 See [`docs/setup.md`](docs/setup.md) for workstation, account, and secret setup. Contributors must follow [`CONTRIBUTORS.md`](CONTRIBUTORS.md), including its worktree, review, evidence, and merge gates.

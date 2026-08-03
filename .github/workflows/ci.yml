@@ -64,7 +64,7 @@ jobs:
           enable-cache: true
           python-version: "3.12"
       - run: uv sync --locked --all-extras --dev
-      - run: uv run pytest -m smoke
+      - run: uv run pytest -m "smoke and not live"
       - run: uv run python -c "import audio_engine; print(audio_engine.__version__)"
 
   package:

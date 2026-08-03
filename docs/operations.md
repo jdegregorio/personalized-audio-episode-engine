@@ -19,7 +19,7 @@ uv run ruff format --check .
 uv run ruff check .
 uv run pyright
 uv run pytest -m "not live and not smoke" --cov=audio_engine --cov=scripts --cov-report=term-missing --cov-fail-under=85
-uv run pytest -m smoke
+uv run pytest -m "smoke and not live"
 ```
 
 The `not live and not smoke` suite is deterministic and must not read the owner's real environment file or access a network service. Smoke tests prove user-visible behavior at the smallest useful boundary. Live tests remain explicit and use the narrow `live-smoke` environment only after their implementation PR.

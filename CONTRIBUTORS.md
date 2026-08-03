@@ -44,7 +44,7 @@ uv run ruff format --check .
 uv run ruff check .
 uv run pyright
 uv run pytest -m "not live and not smoke"
-uv run pytest -m smoke
+uv run pytest -m "smoke and not live"
 ```
 
 Also run `doctor.py` and the offline vertical slice once their owning PRs introduce them. Tests use temporary roots, fake tokens, mocked network providers, and deterministic fixtures; default tests must not read a developer's real environment file or call live services.
