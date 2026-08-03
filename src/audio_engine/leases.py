@@ -184,6 +184,11 @@ class LeaseManager:
         if descriptor is None:
             return None
         try:
+            # O_EXCL publishes an empty inode just before its creator can lock and fill it.
+            # A contender that wins that first flock must yield and retry the same path.
+            # A persistently empty lease still fails closed when acquisition cannot converge.
+            if os.fstat(descriptor).st_size == 0:
+                return None
             record = self._read_descriptor(descriptor)
             if record.episode_key != episode_key:
                 raise LeaseError("episode lease key does not match its deterministic path")

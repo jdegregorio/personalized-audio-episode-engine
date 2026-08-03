@@ -7,7 +7,7 @@ The approved scope and sequence live in [`plan.md`](../plan.md). This page recor
 | 01 | Repository foundation and delivery guardrails | Implemented on `main` |
 | 02 | Configuration, profile loading, path safety, and doctor | Implemented on `main` |
 | 03 | Artifact contracts, validators, and fixtures | Implemented on `main` |
-| 04 | Run lifecycle, state, leases, and invalidation | Implemented on `feature/pr-04-run-lifecycle`; pending review and merge |
+| 04 | Run lifecycle, state, leases, and invalidation | Implemented on `main` |
 | 05 | Capability-aware collection skill | Not started |
 | 06 | Editorial planning | Not started |
 | 07 | Grounded two-host scripting | Not started |
@@ -47,6 +47,6 @@ Workflow mutation, research, speech, audio processing, publication behavior, and
 
 - Canonical episode keys and unique run IDs with the date/profile/run filesystem layout, private atomic writes, SHA-256 references, and additive run provenance.
 - An owner-checked initialization command that creates a validated collection request, durable state, and one-screen summary only after exclusive episode ownership.
-- Heartbeat leases with live-owner no-op behavior, mutation-wide owner fencing, owner-only refresh/release, terminal and stale recovery, fail-closed corruption handling, and atomic stale quarantine.
+- Heartbeat leases with live-owner no-op behavior, mutation-wide owner fencing, owner-only refresh/release, terminal and stale recovery, fail-closed corruption handling, atomic stale quarantine, and portable retry of the transient zero-byte `O_EXCL` creation window.
 - Validated stage transitions, current-state identity/upstream-reference binding, and exact hash-based downstream invalidation for profile, request, dossier, plan, and script changes.
 - Process concurrency, stale-race, mutation-safety, recovery, secret-redaction, and public-command smoke coverage using temporary local roots.

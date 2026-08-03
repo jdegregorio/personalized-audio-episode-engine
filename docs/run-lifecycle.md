@@ -51,6 +51,7 @@ Replacing an artifact with identical validated bytes preserves state. A changed 
 - A current nonterminal owner causes a successful no-op. No run directory is selected, created, or mutated.
 - Profile, Git, model, and initial-state validation completes in memory before lease acquisition, so preparation failure leaves neither a misleading live owner nor a partial workspace.
 - A lease is recoverable when its validated owner state is terminal or its heartbeat is strictly older than the configured maximum age. Exact expiry remains live.
+- A contender that observes the zero-byte `O_EXCL` creation window yields and retries; persistent empty leases still fail closed. Nonempty malformed records are never treated as recoverable.
 - Recovery atomically renames the old record to a unique `.stale-...json` quarantine file, then retries exclusive creation. Do not manually delete quarantine evidence.
 - A mutating helper holds the current lease's advisory lock from state read through artifact/state/summary persistence. Recovery waits for that critical section, then rechecks the replaced lease inode and refreshed heartbeat before deciding whether takeover is safe.
 - Corrupt, oversized, mismatched, or unsafe lease records fail closed. Inspect the record and runtime filesystem; do not bypass ownership checks.
