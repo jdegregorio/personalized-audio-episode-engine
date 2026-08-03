@@ -92,6 +92,16 @@ uv run python scripts/record_script.py --run <run-directory>
 
 The recorder binds current input hashes and script prompt version, checks claim and source lineage, required attribution and qualifications, disagreement, speaker/voice configuration, spoken-text safety, duration, conversational-quality warnings, and TTS input limits. It allows one recorded repair and deterministically writes `transcript.txt` from the accepted turns, so the spoken projection cannot diverge from the auditable script. A valid script advances to `tts`; it does not call Gemini.
 
+## TTS preparation workflow
+
+At `tts`, follow the skill's [`tts-preparation.md`](.agents/skills/produce-audio-episode/references/tts-preparation.md) reference and prepare the accepted script:
+
+```bash
+uv run python scripts/prepare_tts.py --run <run-directory>
+```
+
+The preparer revalidates the script/transcript, applies the configured model capability limits, prefers natural two-to-four-minute boundaries, and writes `tts/manifest.json` plus ordered atomic segment prompt files. Each prompt keeps direction and continuity separate from its exact transcript. It makes no Gemini request; rendering begins in PR 09. An unchanged rerun verifies hashes and returns `already_prepared` without rewriting valid outputs.
+
 ## Security boundary
 
 The MVP feed contains public-news content but uses an unguessable URL. That URL is access material, not authentication. Never commit or paste credentials, tokenized object keys, runtime data, or complete feed URLs. Profiles containing personal or otherwise sensitive information are outside the MVP and require a separate authenticated or encrypted publication design.

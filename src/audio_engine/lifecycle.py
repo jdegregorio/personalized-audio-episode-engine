@@ -36,6 +36,9 @@ from audio_engine.artifacts import (
     RunState,
     ScriptValidationState,
     SourcePolicy,
+    TtsManifest,
+    TtsPreparationState,
+    TtsSegmentPrompt,
 )
 from audio_engine.config import EngineSettings
 from audio_engine.leases import LeaseError, LeaseManager
@@ -853,6 +856,159 @@ def record_script_validation(
     return updated
 
 
+def record_tts_preparation(
+    workspace: RunWorkspace,
+    manager: LeaseManager,
+    run_id: str,
+    *,
+    manifest: TtsManifest,
+    prompts: Sequence[TtsSegmentPrompt],
+) -> RunState:
+    """Persist deterministic TTS prompts, manifest, and preparation state."""
+    try:
+        with manager.mutation(workspace.episode_key, run_id):
+            state = load_run_state(workspace.state_path)
+            if state.run_id != run_id or state.status != "running" or state.current_stage != "tts":
+                raise LifecycleError("TTS preparation requires the active run at the TTS stage")
+            if state.script_validation is None or state.script_validation.status != "valid":
+                raise LifecycleError("TTS preparation requires a valid episode script")
+            if state.tts_preparation is not None:
+                raise LifecycleError("TTS preparation is already recorded")
+            script_reference = state.artifacts.get("episode_script")
+            transcript_reference = state.artifacts.get("transcript")
+            if (
+                script_reference is None
+                or transcript_reference is None
+                or manifest.run_id != state.run_id
+                or manifest.profile_id != state.profile_id
+                or manifest.episode_date != state.episode_date
+                or manifest.episode_script != script_reference
+                or manifest.transcript != transcript_reference
+            ):
+                raise LifecycleError("TTS manifest provenance does not match active state")
+            if len(prompts) != len(manifest.segments):
+                raise LifecycleError("TTS prompt count does not match the manifest")
+
+            script_path = resolve_within_roots(
+                workspace.run_directory / script_reference.path,
+                [workspace.run_directory],
+                must_exist=True,
+            )
+            transcript_path = resolve_within_roots(
+                workspace.run_directory / transcript_reference.path,
+                [workspace.run_directory],
+                must_exist=True,
+            )
+            if (
+                sha256_file(script_path) != script_reference.sha256
+                or sha256_file(transcript_path) != transcript_reference.sha256
+            ):
+                raise LifecycleError("TTS preparation input hash no longer matches its file")
+            script_artifact, script_report = load_artifact_file("script", script_path)
+            if not isinstance(script_artifact, EpisodeScript) or not script_report.valid:
+                raise LifecycleError("TTS preparation input script is invalid")
+            if (
+                manifest.model != state.gemini_model
+                or manifest.safe_input_tokens != script_artifact.safe_input_tokens
+            ):
+                raise LifecycleError("TTS manifest model or safe limit does not match active state")
+            transcript = transcript_path.read_text(encoding="utf-8")
+            expected_turn_ids = [turn.turn_id for turn in script_artifact.turns]
+            manifest_turn_ids = [
+                turn_id for segment in manifest.segments for turn_id in segment.turn_ids
+            ]
+            if manifest_turn_ids != expected_turn_ids:
+                raise LifecycleError("TTS manifest must preserve exact script turn order")
+            if [(host.name, host.voice) for host in manifest.hosts] != [
+                (speaker.name, speaker.voice) for speaker in script_artifact.speakers
+            ]:
+                raise LifecycleError("TTS manifest speaker names or voices do not match the script")
+
+            prompt_by_id = {prompt.segment_id: prompt for prompt in prompts}
+            if len(prompt_by_id) != len(prompts):
+                raise LifecycleError("TTS prompt segment IDs must be unique")
+            reconstructed_transcript: list[str] = []
+            for segment in manifest.segments:
+                prompt = prompt_by_id.get(segment.segment_id)
+                expected_path = f"tts/segment-{segment.order:03d}.json"
+                if (
+                    prompt is None
+                    or segment.prompt.path != expected_path
+                    or prompt.position != segment.order
+                    or prompt.segment_count != len(manifest.segments)
+                    or prompt.episode_script != script_reference
+                    or prompt.provider != manifest.provider
+                    or prompt.model != manifest.model
+                    or prompt.scene_description != manifest.scene_description
+                    or prompt.hosts != manifest.hosts
+                    or prompt.turn_ids != segment.turn_ids
+                    or prompt.estimated_input_tokens != segment.estimated_input_tokens
+                ):
+                    raise LifecycleError("TTS prompt does not match its manifest segment")
+                payload = json_bytes(prompt.model_dump(mode="json"))
+                if segment.prompt.sha256 != sha256_bytes(payload):
+                    raise LifecycleError("TTS prompt hash does not match its manifest reference")
+                reconstructed_transcript.append(prompt.transcript)
+            if "".join(reconstructed_transcript) != transcript:
+                raise LifecycleError("TTS prompts do not exactly reconstruct the transcript")
+
+            tts_directory = resolve_within_roots(
+                workspace.run_directory / "tts",
+                [workspace.run_directory],
+                must_exist=False,
+            )
+            tts_directory.mkdir(mode=0o700, exist_ok=True)
+            for segment in manifest.segments:
+                prompt = prompt_by_id[segment.segment_id]
+                prompt_path = resolve_within_roots(
+                    workspace.run_directory / segment.prompt.path,
+                    [workspace.run_directory],
+                    must_exist=False,
+                )
+                atomic_write_bytes(prompt_path, json_bytes(prompt.model_dump(mode="json")))
+                persisted = TtsSegmentPrompt.model_validate_json(
+                    prompt_path.read_text(encoding="utf-8")
+                )
+                if persisted != prompt or sha256_file(prompt_path) != segment.prompt.sha256:
+                    raise LifecycleError("persisted TTS prompt failed verification")
+
+            manifest_path = resolve_within_roots(
+                workspace.run_directory / "tts/manifest.json",
+                [workspace.run_directory],
+                must_exist=False,
+            )
+            atomic_write_bytes(manifest_path, json_bytes(manifest.model_dump(mode="json")))
+            persisted_manifest, persisted_report = load_artifact_file("tts-manifest", manifest_path)
+            if persisted_manifest != manifest or not persisted_report.valid:
+                raise LifecycleError("persisted TTS manifest failed verification")
+            manifest_reference = ArtifactReference(
+                artifact_type="tts-manifest",
+                path="tts/manifest.json",
+                sha256=sha256_file(manifest_path),
+            )
+            preparation = TtsPreparationState(
+                status="prepared",
+                segment_count=len(manifest.segments),
+                episode_script=script_reference,
+                transcript=transcript_reference,
+                manifest=manifest_reference,
+            )
+            updated = _validated_state_update(
+                state,
+                {
+                    "artifacts": {**state.artifacts, "tts_manifest": manifest_reference},
+                    "tts_preparation": preparation,
+                },
+            )
+            _write_run_state(workspace, updated)
+            _write_summary(workspace, updated)
+    except (OSError, SafetyError, StorageError, ValidationError) as error:
+        raise LifecycleError("TTS preparation could not be persisted") from error
+    except LeaseError as error:
+        raise LifecycleError(str(error)) from None
+    return updated
+
+
 def refresh_run_summary(
     workspace: RunWorkspace,
     manager: LeaseManager,
@@ -1086,6 +1242,8 @@ def invalidate_for_artifact_change(
         update["script_validation"] = None
         update["current_stage"] = "script"
         update["last_completed_valid_stage"] = "editorial"
+    if "tts_manifest" in downstream:
+        update["tts_preparation"] = None
     if downstream & _FINAL_OUTPUT_KEYS:
         update["final_audio_validation"] = FinalAudioValidation(
             status="pending",
@@ -1188,6 +1346,7 @@ def render_summary(workspace: RunWorkspace, state: RunState) -> str:
             label = "warning" if validation.warning_count == 1 else "warnings"
             warnings.append(f"episode script valid with {validation.warning_count} {label}")
     warning_text = "; ".join(warnings) if warnings else "none"
+    prepared_segments = state.tts_preparation.segment_count if state.tts_preparation else 0
     lines = [
         "# Run summary",
         "",
@@ -1198,6 +1357,7 @@ def render_summary(workspace: RunWorkspace, state: RunState) -> str:
         f"- Current stage: {state.current_stage}",
         f"- Last completed valid stage: {state.last_completed_valid_stage or 'none'}",
         f"- Valid audio created: {'yes' if audio_valid else 'no'}",
+        f"- TTS segments prepared: {prepared_segments}",
         f"- Publication succeeded: {'yes' if publication_succeeded else 'no'}",
         f"- Output directory: {workspace.run_directory}",
         f"- Published locations: {locations}",

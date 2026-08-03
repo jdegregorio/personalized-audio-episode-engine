@@ -565,6 +565,13 @@ def test_artifact_change_invalidates_exact_downstream_dependencies(
             "published-episode", "published-episode.json", "7"
         ).model_dump(mode="json"),
     }
+    data["tts_preparation"] = {
+        "status": "prepared",
+        "segment_count": 2,
+        "episode_script": data["artifacts"]["episode_script"],
+        "transcript": data["artifacts"]["transcript"],
+        "manifest": data["artifacts"]["tts_manifest"],
+    }
     state = RunState.model_validate(data)
     old = state.artifacts[changed_key]
     replacement = ArtifactReference(
@@ -585,6 +592,7 @@ def test_artifact_change_invalidates_exact_downstream_dependencies(
     assert updated.last_completed_valid_stage == expected_last
     assert updated.final_audio_validation.status == "pending"
     assert updated.publication.status == "not_started"
+    assert updated.tts_preparation is None
     if changed_key == "profile":
         assert updated.profile_version == "0.2.0"
         assert updated.collection_method is None

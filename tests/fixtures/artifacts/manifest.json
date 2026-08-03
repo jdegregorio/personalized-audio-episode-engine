@@ -17,6 +17,10 @@
       "file": "valid/episode-script.json"
     },
     {
+      "type": "tts-manifest",
+      "file": "valid/tts-manifest.json"
+    },
+    {
       "type": "published-episode",
       "file": "valid/published-episode.json"
     },

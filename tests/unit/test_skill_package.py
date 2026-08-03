@@ -24,6 +24,7 @@ def test_skill_package_is_concise_linked_and_command_complete() -> None:
         "evidence-collection.md",
         "editorial-planning.md",
         "scriptwriting.md",
+        "tts-preparation.md",
         "run-state.md",
     }
     references = SKILL_ROOT / "references"
@@ -42,6 +43,7 @@ def test_skill_package_is_concise_linked_and_command_complete() -> None:
         "scripts/record_collection.py",
         "scripts/record_editorial_plan.py",
         "scripts/record_script.py",
+        "scripts/prepare_tts.py",
         "scripts/select_collection_method.py",
     }
     repository_root = SKILL_ROOT.parents[2]
@@ -87,3 +89,13 @@ def test_script_reference_preserves_grounding_and_projection() -> None:
     assert "Every fact or analysis turn" in instructions
     assert "Do not speak URLs" in instructions
     assert "generated deterministically" in instructions
+
+
+def test_tts_reference_preserves_preparation_rendering_boundary() -> None:
+    instructions = (SKILL_ROOT / "references" / "tts-preparation.md").read_text(encoding="utf-8")
+
+    assert "Do not edit either input, call Gemini" in instructions
+    assert "complete structured provider input" in instructions
+    assert "reproduce `transcript.txt` byte for byte" in instructions
+    assert "splits a discussion only" in instructions
+    assert "Rendering, retries, raw audio" in instructions

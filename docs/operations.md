@@ -1,6 +1,6 @@
 # Operations
 
-The engine supports validated environment/profile preflight, deterministic artifact/lineage validation, owner-checked run initialization, capability-neutral evidence collection, profile-driven editorial planning, and grounded two-host scriptwriting with exact transcript projection. TTS, rendering, and publication arrive only in their owning PRs in [`plan.md`](../plan.md).
+The engine supports validated environment/profile preflight, deterministic artifact/lineage validation, owner-checked run initialization, capability-neutral evidence collection, profile-driven editorial planning, grounded two-host scriptwriting, and token-bounded provider-neutral TTS preparation. Rendering and publication arrive only in their owning PRs in [`plan.md`](../plan.md).
 
 ## Development gate
 
@@ -92,6 +92,16 @@ uv run python scripts/record_script.py --run <run-directory>
 
 The command authoritatively binds prompt/run/profile/date and current input hashes, validates planned claim coverage through underlying sources, preserves required spoken attribution/qualifications/disagreement, enforces two configured hosts and spoken-text policy, and surfaces balance/performance warnings. It writes `transcript.txt` only from validated ordered turns. Attempt 1 may receive one repair; attempt 2 fails/releases. A verified resume returns `already_valid` after rechecking inputs, script, transcript, and report.
 
+## TTS preparation
+
+At `tts`, follow the skill's [`tts-preparation.md`](../.agents/skills/produce-audio-episode/references/tts-preparation.md) reference and run:
+
+```bash
+uv run python scripts/prepare_tts.py --run <run-directory>
+```
+
+The command revalidates the accepted script/transcript, rejects an unknown provider/model capability or unsafe token configuration, packs natural boundaries toward two-to-four-minute segments, and refuses a spoken turn that cannot fit. It writes private atomic `tts/segment-<NNN>.json` prompts followed by `tts/manifest.json` and state. The manifest records prompt hashes, token estimates, stable speakers/voices/direction, and exact ordered turn coverage. An unchanged rerun returns `already_prepared` without rewriting valid outputs. No provider is contacted.
+
 ## Production invariants
 
 - One independent Codex run processes one profile.
@@ -104,6 +114,6 @@ The command authoritatively binds prompt/run/profile/date and current input hash
 
 ## Rollback at this phase
 
-No current command contacts Gemini or R2. Initialization, collection, editorial, and script recording create only local runtime files after acquiring an episode lease; Codex research itself may access public sources or an already configured capability. Follow the lease-aware rollback in [`run-lifecycle.md`](run-lifecycle.md); do not manually remove a live lock. Invalid generated artifacts are repaired at their owning stage rather than bypassing version, lineage, locator, evidence, plan, or script validation.
+No current command contacts Gemini or R2. Initialization, collection, editorial, script recording, and TTS preparation create only local runtime files after acquiring an episode lease; Codex research itself may access public sources or an already configured capability. Follow the lease-aware rollback in [`run-lifecycle.md`](run-lifecycle.md); do not manually remove a live lock. Invalid generated artifacts are repaired at their owning stage rather than bypassing version, lineage, locator, evidence, plan, script, or token-limit validation.
 
 Service-specific recovery and rotation are documented in [`cloudflare-r2.md`](cloudflare-r2.md) and will be expanded alongside their implementations.

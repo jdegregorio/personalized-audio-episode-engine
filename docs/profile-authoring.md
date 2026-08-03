@@ -19,6 +19,8 @@ Every key is validated and unknown keys fail closed. Section IDs may be any lowe
 
 `performance.fatal_warning_codes` is an optional unique list that promotes selected script-quality warnings to validation errors. Supported codes are `excessive_performance_tags`, `excessive_reaction_turns`, `host_word_share`, `consecutive_host_turns`, `repeated_stock_phrase`, `missing_segment_takeaway`, and `script_duration_preferred`. Leave it empty for the MVP defaults: warnings remain visible without silently rewriting or rejecting otherwise grounded prose. The fixed warning thresholds are more than 70 percent of words for one host, more than three consecutive turns, reaction turns above the greater of two or one-fifth of all turns, and—when tags are `sparingly`—performance cues above the greater of one or one-quarter of all turns.
 
+The `tts` block selects the provider/model capability record and preparation limits. The MVP Gemini model has an 8,192-token absolute input limit; keep `safe_input_tokens` at the default 7,000 so the complete structured prompt retains headroom. `target_segment_minutes` guides natural packing (the default is three); it never permits a prompt above the safe limit or a silent mid-turn text split. `maximum_retries` is consumed by rendering in PR 09, not preparation.
+
 ## Validate safely
 
 Add an external profile directory to `AUDIO_ENGINE_INPUT_ROOTS` using the macOS/Linux `:` path separator, load the central environment, and run:

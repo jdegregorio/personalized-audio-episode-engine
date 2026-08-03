@@ -53,6 +53,7 @@ SourceId = Annotated[str, Field(pattern=r"^source_[A-Za-z0-9][A-Za-z0-9_-]*$")]
 PlanSegmentId = Annotated[str, Field(pattern=r"^segment_[A-Za-z0-9][A-Za-z0-9_-]*$")]
 TurnId = Annotated[str, Field(pattern=r"^turn_[A-Za-z0-9][A-Za-z0-9_-]*$")]
 TtsSegmentId = Annotated[str, Field(pattern=r"^tts_[A-Za-z0-9][A-Za-z0-9_-]*$")]
+PromptText = Annotated[str, Field(min_length=1, max_length=100_000)]
 
 
 def _validate_safe_artifact_path(value: str) -> str:
@@ -462,6 +463,119 @@ class EpisodeScript(_ContractModel):
         return self
 
 
+class TtsHost(_ContractModel):
+    name: ShortText
+    voice: ShortText
+    description: ShortText
+
+
+class TtsSegmentPrompt(_ContractModel):
+    contract_version: Literal["1.0"]
+    prompt_version: Version
+    provider: Identifier
+    model: ShortText
+    episode_script: ArtifactReference
+    segment_id: TtsSegmentId
+    position: Annotated[int, Field(ge=1, le=10_000)]
+    segment_count: Annotated[int, Field(ge=1, le=10_000)]
+    scene_description: LongText
+    director_notes: Annotated[list[ShortText], Field(min_length=1, max_length=20)]
+    hosts: Annotated[list[TtsHost], Field(min_length=2, max_length=2)]
+    continuity_context: ShortText | None
+    transcript: PromptText
+    turn_ids: Annotated[list[TurnId], Field(min_length=1, max_length=10_000)]
+    estimated_input_tokens: Annotated[int, Field(ge=1, le=100_000)]
+
+    @model_validator(mode="after")
+    def consistent_prompt(self) -> Self:
+        if self.episode_script.artifact_type != "script":
+            raise ValueError("TTS prompt input must reference an episode script")
+        if self.position > self.segment_count:
+            raise ValueError("TTS prompt position cannot exceed segment count")
+        host_names = [host.name for host in self.hosts]
+        if len(host_names) != len(set(host_names)):
+            raise ValueError("TTS prompt host names must be unique")
+        prefixes = tuple(f"{name}: " for name in host_names)
+        if any(not line.startswith(prefixes) for line in self.transcript.splitlines()):
+            raise ValueError("TTS transcript speaker names must exactly match prompt hosts")
+        if len(self.turn_ids) != len(set(self.turn_ids)):
+            raise ValueError("TTS prompt turn IDs must be unique")
+        return self
+
+
+class TtsManifestSegment(_ContractModel):
+    segment_id: TtsSegmentId
+    order: Annotated[int, Field(ge=1, le=10_000)]
+    prompt: ArtifactReference
+    turn_ids: Annotated[list[TurnId], Field(min_length=1, max_length=10_000)]
+    planned_segment_ids: Annotated[list[PlanSegmentId], Field(max_length=1_000)]
+    estimated_duration_seconds: Annotated[int, Field(ge=1, le=60 * 60 * 3)]
+    estimated_input_tokens: Annotated[int, Field(ge=1, le=100_000)]
+
+    @model_validator(mode="after")
+    def valid_prompt_reference(self) -> Self:
+        if self.prompt.artifact_type != "tts-prompt":
+            raise ValueError("TTS manifest segment must reference a TTS prompt")
+        if len(self.turn_ids) != len(set(self.turn_ids)):
+            raise ValueError("TTS manifest segment turn IDs must be unique")
+        if len(self.planned_segment_ids) != len(set(self.planned_segment_ids)):
+            raise ValueError("TTS manifest planned-segment IDs must be unique")
+        return self
+
+
+class TtsManifest(_ContractModel):
+    model_config = ConfigDict(
+        extra="forbid",
+        strict=True,
+        json_schema_extra={
+            "$schema": "https://json-schema.org/draft/2020-12/schema",
+            "$id": "urn:personalized-audio-episode-engine:schema:tts-manifest:1.0",
+        },
+    )
+
+    contract_version: Literal["1.0"]
+    prompt_version: Version
+    created_at: JsonAwareDatetime
+    run_id: RunId
+    profile_id: Identifier
+    episode_date: JsonDate
+    provider: Identifier
+    model: ShortText
+    safe_input_tokens: Annotated[int, Field(ge=1, le=100_000)]
+    absolute_input_tokens: Annotated[int, Field(ge=1, le=100_000)]
+    episode_script: ArtifactReference
+    transcript: ArtifactReference
+    scene_description: LongText
+    hosts: Annotated[list[TtsHost], Field(min_length=2, max_length=2)]
+    segments: Annotated[list[TtsManifestSegment], Field(min_length=1, max_length=10_000)]
+
+    @model_validator(mode="after")
+    def consistent_manifest(self) -> Self:
+        if self.episode_script.artifact_type != "script":
+            raise ValueError("TTS manifest input must reference an episode script")
+        if self.transcript.artifact_type != "transcript":
+            raise ValueError("TTS manifest input must reference a transcript")
+        if self.safe_input_tokens > self.absolute_input_tokens:
+            raise ValueError("safe TTS input limit cannot exceed the model absolute limit")
+        host_names = [host.name for host in self.hosts]
+        if len(host_names) != len(set(host_names)):
+            raise ValueError("TTS manifest host names must be unique")
+        orders = [segment.order for segment in self.segments]
+        segment_ids = [segment.segment_id for segment in self.segments]
+        if orders != list(range(1, len(orders) + 1)):
+            raise ValueError("TTS manifest segment order must be contiguous from 1")
+        if len(segment_ids) != len(set(segment_ids)):
+            raise ValueError("TTS manifest segment IDs must be unique")
+        turn_ids = [turn_id for segment in self.segments for turn_id in segment.turn_ids]
+        if len(turn_ids) != len(set(turn_ids)):
+            raise ValueError("TTS manifest must contain every turn at most once")
+        if any(
+            segment.estimated_input_tokens > self.safe_input_tokens for segment in self.segments
+        ):
+            raise ValueError("TTS manifest segment exceeds the safe input limit")
+        return self
+
+
 class PublishedAsset(_ContractModel):
     kind: Literal["audio", "transcript", "show_notes", "episode_metadata"]
     object_key: str
@@ -623,6 +737,25 @@ class ScriptValidationState(_ContractModel):
         return self
 
 
+class TtsPreparationState(_ContractModel):
+    status: Literal["prepared"]
+    segment_count: Annotated[int, Field(ge=1, le=10_000)]
+    episode_script: ArtifactReference
+    transcript: ArtifactReference
+    manifest: ArtifactReference
+
+    @model_validator(mode="after")
+    def consistent_preparation(self) -> Self:
+        expected_types = (
+            (self.episode_script, "script"),
+            (self.transcript, "transcript"),
+            (self.manifest, "tts-manifest"),
+        )
+        if any(reference.artifact_type != expected for reference, expected in expected_types):
+            raise ValueError("TTS preparation references have invalid artifact types")
+        return self
+
+
 class RunState(_ContractModel):
     model_config = ConfigDict(
         extra="forbid",
@@ -648,6 +781,7 @@ class RunState(_ContractModel):
     collection_validation: CollectionValidationState | None = None
     plan_validation: PlanValidationState | None = None
     script_validation: ScriptValidationState | None = None
+    tts_preparation: TtsPreparationState | None = None
     codex_model: ShortText | None
     gemini_model: ShortText | None
     started_at: JsonAwareDatetime
@@ -689,6 +823,7 @@ Artifact = (
     | EvidenceDossier
     | EditorialPlan
     | EpisodeScript
+    | TtsManifest
     | PublishedEpisode
     | RunState
 )
@@ -698,6 +833,7 @@ ARTIFACT_MODELS: dict[str, type[_ContractModel]] = {
     "evidence": EvidenceDossier,
     "plan": EditorialPlan,
     "script": EpisodeScript,
+    "tts-manifest": TtsManifest,
     "published-episode": PublishedEpisode,
     "run-state": RunState,
 }
@@ -707,6 +843,7 @@ ARTIFACT_SCHEMA_FILENAMES: dict[str, str] = {
     "evidence": "evidence-dossier-v1.0.schema.json",
     "plan": "editorial-plan-v1.0.schema.json",
     "script": "episode-script-v1.0.schema.json",
+    "tts-manifest": "tts-manifest-v1.0.schema.json",
     "published-episode": "published-episode-v1.0.schema.json",
     "run-state": "run-state-v1.0.schema.json",
 }
