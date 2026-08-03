@@ -6,6 +6,7 @@
 **Specification date:** August 2, 2026
 **Target release:** MVP / proof of concept
 **Primary runtime:** Scheduled Codex task operating in a local, version-controlled repository
+**Publication host:** Cloudflare R2, exposed through a public-but-unguessable feed URL
 **Primary MVP example episode:** World, U.S., and Seattle Daily News Briefing
 **Primary listener:** Repository owner
 **Timezone:** `America/Los_Angeles`
@@ -26,7 +27,7 @@ The engine accepts an **episode profile** describing:
 * Host and performance style.
 * Length and publication settings.
 
-It then collects source material using the best available research capability, performs editorial selection and planning with Codex, creates a two-host transcript, renders the transcript through Gemini multi-speaker text-to-speech, and publishes the result to a private RSS feed.
+It then collects source material using the best available research capability, performs editorial selection and planning with Codex, creates a two-host transcript, renders the transcript through Gemini multi-speaker text-to-speech, and publishes the result to a private-by-secret-link RSS feed hosted in Cloudflare R2.
 
 The MVP shall exercise the generic harness end to end with one example profile:
 
@@ -67,7 +68,7 @@ The core product value is:
 
 The MVP must prove the following hypothesis:
 
-> A scheduled Codex workflow, guided by a reusable episode-production skill, can collect relevant information using available capabilities or native research, select and structure the most important material, generate a natural two-host conversation, synthesize it using Gemini multi-speaker TTS, and publish it to a private podcast feed without manual intervention.
+> A scheduled Codex workflow, guided by a reusable episode-production skill, can collect relevant information using available capabilities or native research, select and structure the most important material, generate a natural two-host conversation, synthesize it using Gemini multi-speaker TTS, and publish it to a Cloudflare R2 podcast feed at an unguessable URL without manual intervention.
 
 The initial MVP is successful when scheduled invocations reliably progress through the complete pipeline and create a playable audio file without manual code changes. Editorial usefulness and listening behavior may be reviewed informally, but they are not MVP metrics.
 
@@ -91,12 +92,12 @@ The MVP includes:
 10. Gemini multi-speaker TTS.
 11. TTS segmentation when required by provider guidance.
 12. Technical audio concatenation and MP3 encoding.
-13. Private RSS publication.
+13. Private-by-secret-link RSS publication to Cloudflare R2.
 14. A machine-readable run-state record.
 15. A concise human-readable run summary.
 16. Scheduled execution through Codex.
 17. A reproducible Python environment managed with `uv`.
-18. Configuration, testing, documentation, and failure recovery.
+18. Configuration, testing, documentation, external-service bootstrapping, and failure recovery.
 19. One world/U.S./Seattle news example profile exercised end to end.
 20. Documentation of optional research skills or tools that may improve collection quality.
 
@@ -131,7 +132,7 @@ The MVP shall not include:
 * A vector database.
 * A queueing system.
 * A web application.
-* Cloud orchestration.
+* Cloud compute or general cloud orchestration beyond the required Cloudflare R2 publication target.
 * Fine-tuning.
 * Long-term automatic preference learning.
 * Automatic installation of arbitrary community skills.
@@ -236,7 +237,7 @@ For the MVP:
 
 * Filesystem over database.
 * JSON over custom storage.
-* Static RSS over a publishing platform.
+* Static RSS and episode objects in R2 over a podcast-platform dependency.
 * Explicit schemas over informal output.
 * Independent skills over a plugin framework built from scratch.
 * Scheduled Codex task over a custom orchestration service.
@@ -284,7 +285,7 @@ Each morning, a scheduled Codex task shall:
 4. Collect evidence using the best available research capability, falling back to native web research when needed.
 5. Generate and publish the episode.
 6. Leave a run summary for review.
-7. Make the episode available through a private RSS feed consumable in AntennaPod.
+7. Make the episode available from Cloudflare R2 through an unguessable RSS URL consumable in AntennaPod.
 
 ## 7.3 Manual use case
 
@@ -549,7 +550,7 @@ Concatenate and encode MP3
 Generate show notes and transcript
         │
         ▼
-Publish episode and update RSS atomically
+Upload validated episode assets to R2, then conditionally update RSS last
         │
         ▼
 Finalize run state and run summary
@@ -1425,41 +1426,67 @@ Rerunning the same profile and date shall update the existing episode rather tha
 
 ### TR-045
 
-The engine shall publish into a configured static directory.
+The production publication target shall be one configured Cloudflare R2 bucket accessed through its S3-compatible API with `boto3`.
 
 ### TR-046
 
 Configuration shall provide:
 
-* Publish directory.
-* Public base URL.
-* Feed path.
-* Private feed token.
+* R2 S3 endpoint URL.
+* R2 bucket name.
+* R2 access-key ID and secret access key.
+* Public HTTPS base URL for the bucket's custom domain or development `r2.dev` URL.
+* Cryptographically random feed-path token.
+* Episode-retention period.
 * Feed metadata.
 
 ### TR-047
 
-The reference deployment shall expose the static directory over HTTPS through a private or restricted endpoint, such as Tailscale Serve or an equivalent user-controlled static host.
+The MVP may expose R2 objects through either a Cloudflare-provided `r2.dev` URL or a custom HTTPS domain. The bootstrap documentation shall identify `r2.dev` as the simplest proof-of-concept option and document Cloudflare's non-production/rate-limit warning. A custom domain is the recommended ongoing scheduled endpoint because it enables Cloudflare cache and access-control features, but it is not an MVP blocker when the selected `r2.dev` endpoint passes the stated smoke and UAT checks.
 
 ### TR-048
 
-The core application shall not implement a cloud-storage provider in the MVP.
+The bucket shall use this logical key layout:
+
+```text
+feeds/<feed-token>/feed.xml
+episodes/<feed-token>/<profile-id>-<YYYY-MM-DD>/episode.mp3
+episodes/<feed-token>/<profile-id>-<YYYY-MM-DD>/transcript.txt
+episodes/<feed-token>/<profile-id>-<YYYY-MM-DD>/show-notes.html
+episodes/<feed-token>/<profile-id>-<YYYY-MM-DD>/episode.json
+```
+
+The feed object shall remain outside the lifecycle-managed episode prefix. The feed token and complete feed URL are secrets and must be redacted from logs, state summaries, test evidence, and pull requests.
 
 ### TR-049
 
-The repository shall include a local static-server command for development testing.
+The dedicated R2 bucket shall have one lifecycle rule that expires objects only below `episodes/` after the configured retention period. Before publishing a feed revision, the publisher shall remove RSS items whose episode objects are due to expire so the feed does not retain known-broken enclosure URLs. The broader episode prefix keeps setup and feed-token rotation simple while preserving every feed object below `feeds/`. Documentation shall note that lifecycle deletion is asynchronous and may occur after the configured age.
 
 ### TR-050
 
-Publication shall use atomic file replacement.
+Publication shall upload and verify all episode assets before making them discoverable in a new feed revision. The feed shall be uploaded last with `Content-Type: application/rss+xml` and `Cache-Control: no-cache, no-store, must-revalidate`. MP3 objects shall use `audio/mpeg`; transcript, show-notes, and metadata objects shall use their correct media types.
 
-The feed must never temporarily reference a partially written MP3.
+### TR-051
+
+After acquiring the local feed lock, the publisher shall read the latest remote feed and its ETag, merge the episode idempotently, validate the resulting RSS, and write the feed conditionally with `If-Match` for an existing feed or `If-None-Match: *` for initial creation. A precondition failure shall trigger a bounded re-read/reapply attempt or leave publication safely resumable. It must never overwrite a concurrent feed revision or expose a feed item before its assets are retrievable.
+
+### TR-052
+
+The repository may retain a local-filesystem publisher or static server only as an injected development/test adapter. It is not the production publication target and must implement the same publication contract without introducing a generalized cloud-platform abstraction.
+
+### TR-053
+
+The R2 API token shall be restricted to Object Read & Write for the one publication bucket. Administrative setup shall use an owner-controlled Cloudflare session or a separate short-lived administrative credential; runtime code shall not require permissions to create buckets, public domains, lifecycle rules, or API tokens.
+
+### TR-054
+
+The repository documentation shall provide end-to-end Cloudflare bootstrap instructions covering R2 enablement and billing prerequisites, bucket creation, public access and custom-domain selection, bucket-scoped runtime token creation, secret capture and rotation, lifecycle-prefix configuration, local and GitHub secret loading, environment validation, a non-sensitive upload/fetch probe, rollback, and AntennaPod subscription with optional refresh/auto-download settings. Instructions shall use exact environment-variable names but never real secret values. Official Cloudflare documentation shall be linked for [S3-compatible access](https://developers.cloudflare.com/r2/get-started/s3/), [public buckets](https://developers.cloudflare.com/r2/buckets/public-buckets/), [API tokens](https://developers.cloudflare.com/r2/api/tokens/), and [object lifecycle rules](https://developers.cloudflare.com/r2/buckets/object-lifecycles/).
 
 ## 16.4 Private-feed security
 
 ### NFR-001
 
-The feed URL shall contain a cryptographically random, unguessable token.
+The public feed URL shall contain a cryptographically random, unguessable token.
 
 ### NFR-002
 
@@ -1467,11 +1494,15 @@ The token shall be stored outside version control.
 
 ### NFR-003
 
-The MVP may rely on a secret URL because the primary example episode contains public news only.
+The MVP may rely on a public-but-unguessable URL because the primary example episode contains public news only. This is security by possession/obscurity, not authenticated access.
 
 ### NFR-004
 
-The documentation must state that secret-URL privacy is insufficient for future personal calendar, email, or message episodes.
+The documentation must state that secret-URL privacy is insufficient for future personal calendar, email, message, health, financial, or other sensitive episodes. Such profiles require a separate authenticated or encrypted publication design and privacy review before use.
+
+### NFR-005
+
+The public R2 bucket shall not contain secrets or private run artifacts beyond the tokenized publication objects required by the feed. The bucket name and public object listing behavior must not be relied on as an access control.
 
 ---
 
@@ -1603,13 +1634,13 @@ A lease may be recovered only when its owner is in a terminal state or its heart
 
 ### FR-140
 
-Because publication occurs inside one script process, that script shall acquire a separate non-blocking or bounded-wait OS advisory lock keyed by feed ID before reading or updating the feed:
+The publication script shall acquire a separate non-blocking or bounded-wait OS advisory lock keyed by feed ID before reading or updating the remote feed:
 
 ```text
 runtime/locks/feed-<sha256-of-feed-id>.lock
 ```
 
-The publisher shall re-read the current feed only after acquiring the feed lock, write and validate episode assets first, atomically replace the feed last, and then release the feed lock. This allows different episodes to render concurrently while serializing the short feed read-modify-write operation. If the feed lock cannot be obtained within the configured short timeout, publication shall be marked deferred and remain resumable without rerendering audio.
+The publisher shall re-read the current R2 feed only after acquiring the feed lock, capture its ETag, upload and verify episode assets first, and conditionally upload the validated feed last under TR-051 before releasing the lock. The local lock serializes publication on the reference production host; the R2 precondition protects against another host or process that does not share that lock. If the lock cannot be obtained within the configured short timeout, or a bounded conditional-write retry cannot converge, publication shall be marked deferred and remain resumable without rerendering audio. Already uploaded but unreferenced assets may remain for lifecycle cleanup and must not be treated as a published episode.
 
 ### FR-141
 
@@ -1674,8 +1705,7 @@ personalized-audio-engine/
 │   ├── prepare_tts.py
 │   ├── render_audio.py
 │   ├── publish_episode.py
-│   ├── finalize_run.py
-│   └── serve_publish_dir.py
+│   └── finalize_run.py
 │
 ├── src/
 │   └── audio_engine/
@@ -1694,9 +1724,11 @@ personalized-audio-engine/
 │       ├── audio/
 │       │   └── ffmpeg.py
 │       └── publishing/
+│           ├── base.py
 │           ├── rss.py
 │           ├── show_notes.py
-│           └── static.py
+│           ├── r2.py
+│           └── local.py
 │
 ├── tests/
 │   ├── fixtures/
@@ -1706,11 +1738,15 @@ personalized-audio-engine/
 │
 ├── runtime/
 │   ├── locks/
-│   ├── runs/
-│   └── publish/
+│   └── runs/
 │
 └── docs/
     ├── setup.md
+    ├── cloudflare-r2.md
+    ├── operations.md
+    ├── implementation-status.md
+    ├── sdlc.md
+    ├── cicd.md
     ├── scheduled-task.md
     ├── optional-collectors.md
     ├── profile-authoring.md
@@ -1763,6 +1799,7 @@ Detailed editorial, scripting, TTS, and publication instructions shall live in s
 * Validate every structured artifact.
 * Record every repair and retry.
 * Prefer resuming over repeating successful stages.
+* Update all affected operator, setup, architecture, reference, and troubleshooting documentation in the same pull request as a behavior or configuration change.
 
 ## 19.5 Optional collection capabilities
 
@@ -1883,9 +1920,12 @@ tts:
 publishing:
   feed_title: "Joe's Daily Briefing"
   language: en-US
+  provider: cloudflare_r2
   private_path_env: PODCAST_FEED_TOKEN
-  publish_directory_env: PODCAST_PUBLISH_DIR
+  endpoint_url_env: R2_ENDPOINT_URL
+  bucket_name_env: R2_BUCKET_NAME
   base_url_env: PODCAST_BASE_URL
+  retention_days_env: R2_RETENTION_DAYS
 ```
 
 `global`, `us`, and `local` are identifiers defined by this example profile. The profile schema shall allow arbitrary topic, scope, section, candidate-target, and exclusion identifiers without teaching the engine what those identifiers mean.
@@ -2077,12 +2117,11 @@ uv run python scripts/prepare_tts.py --run <run-path>
 uv run python scripts/render_audio.py --run <run-path>
 uv run python scripts/publish_episode.py --run <run-path>
 uv run python scripts/finalize_run.py --run <run-path>
-uv run python scripts/serve_publish_dir.py
 ```
 
 The exact script grouping may be simplified during implementation. The important requirement is that common validation, audio preparation, rendering, publication, and state-update logic be reusable rather than reimplemented by Codex during each run.
 
-The README and skill references shall include copy-pasteable commands for environment setup, validation, rendering, publication, resume, and local feed serving. They may also document direct third-party commands such as `ffmpeg` or `ffprobe` when those are the simplest stable interface.
+The README and skill references shall include copy-pasteable commands for environment setup, validation, rendering, R2 publication, publication-only resume, and an optional local fake-publisher test. They may also document direct third-party commands such as `ffmpeg`, `ffprobe`, `aws`, or `curl` when those are the simplest stable interface. The external R2 dashboard/bootstrap procedure required by TR-054 shall live in `docs/cloudflare-r2.md` and be linked from setup, operations, and troubleshooting documentation.
 
 All scripts shall:
 
@@ -2103,9 +2142,11 @@ Must check:
 * FFmpeg.
 * FFprobe.
 * Gemini API key.
-* Publish directory.
-* Base URL.
+* R2 endpoint URL and bucket name.
+* R2 runtime credentials without printing them.
+* Public podcast base URL.
 * Feed token.
+* Episode-retention value and compatibility with the documented lifecycle rule.
 * Profile validity.
 * Writable runtime directory.
 * Availability of native web research or any profile-required authenticated source capability when detectable.
@@ -2155,8 +2196,12 @@ Must:
 * Create show notes.
 * Create transcript output.
 * Write episode metadata.
-* Atomically update RSS.
+* Upload episode assets to R2 with correct media types.
+* Verify uploaded assets are retrievable before feed publication.
+* Prune expired feed items in step with the configured R2 lifecycle prefix.
+* Conditionally update RSS last using the latest remote ETag.
 * Preserve stable GUIDs.
+* Support idempotent publication-only resume without rerendering audio.
 
 ## 22.7 Finalization script
 
@@ -2164,7 +2209,7 @@ Must:
 
 * Generate summary.
 * Mark state successful.
-* Print feed and episode locations.
+* Print redacted feed and episode locations.
 
 ---
 
@@ -2361,7 +2406,7 @@ Runtime directories shall be Git-ignored.
 
 ### NFR-062
 
-Logs shall redact API keys and feed tokens.
+Logs shall redact API keys, R2 access-key identifiers and secrets, feed tokens, full tokenized object keys, and complete feed URLs.
 
 ### NFR-063
 
@@ -2381,7 +2426,7 @@ Shell execution shall be limited to documented commands.
 
 ### NFR-067
 
-The application shall reject paths outside configured runtime and publication roots.
+The application shall reject local paths outside configured runtime/staging roots and remote object keys outside the configured feed and episode prefixes.
 
 ## 25.7 Privacy
 
@@ -2424,6 +2469,28 @@ Errors must identify what the user should fix.
 
 The user must not need to inspect raw JSON to determine whether a run succeeded.
 
+## 25.10 Documentation as part of delivery
+
+### NFR-090
+
+Documentation is a versioned product artifact. Every pull request shall review and update all affected documentation in the same change; documentation work may not be deferred to a later cleanup PR. Each PR record shall identify the exact documentation reviewed or changed.
+
+### NFR-091
+
+A change to configuration, environment variables, commands, schemas, generated artifacts, state transitions, external-service setup, permissions, failure behavior, recovery, or operator workflow shall update the corresponding README, `.env.example`, setup, architecture/operations, troubleshooting, skill reference, and implementation-status material as applicable.
+
+### NFR-092
+
+External dashboard or manual bootstrap instructions shall state prerequisites, least-privilege permissions, exact non-secret identifiers and environment-variable names, validation checks, rollback or disablement, and secret-rotation steps. Screenshots may supplement but shall never replace durable text instructions.
+
+### NFR-093
+
+Default CI shall lint Markdown, validate internal links and referenced paths, and exercise copy-pasteable repository commands where practical. Documentation examples shall use placeholders and shall not contain production secrets, private URLs, or current runtime data.
+
+### NFR-094
+
+The mandatory correctness and simplification reviews shall include documentation accuracy, unnecessary conceptual surface area, consistency with the implementation, and maintainability. A PR is incomplete when its code is correct but its affected documentation is stale, fragmented, or unnecessarily complex.
+
 ---
 
 # 26. Technology stack
@@ -2438,11 +2505,12 @@ data_validation: Pydantic v2
 gemini_sdk: google-genai
 http: httpx
 audio: FFmpeg + FFprobe
+object_storage_sdk: boto3
 testing: pytest
 linting: Ruff
 type_checking: Pyright
-storage: local filesystem
-publication: static RSS 2.0
+storage: local filesystem + Cloudflare R2
+publication: RSS 2.0 and episode assets in a public R2 bucket at an unguessable path
 ```
 
 Permitted supporting dependencies:
@@ -2450,6 +2518,7 @@ Permitted supporting dependencies:
 * `pydantic-settings`
 * `PyYAML`
 * `respx`
+* `botocore` test utilities supplied through `boto3`
 
 Avoid adding dependencies when the standard library is sufficient.
 
@@ -2486,17 +2555,25 @@ runtime/
 │               ├── show-notes.html
 │               ├── episode.json
 │               └── summary.md
-│
-└── publish/
-    └── <private-token>/
-        ├── feed.xml
-        ├── episodes/
-        │   └── world-us-seattle-news-2026-08-03.mp3
-        ├── transcripts/
-        │   └── world-us-seattle-news-2026-08-03.txt
-        └── notes/
-            └── world-us-seattle-news-2026-08-03.html
 ```
+
+The corresponding remote R2 object layout is:
+
+```text
+<configured-r2-bucket>/
+├── feeds/
+│   └── <feed-token>/
+│       └── feed.xml
+└── episodes/
+    └── <feed-token>/
+        └── world-us-seattle-news-2026-08-03/
+            ├── episode.mp3
+            ├── transcript.txt
+            ├── show-notes.html
+            └── episode.json
+```
+
+Only the `episodes/` prefix is lifecycle-managed. Tests and offline development may materialize the same logical keys below a temporary local root through the development adapter.
 
 ---
 
@@ -2516,7 +2593,8 @@ Must cover:
 * Retry logic.
 * RSS generation.
 * GUID stability.
-* Atomic publication.
+* R2 object-key safety, media-type/cache metadata, and publication ordering.
+* Lifecycle/feed-retention boundary behavior.
 * Episode-lease exclusive acquisition, ownership checks, heartbeat refresh, release, and stale recovery.
 * Concurrent same-episode no-op behavior.
 * Secret redaction.
@@ -2565,11 +2643,17 @@ Must verify:
 * Correct MIME type.
 * Stable GUID.
 * No duplicate daily item.
-* Atomic feed replacement.
+* Episode assets are uploaded and verified before the feed is written.
+* Feed writes use the expected existing or initial-creation precondition.
+* A simulated ETag conflict cannot lose another publisher's feed entry and is either retried from the new feed or safely deferred.
 * Feed-level locking under concurrent publication.
 * Concurrent publication of different episode keys without lost feed entries.
 * Valid transcript and show-notes paths.
 * Feed remains readable after rerun.
+* Feed entries are removed at or before the configured episode lifecycle boundary while `feed.xml` itself is never selected for expiry.
+* Upload or public-fetch failure leaves audio resumable and the previous remote feed intact; any orphan asset is harmless and lifecycle-cleanable.
+
+Default publication tests shall inject a fake S3-compatible client or use `botocore.stub.Stubber`; they shall not require Cloudflare credentials or network access. A live R2 upload/fetch/delete probe shall be explicitly dispatched and excluded from default CI.
 
 ## 28.5 Golden fixtures
 
@@ -2593,10 +2677,11 @@ The release candidate must demonstrate:
 4. A grounded two-host transcript is generated.
 5. Gemini produces all segments.
 6. The MP3 is assembled.
-7. The feed is published.
+7. Episode assets and then the feed are published to the configured R2 bucket.
 8. AntennaPod discovers and plays the episode.
 9. The transcript and source notes are reachable.
 10. A rerun does not create a duplicate.
+11. The feed and all linked assets are fetched from their public R2 URL with expected status, content type, and cache behavior.
 
 ## 28.7 Concurrency integration test
 
@@ -2606,7 +2691,7 @@ The release candidate must demonstrate:
 2. The no-op invocation does not create or modify run artifacts.
 3. A simulated abandoned lease cannot be taken over before its heartbeat expires and can be recovered atomically after it becomes stale without manual cleanup.
 4. Two different episode keys can perform non-publication work concurrently.
-5. Concurrent publication attempts for different episode keys sharing one feed are serialized and preserve both feed entries.
+5. Concurrent publication attempts for different episode keys sharing one feed are serialized locally, while a simulated external ETag conflict preserves all remote feed entries through conditional writes.
 
 ---
 
@@ -2670,9 +2755,9 @@ The episode is segmented at natural boundaries rather than sent as one long TTS 
 
 A simulated transient TTS failure succeeds without restarting prior phases.
 
-## AC-015: Private RSS
+## AC-015: Cloudflare R2 RSS
 
-The episode is available through a private RSS URL and playable in AntennaPod.
+The episode is available from the configured Cloudflare R2 public endpoint through a tokenized, unguessable RSS URL and is discoverable, downloadable, and playable in AntennaPod. The feed response and each linked asset use the expected media type, and no object is referenced before it is retrievable.
 
 ## AC-016: Idempotency
 
@@ -2684,7 +2769,7 @@ The user can understand the outcome from `summary.md` without opening JSON.
 
 ## AC-018: Reproducible setup
 
-A developer can clone the repository, install dependencies with `uv`, configure documented environment variables, run the documented environment-check script, and complete the manual end-to-end workflow.
+A developer can clone the repository, install dependencies with `uv`, follow the documented least-privilege Cloudflare R2 bootstrap, configure local and GitHub variables/secrets, run the documented environment-check and non-sensitive publication probes, and complete the manual end-to-end workflow without undocumented dashboard steps.
 
 ## AC-019: Initial pipeline reliability
 
@@ -2692,7 +2777,7 @@ Three consecutive scheduled runs each create a valid playable audio file without
 
 ## AC-020: Safe concurrent execution
 
-When two processes start the same episode key concurrently, exactly one owns and mutates the run while the other exits as a successful no-op. When different episodes publish concurrently to the same feed, feed-level locking preserves both entries without corruption or lost updates.
+When two processes start the same episode key concurrently, exactly one owns and mutates the run while the other exits as a successful no-op. When different episodes publish concurrently to the same feed, local feed locking plus remote conditional ETag writes preserve all entries without corruption or lost updates, including a simulated publisher that does not share the local lock.
 
 ---
 
@@ -2712,11 +2797,13 @@ When two processes start the same episode key concurrently, exactly one owns and
 | One TTS segment fails          | Retry only that segment                                       |
 | TTS retries exhausted          | Preserve successful segments; do not publish                  |
 | MP3 validation fails           | Do not publish                                                |
-| Publication fails              | Preserve final audio and permit publication-only resume       |
+| R2 asset upload or verification fails | Preserve final audio and prior feed; permit publication-only resume |
+| R2 conditional feed write conflicts | Re-read and reapply within the bounded policy; otherwise preserve the prior feed and defer publication |
+| Public R2 URL is unavailable or has wrong metadata | Do not publish the new feed revision; report endpoint/domain or object-metadata recovery guidance |
 | Feed lock remains busy         | Preserve final audio; defer and permit publication-only resume |
-| Feed endpoint unavailable      | Record warning or fail according to configuration             |
+| Retention and lifecycle configuration disagree | Fail preflight/publication before writing a feed with known expiring references |
 | Same episode starts twice      | Episode-key lock grants one owner; the other run is a no-op    |
-| Different episodes publish together | Feed lock serializes feed updates without blocking rendering |
+| Different episodes publish together | Local lock and R2 preconditions preserve all feed updates without blocking rendering |
 
 ---
 
@@ -2804,14 +2891,17 @@ Build:
 * Show notes.
 * Transcript publication.
 * RSS generation.
-* Static publisher.
-* Atomic writes.
-* Local server.
+* Cloudflare R2 publisher through `boto3`.
+* Ordered asset upload and verification.
+* Conditional ETag-based feed updates.
+* Feed pruning synchronized with the episode lifecycle prefix.
+* Optional local fake publisher for offline testing.
+* Cloudflare R2 bootstrap, secret-loading, validation, operations, recovery, and rotation documentation.
 * AntennaPod test.
 
 Exit criterion:
 
-* AntennaPod downloads and plays the episode.
+* AntennaPod downloads and plays the episode from the tokenized R2 URL, and a conflict test proves that a concurrent remote feed update is not lost.
 
 ## Phase 6: Scheduled execution
 
@@ -2878,11 +2968,11 @@ Exit criterion:
 
 **Mitigation:** Claim IDs, claim-level supporting excerpts or primary-source locators, retrieval provenance, source-independence grouping, deterministic lineage checks, and explicit uncertainty.
 
-## 33.9 Local feed availability
+## 33.9 Public-by-link R2 publication
 
-**Risk:** The phone cannot retrieve the feed when the host computer sleeps.
+**Risk:** A leaked tokenized URL exposes the public-news feed, an `r2.dev` endpoint is rate-limited, cached RSS delays refreshes, or lifecycle deletion leaves a stale feed enclosure.
 
-**Mitigation:** Document that the reference host must remain reachable during podcast refresh. Cloud publication is a later option if local availability proves inconvenient.
+**Mitigation:** Use a high-entropy feed token and redact full URLs; use explicit no-cache feed metadata; validate the public endpoint before feed updates; synchronize feed pruning with the episode lifecycle prefix; document token rotation; and prefer a custom domain for ongoing scheduled use while allowing `r2.dev` for a deliberately accepted MVP proof of concept.
 
 ## 33.10 Prompt injection from research sources
 
@@ -2894,7 +2984,7 @@ Exit criterion:
 
 **Risk:** Duplicate starts create conflicting run state, duplicate episodes, or lost RSS updates.
 
-**Mitigation:** Claim one atomic, heartbeat-based lease per episode across the full agent workflow and hold one short-lived OS advisory lock per feed during feed read-modify-write. A duplicate episode start exits as a no-op, while abandoned leases are recoverable and unrelated episodes may render concurrently.
+**Mitigation:** Claim one atomic, heartbeat-based lease per episode across the full agent workflow, hold one short-lived OS advisory lock per feed during feed read-modify-write, and use R2 conditional writes against the last observed ETag. A duplicate episode start exits as a no-op, while abandoned leases are recoverable and unrelated episodes may render concurrently without losing an external feed revision.
 
 ---
 
@@ -2933,7 +3023,6 @@ Potential profile and collector expansion:
 * Soft commitments and “plans in progress.”
 * Audio candidate generation and judging.
 * More sophisticated cross-source framing analysis.
-* Cloud-hosted static publication.
 * Encrypted or authenticated personal feeds.
 * Subagent-based collection and review.
 * Web dashboard.
@@ -2953,7 +3042,7 @@ The required MVP consists of:
 4. One world/U.S./Seattle news example profile.
 5. One scheduled Codex workflow.
 6. One Gemini multi-speaker renderer.
-7. One private RSS feed.
+7. One Cloudflare R2-hosted RSS feed at a public-but-unguessable URL.
 8. One minimal per-run state file and human-readable result summary.
 
 The core repository must remain free of topic-specific source integrations.
