@@ -1,0 +1,627 @@
+{
+  "$defs": {
+    "Audience": {
+      "additionalProperties": false,
+      "properties": {
+        "knowledge_level": {
+          "maxLength": 80,
+          "minLength": 1,
+          "pattern": "^[a-z][a-z0-9_-]*$",
+          "title": "Knowledge Level",
+          "type": "string"
+        },
+        "locale": {
+          "pattern": "^[a-z]{2,3}(?:-[A-Z]{2})?$",
+          "title": "Locale",
+          "type": "string"
+        },
+        "preferences": {
+          "items": {
+            "maxLength": 2000,
+            "minLength": 1,
+            "type": "string"
+          },
+          "maxItems": 100,
+          "title": "Preferences",
+          "type": "array"
+        },
+        "timezone": {
+          "maxLength": 2000,
+          "minLength": 1,
+          "title": "Timezone",
+          "type": "string"
+        }
+      },
+      "required": [
+        "timezone",
+        "locale",
+        "knowledge_level"
+      ],
+      "title": "Audience",
+      "type": "object"
+    },
+    "Collection": {
+      "additionalProperties": false,
+      "properties": {
+        "allow_native_research_fallback": {
+          "title": "Allow Native Research Fallback",
+          "type": "boolean"
+        },
+        "evidence_contract_version": {
+          "pattern": "^\\d+\\.\\d+$",
+          "title": "Evidence Contract Version",
+          "type": "string"
+        },
+        "maximum_candidates": {
+          "maximum": 5000,
+          "minimum": 1,
+          "title": "Maximum Candidates",
+          "type": "integer"
+        },
+        "maximum_sources": {
+          "maximum": 10000,
+          "minimum": 1,
+          "title": "Maximum Sources",
+          "type": "integer"
+        },
+        "required_capabilities": {
+          "items": {
+            "maxLength": 80,
+            "minLength": 1,
+            "pattern": "^[a-z][a-z0-9_-]*$",
+            "type": "string"
+          },
+          "maxItems": 20,
+          "title": "Required Capabilities",
+          "type": "array"
+        },
+        "source_types": {
+          "items": {
+            "maxLength": 80,
+            "minLength": 1,
+            "pattern": "^[a-z][a-z0-9_-]*$",
+            "type": "string"
+          },
+          "maxItems": 20,
+          "minItems": 1,
+          "title": "Source Types",
+          "type": "array"
+        },
+        "suggested_capabilities": {
+          "items": {
+            "maxLength": 80,
+            "minLength": 1,
+            "pattern": "^[a-z][a-z0-9_-]*$",
+            "type": "string"
+          },
+          "maxItems": 20,
+          "title": "Suggested Capabilities",
+          "type": "array"
+        },
+        "target_candidates": {
+          "patternProperties": {
+            "^[a-z][a-z0-9_-]*$": {
+              "maximum": 1000,
+              "minimum": 0,
+              "type": "integer"
+            }
+          },
+          "propertyNames": {
+            "maxLength": 80,
+            "minLength": 1
+          },
+          "title": "Target Candidates",
+          "type": "object"
+        },
+        "time_window": {
+          "$ref": "#/$defs/TimeWindow"
+        }
+      },
+      "required": [
+        "source_types",
+        "allow_native_research_fallback",
+        "evidence_contract_version",
+        "time_window",
+        "target_candidates",
+        "maximum_candidates",
+        "maximum_sources"
+      ],
+      "title": "Collection",
+      "type": "object"
+    },
+    "Editorial": {
+      "additionalProperties": false,
+      "properties": {
+        "allow_empty_sections": {
+          "items": {
+            "maxLength": 80,
+            "minLength": 1,
+            "pattern": "^[a-z][a-z0-9_-]*$",
+            "type": "string"
+          },
+          "title": "Allow Empty Sections",
+          "type": "array"
+        },
+        "maximum_minutes": {
+          "maximum": 180,
+          "minimum": 1,
+          "title": "Maximum Minutes",
+          "type": "integer"
+        },
+        "maximum_total_items": {
+          "maximum": 100,
+          "minimum": 1,
+          "title": "Maximum Total Items",
+          "type": "integer"
+        },
+        "minimum_minutes": {
+          "maximum": 180,
+          "minimum": 1,
+          "title": "Minimum Minutes",
+          "type": "integer"
+        },
+        "policy": {
+          "patternProperties": {
+            "^[a-z][a-z0-9_-]*$": {
+              "$ref": "#/$defs/JsonValue"
+            }
+          },
+          "propertyNames": {
+            "maxLength": 80,
+            "minLength": 1
+          },
+          "title": "Policy",
+          "type": "object"
+        },
+        "target_minutes": {
+          "maximum": 180,
+          "minimum": 1,
+          "title": "Target Minutes",
+          "type": "integer"
+        },
+        "target_sections": {
+          "patternProperties": {
+            "^[a-z][a-z0-9_-]*$": {
+              "$ref": "#/$defs/SectionTarget"
+            }
+          },
+          "propertyNames": {
+            "maxLength": 80,
+            "minLength": 1
+          },
+          "title": "Target Sections",
+          "type": "object"
+        }
+      },
+      "required": [
+        "target_minutes",
+        "minimum_minutes",
+        "maximum_minutes",
+        "target_sections",
+        "maximum_total_items"
+      ],
+      "title": "Editorial",
+      "type": "object"
+    },
+    "Episode": {
+      "additionalProperties": false,
+      "properties": {
+        "scope": {
+          "$ref": "#/$defs/EpisodeScope"
+        },
+        "topic": {
+          "maxLength": 2000,
+          "minLength": 1,
+          "title": "Topic",
+          "type": "string"
+        }
+      },
+      "required": [
+        "topic",
+        "scope"
+      ],
+      "title": "Episode",
+      "type": "object"
+    },
+    "EpisodeScope": {
+      "additionalProperties": false,
+      "properties": {
+        "exclude": {
+          "items": {
+            "maxLength": 2000,
+            "minLength": 1,
+            "type": "string"
+          },
+          "maxItems": 100,
+          "title": "Exclude",
+          "type": "array"
+        },
+        "sections": {
+          "items": {
+            "$ref": "#/$defs/ScopeSection"
+          },
+          "maxItems": 30,
+          "minItems": 1,
+          "title": "Sections",
+          "type": "array"
+        }
+      },
+      "required": [
+        "sections"
+      ],
+      "title": "EpisodeScope",
+      "type": "object"
+    },
+    "Hosts": {
+      "additionalProperties": false,
+      "properties": {
+        "female": {
+          "$ref": "#/$defs/Speaker"
+        },
+        "format": {
+          "const": "two_speaker",
+          "title": "Format",
+          "type": "string"
+        },
+        "male": {
+          "$ref": "#/$defs/Speaker"
+        },
+        "relationship": {
+          "maxLength": 2000,
+          "minLength": 1,
+          "title": "Relationship",
+          "type": "string"
+        }
+      },
+      "required": [
+        "format",
+        "relationship",
+        "female",
+        "male"
+      ],
+      "title": "Hosts",
+      "type": "object"
+    },
+    "Identity": {
+      "additionalProperties": false,
+      "properties": {
+        "description": {
+          "maxLength": 2000,
+          "minLength": 1,
+          "title": "Description",
+          "type": "string"
+        },
+        "feed_id": {
+          "maxLength": 80,
+          "minLength": 1,
+          "pattern": "^[a-z][a-z0-9_-]*$",
+          "title": "Feed Id",
+          "type": "string"
+        },
+        "title_template": {
+          "maxLength": 2000,
+          "minLength": 1,
+          "title": "Title Template",
+          "type": "string"
+        }
+      },
+      "required": [
+        "feed_id",
+        "title_template",
+        "description"
+      ],
+      "title": "Identity",
+      "type": "object"
+    },
+    "JsonValue": {},
+    "Performance": {
+      "additionalProperties": false,
+      "properties": {
+        "pace": {
+          "maxLength": 2000,
+          "minLength": 1,
+          "title": "Pace",
+          "type": "string"
+        },
+        "prohibit_fake_personal_experience": {
+          "title": "Prohibit Fake Personal Experience",
+          "type": "boolean"
+        },
+        "prohibit_urls_in_speech": {
+          "title": "Prohibit Urls In Speech",
+          "type": "boolean"
+        },
+        "style": {
+          "maxLength": 2000,
+          "minLength": 1,
+          "title": "Style",
+          "type": "string"
+        },
+        "use_audio_tags": {
+          "enum": [
+            "never",
+            "sparingly",
+            "freely"
+          ],
+          "title": "Use Audio Tags",
+          "type": "string"
+        }
+      },
+      "required": [
+        "style",
+        "pace",
+        "use_audio_tags",
+        "prohibit_fake_personal_experience",
+        "prohibit_urls_in_speech"
+      ],
+      "title": "Performance",
+      "type": "object"
+    },
+    "Publishing": {
+      "additionalProperties": false,
+      "properties": {
+        "base_url_env": {
+          "const": "PODCAST_BASE_URL",
+          "title": "Base Url Env",
+          "type": "string"
+        },
+        "bucket_name_env": {
+          "const": "R2_BUCKET_NAME",
+          "title": "Bucket Name Env",
+          "type": "string"
+        },
+        "endpoint_url_env": {
+          "const": "R2_ENDPOINT_URL",
+          "title": "Endpoint Url Env",
+          "type": "string"
+        },
+        "feed_title": {
+          "maxLength": 2000,
+          "minLength": 1,
+          "title": "Feed Title",
+          "type": "string"
+        },
+        "language": {
+          "pattern": "^[a-z]{2,3}(?:-[A-Z]{2})?$",
+          "title": "Language",
+          "type": "string"
+        },
+        "private_path_env": {
+          "const": "PODCAST_FEED_TOKEN",
+          "title": "Private Path Env",
+          "type": "string"
+        },
+        "provider": {
+          "const": "cloudflare_r2",
+          "title": "Provider",
+          "type": "string"
+        },
+        "retention_days_env": {
+          "const": "R2_RETENTION_DAYS",
+          "title": "Retention Days Env",
+          "type": "string"
+        }
+      },
+      "required": [
+        "feed_title",
+        "language",
+        "provider",
+        "private_path_env",
+        "endpoint_url_env",
+        "bucket_name_env",
+        "base_url_env",
+        "retention_days_env"
+      ],
+      "title": "Publishing",
+      "type": "object"
+    },
+    "ScopeSection": {
+      "additionalProperties": false,
+      "properties": {
+        "description": {
+          "maxLength": 2000,
+          "minLength": 1,
+          "title": "Description",
+          "type": "string"
+        },
+        "id": {
+          "maxLength": 80,
+          "minLength": 1,
+          "pattern": "^[a-z][a-z0-9_-]*$",
+          "title": "Id",
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "description"
+      ],
+      "title": "ScopeSection",
+      "type": "object"
+    },
+    "SectionTarget": {
+      "additionalProperties": false,
+      "properties": {
+        "maximum_items": {
+          "maximum": 100,
+          "minimum": 0,
+          "title": "Maximum Items",
+          "type": "integer"
+        },
+        "minimum_items": {
+          "maximum": 100,
+          "minimum": 0,
+          "title": "Minimum Items",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "minimum_items",
+        "maximum_items"
+      ],
+      "title": "SectionTarget",
+      "type": "object"
+    },
+    "Speaker": {
+      "additionalProperties": false,
+      "properties": {
+        "name": {
+          "maxLength": 2000,
+          "minLength": 1,
+          "title": "Name",
+          "type": "string"
+        },
+        "profile": {
+          "maxLength": 2000,
+          "minLength": 1,
+          "title": "Profile",
+          "type": "string"
+        },
+        "voice": {
+          "maxLength": 2000,
+          "minLength": 1,
+          "title": "Voice",
+          "type": "string"
+        }
+      },
+      "required": [
+        "name",
+        "voice",
+        "profile"
+      ],
+      "title": "Speaker",
+      "type": "object"
+    },
+    "TimeWindow": {
+      "additionalProperties": false,
+      "properties": {
+        "recency_hours": {
+          "maximum": 336,
+          "minimum": 1,
+          "title": "Recency Hours",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "recency_hours"
+      ],
+      "title": "TimeWindow",
+      "type": "object"
+    },
+    "Tts": {
+      "additionalProperties": false,
+      "properties": {
+        "maximum_retries": {
+          "maximum": 10,
+          "minimum": 0,
+          "title": "Maximum Retries",
+          "type": "integer"
+        },
+        "model": {
+          "maxLength": 2000,
+          "minLength": 1,
+          "title": "Model",
+          "type": "string"
+        },
+        "provider": {
+          "maxLength": 80,
+          "minLength": 1,
+          "pattern": "^[a-z][a-z0-9_-]*$",
+          "title": "Provider",
+          "type": "string"
+        },
+        "safe_input_tokens": {
+          "maximum": 8192,
+          "minimum": 1,
+          "title": "Safe Input Tokens",
+          "type": "integer"
+        },
+        "target_segment_minutes": {
+          "maximum": 10,
+          "minimum": 1,
+          "title": "Target Segment Minutes",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "provider",
+        "model",
+        "safe_input_tokens",
+        "target_segment_minutes",
+        "maximum_retries"
+      ],
+      "title": "Tts",
+      "type": "object"
+    }
+  },
+  "$id": "urn:personalized-audio-episode-engine:schema:episode-profile:1.0",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "properties": {
+    "audience": {
+      "$ref": "#/$defs/Audience"
+    },
+    "collection": {
+      "$ref": "#/$defs/Collection"
+    },
+    "editorial": {
+      "$ref": "#/$defs/Editorial"
+    },
+    "enabled": {
+      "title": "Enabled",
+      "type": "boolean"
+    },
+    "episode": {
+      "$ref": "#/$defs/Episode"
+    },
+    "hosts": {
+      "$ref": "#/$defs/Hosts"
+    },
+    "id": {
+      "maxLength": 80,
+      "minLength": 1,
+      "pattern": "^[a-z][a-z0-9_-]*$",
+      "title": "Id",
+      "type": "string"
+    },
+    "identity": {
+      "$ref": "#/$defs/Identity"
+    },
+    "performance": {
+      "$ref": "#/$defs/Performance"
+    },
+    "publishing": {
+      "$ref": "#/$defs/Publishing"
+    },
+    "schema_version": {
+      "const": "1.0",
+      "title": "Schema Version",
+      "type": "string"
+    },
+    "tts": {
+      "$ref": "#/$defs/Tts"
+    },
+    "version": {
+      "pattern": "^\\d+\\.\\d+\\.\\d+$",
+      "title": "Version",
+      "type": "string"
+    }
+  },
+  "required": [
+    "schema_version",
+    "id",
+    "version",
+    "enabled",
+    "identity",
+    "episode",
+    "audience",
+    "collection",
+    "editorial",
+    "hosts",
+    "performance",
+    "tts",
+    "publishing"
+  ],
+  "title": "EpisodeProfile",
+  "type": "object"
+}

@@ -4,8 +4,8 @@ The approved scope and sequence live in [`plan.md`](../plan.md). This page recor
 
 | PR | Capability | Status |
 | --- | --- | --- |
-| 01 | Repository foundation and delivery guardrails | Implemented on `feature/pr-01-foundation`; pending review and merge |
-| 02 | Configuration, profile loading, path safety, and doctor | Not started |
+| 01 | Repository foundation and delivery guardrails | Implemented on `main` |
+| 02 | Configuration, profile loading, path safety, and doctor | Implemented on `feature/pr-02-config-profile`; pending review and merge |
 | 03 | Artifact contracts, validators, and fixtures | Not started |
 | 04 | Run lifecycle, state, leases, and invalidation | Not started |
 | 05 | Capability-aware collection skill | Not started |
@@ -26,4 +26,11 @@ The approved scope and sequence live in [`plan.md`](../plan.md). This page recor
 - Worktree-safe setup, Cloudflare bootstrap, CI, operations, and security-boundary documentation.
 - Pull-request evidence template and the canonical one-or-two-round Codex review/disposition gate.
 
-Product schemas, workflow state, research, speech, audio processing, publication, and scheduling remain deliberately unavailable until their ordered implementation PRs.
+Artifact schemas other than the episode profile, workflow state, research, speech, audio processing, publication, and scheduling remain deliberately unavailable until their ordered implementation PRs.
+
+## PR 02 delivered surface
+
+- Strict Pydantic/YAML episode-profile contract with explicit schema version `1.0` and a matching committed JSON Schema.
+- Topic-specific world/U.S./Seattle example data plus contract coverage for an unrelated topic and arbitrary section identifiers.
+- Typed environment settings, timezone-aware episode dates, root/symlink safety, fixed R2 key construction, and secret/location redaction helpers.
+- Non-networking `doctor.py` checks for the local toolchain, locked dependencies, settings, writable roots, profile validity, publication references, and detectable required capabilities.
