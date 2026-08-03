@@ -102,7 +102,7 @@ def test_prepare_tts_cli_prepares_and_resumes_without_rewriting(
     assert prepared_status == 0
     assert prepared == {
         "manifest": "tts/manifest.json",
-        "maximum_estimated_input_tokens": 361,
+        "maximum_estimated_input_tokens": 402,
         "segment_count": 2,
         "status": "prepared",
     }

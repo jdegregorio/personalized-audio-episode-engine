@@ -116,7 +116,17 @@ After loading the external environment, run the non-networking preflight:
 uv run python scripts/doctor.py --profile examples/profiles/world-us-seattle-news.yaml
 ```
 
-The doctor checks tools, the lock, settings shape, writable roots, path-safe profile validity, publication environment references, and explicitly required capabilities. It prints only status and variable names; it does not print values, create run output, call Gemini, upload to R2, or prove live-service access. PR 09 adds a live Gemini smoke; PR 11 adds the R2 probe and publication UAT; PR 13 activates and qualifies the local schedule.
+The doctor checks tools, the lock, settings shape, writable roots, path-safe profile validity, publication environment references, and explicitly required capabilities. It prints only status and variable names; it does not print values, create run output, call Gemini, upload to R2, or prove live-service access.
+
+Verify Gemini explicitly from a temporary directory after loading the central environment:
+
+```bash
+gemini_smoke_root="$(mktemp -d)"
+uv run python scripts/smoke_gemini.py --output "${gemini_smoke_root}/sample.wav"
+ffprobe -v error -show_format -show_streams "${gemini_smoke_root}/sample.wav"
+```
+
+Play and inspect the WAV before moving that exact temporary directory to Trash. The command produces only synthetic speech plus redacted metadata; it never receives R2 settings. The protected `Gemini live smoke` workflow runs the same probe only when manually dispatched on `main`, receives only `GEMINI_API_KEY`, and retains its audio artifact for one day. PR 11 adds the R2 probe and publication UAT; PR 13 activates and qualifies the local schedule.
 
 Codex native web research requires no separately installed collector. Configure optional research skills, tools, connectors, or MCP servers outside a production run and verify they are visible before selecting them. For a profile's explicitly required capabilities, keep `AUDIO_ENGINE_AVAILABLE_CAPABILITIES` aligned for preflight and pass only actually available, suitable capabilities to `scripts/select_collection_method.py`. See [`optional-collectors.md`](optional-collectors.md).
 

@@ -50,4 +50,4 @@ def test_tts_manifest_and_prompt_references_form_one_exact_projection() -> None:
         assert segment.estimated_input_tokens == prompt.estimated_input_tokens
         assert prompt.estimated_input_tokens <= manifest.safe_input_tokens
         assert prompt.estimated_input_tokens <= manifest.absolute_input_tokens
-        assert '"transcript":' in renderer_input(prompt)
+        assert f"<TRANSCRIPT>\n{prompt.transcript}</TRANSCRIPT>" in renderer_input(prompt)

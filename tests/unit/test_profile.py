@@ -85,6 +85,13 @@ def test_profile_requires_distinct_host_names(example_profile_data: dict[str, An
         validate_profile_data(example_profile_data)
 
 
+def test_profile_limits_tts_retries_to_three(example_profile_data: dict[str, Any]) -> None:
+    example_profile_data["tts"]["maximum_retries"] = 4
+
+    with pytest.raises(ProfileError, match="tts.maximum_retries"):
+        validate_profile_data(example_profile_data)
+
+
 def test_profile_rejects_unsupported_or_unquoted_version(
     example_profile_data: dict[str, Any],
 ) -> None:

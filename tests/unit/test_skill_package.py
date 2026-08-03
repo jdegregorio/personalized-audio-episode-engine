@@ -25,6 +25,7 @@ def test_skill_package_is_concise_linked_and_command_complete() -> None:
         "editorial-planning.md",
         "scriptwriting.md",
         "tts-preparation.md",
+        "tts-rendering.md",
         "run-state.md",
     }
     references = SKILL_ROOT / "references"
@@ -44,6 +45,7 @@ def test_skill_package_is_concise_linked_and_command_complete() -> None:
         "scripts/record_editorial_plan.py",
         "scripts/record_script.py",
         "scripts/prepare_tts.py",
+        "scripts/render_audio.py",
         "scripts/select_collection_method.py",
     }
     repository_root = SKILL_ROOT.parents[2]
@@ -98,4 +100,14 @@ def test_tts_reference_preserves_preparation_rendering_boundary() -> None:
     assert "complete structured provider input" in instructions
     assert "reproduce `transcript.txt` byte for byte" in instructions
     assert "splits a discussion only" in instructions
-    assert "Rendering, retries, raw audio" in instructions
+    assert "load `tts-rendering.md`" in instructions
+
+
+def test_tts_rendering_reference_preserves_resume_and_stage_boundary() -> None:
+    instructions = (SKILL_ROOT / "references" / "tts-rendering.md").read_text(encoding="utf-8")
+
+    assert "render only missing segments" in instructions
+    assert "preserves raw PCM before WAV" in instructions
+    assert "failed_segment_id" in instructions
+    assert "never remove completed segments" in instructions
+    assert "Do not concatenate, encode, publish" in instructions

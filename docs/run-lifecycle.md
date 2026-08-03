@@ -68,6 +68,8 @@ Scriptwriting reads the complete valid dossier, plan, and profile in a separate 
 
 TTS preparation remains at the `tts` stage because no audio has been rendered. It writes each versioned structured segment prompt atomically, writes the manifest last, then records the manifest/input hashes and segment count in state. State is authoritative if an interruption leaves unreferenced preparation files; a retry safely overwrites them. An unchanged rerun rechecks all hashes, speaker/voice consistency, estimates, ordering, and transcript reconstruction before returning `already_prepared` without rewriting valid files. Any changed accepted profile, dossier, plan, or script clears preparation and downstream audio/publication state.
 
+TTS rendering also remains at `tts` until every manifest segment is complete. For each missing segment it preserves raw PCM, packages and decodes a WAV, then records hashes, audio parameters, duration, attempts, and completion time before requesting the next segment. Retry exhaustion records a resumable failure without releasing or discarding successful work. A rerun verifies every recorded file and starts with the first missing segment. The final success atomically changes the current stage to `audio` and the last completed valid stage to `tts`.
+
 ## Lease and failure recovery
 
 - A current nonterminal owner causes a successful no-op. No run directory is selected, created, or mutated.

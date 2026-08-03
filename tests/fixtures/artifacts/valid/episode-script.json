@@ -28,11 +28,11 @@
   "speakers": [
     {
       "name": "Maya",
-      "voice": "selected-gemini-voice"
+      "voice": "Kore"
     },
     {
       "name": "Daniel",
-      "voice": "selected-gemini-voice"
+      "voice": "Charon"
     }
   ],
   "safe_input_tokens": 7000,
