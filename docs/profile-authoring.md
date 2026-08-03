@@ -31,4 +31,12 @@ uv run python scripts/doctor.py --profile <absolute-or-repository-profile-path>
 
 The loader uses `yaml.safe_load`, rejects executable YAML tags, refuses unsupported schema versions, and resolves symlinks before enforcing input-root containment. The doctor performs no network call or upload.
 
+After validation, start or resume only through the owning initializer:
+
+```bash
+uv run python scripts/init_run.py --profile <absolute-or-repository-profile-path>
+```
+
+The canonical key combines this profile ID with its timezone-derived local date. An unchanged compatible profile can resume the same failed/crash-interrupted workspace; changing the profile file/hash makes prior work incompatible and starts a new owning workspace. Within an active run, accepted profile, dossier, plan, or script hash changes invalidate only their dependent outputs. Do not edit a profile merely to force resume, bypass a validation limit, or repurpose an already published same-day episode.
+
 Use an IANA timezone such as `America/Los_Angeles`. Episode dates are derived from that timezone, not the host timezone. Publication environment references must be `PODCAST_FEED_TOKEN`, `R2_ENDPOINT_URL`, `R2_BUCKET_NAME`, `PODCAST_BASE_URL`, and `R2_RETENTION_DAYS`; embedded values and alternate names fail validation so the profile cannot bypass typed central configuration.

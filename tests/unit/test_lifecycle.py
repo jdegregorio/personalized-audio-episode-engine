@@ -15,6 +15,7 @@ from audio_engine.lifecycle import (
     LifecycleError,
     RunWorkspace,
     canonical_episode_key,
+    finalize_run,
     generate_run_id,
     initialize_run,
     invalidate_for_artifact_change,
@@ -187,6 +188,70 @@ def test_second_initialization_is_noop_without_new_run_artifacts(
     assert second.run_directory is None
     assert before == after
     assert workspace.state_path.exists()
+
+
+def test_failed_invocation_resumes_same_workspace_without_rewriting_valid_inputs(
+    synthetic_profile_path: Path,
+    settings_values: dict[str, str],
+) -> None:
+    settings, workspace, original = _initialize(synthetic_profile_path, settings_values)
+    request_path = workspace.run_directory / "collection-request.json"
+    request_hash = sha256_file(request_path)
+    request_modified = request_path.stat().st_mtime_ns
+
+    failed = finalize_run(
+        workspace.run_directory,
+        settings=settings,
+        repo_root=Path(__file__).parents[2],
+        clock=lambda: FIXED_NOW + timedelta(minutes=1),
+    )
+    resumed = initialize_run(
+        synthetic_profile_path,
+        settings=settings,
+        repo_root=Path(__file__).parents[2],
+        clock=lambda: FIXED_NOW + timedelta(minutes=2),
+        run_id_factory=lambda profile_id, day, now: f"{profile_id}_{day}_replacement",
+    )
+    state = load_run_state(workspace.state_path)
+
+    assert failed.status == "failed"
+    assert resumed.result == "resumed"
+    assert resumed.run_id == original.run_id
+    assert resumed.run_directory == workspace.run_directory
+    assert state.status == "running"
+    assert state.current_stage == "collection"
+    assert state.last_completed_valid_stage == "initialized"
+    assert state.failure is None
+    assert sha256_file(request_path) == request_hash
+    assert request_path.stat().st_mtime_ns == request_modified
+    assert len(list(settings.runtime_root.rglob("state.json"))) == 1
+
+
+def test_initializer_fails_closed_instead_of_replacing_corrupt_resumable_work(
+    synthetic_profile_path: Path,
+    settings_values: dict[str, str],
+) -> None:
+    settings, workspace, _ = _initialize(synthetic_profile_path, settings_values)
+    finalize_run(
+        workspace.run_directory,
+        settings=settings,
+        repo_root=Path(__file__).parents[2],
+        clock=lambda: FIXED_NOW + timedelta(minutes=1),
+    )
+    (workspace.run_directory / "collection-request.json").write_text("{}\n", encoding="utf-8")
+
+    with pytest.raises(LifecycleError, match="inspect the run summary"):
+        initialize_run(
+            synthetic_profile_path,
+            settings=settings,
+            repo_root=Path(__file__).parents[2],
+            clock=lambda: FIXED_NOW + timedelta(minutes=2),
+            run_id_factory=lambda profile_id, day, now: f"{profile_id}_{day}_replacement",
+        )
+
+    assert len(list(settings.runtime_root.rglob("state.json"))) == 1
+    manager = LeaseManager(settings.runtime_root, maximum_age=timedelta(hours=6))
+    assert not manager.lease_path(workspace.episode_key).exists()
 
 
 def test_initialization_failure_persists_terminal_recovery_and_releases_lease(

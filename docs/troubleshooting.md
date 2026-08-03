@@ -19,7 +19,9 @@ Source text that asks for commands, installs, credentials, workflow changes, or 
 
 ## Resume and ownership
 
-If collection is already valid, `record_collection.py` returns `already_valid` after rechecking the dossier and validation hashes. Do not recollect. For lease/no-op/stale recovery issues, follow [`run-lifecycle.md`](run-lifecycle.md); never delete a live lease manually.
+If collection is already valid, `record_collection.py` returns `already_valid` after rechecking the dossier and validation hashes. Do not recollect. Before intentionally ending an owning invocation with state still `running`, run `finalize_run.py`; it persists failure/recovery before releasing the lease.
+
+On the next invocation, run `init_run.py` with the same profile. `resumed` means it acquired ownership, selected the latest compatible failed/crash-interrupted workspace, validated its recorded hashes, retained its run ID, and restored `status: running` at the same stage. `no_op` means a live owner or completed same-day episode must not be mutated. If a workspace is skipped, inspect its `summary.md`: corrupt/missing references, a changed profile hash/version, or exhausted second dossier/plan/script validation makes it incompatible rather than silently reusable. Never pass a run directory to a stage command until initialization returns ownership, and never delete a live lease manually.
 
 ## Editorial-plan validation
 
@@ -73,3 +75,10 @@ If collection is already valid, `record_collection.py` returns `already_valid` a
 - A successful remote feed followed by `local publication state needs a safe rerun` is recoverable. Rerun publication: the stable GUID upsert is idempotent, and the valid remote revision is not duplicated.
 - A prior `published` revision remains recorded if a later refresh fails. Correct the refresh issue and rerun; do not delete the already playable episode.
 - Do not “fix” a 404 by enabling object listing, widening token permission, moving the feed below `episodes/`, or printing the complete URL. Follow [`cloudflare-r2.md`](cloudflare-r2.md) for endpoint, lifecycle, rotation, and rollback checks.
+
+## Finalization
+
+- `resume_validation_failed` means a state-referenced local file is missing, unsafe, invalid, or hash-mismatched. Restore it only from the authoritative source/owning stage; do not edit state to accept different bytes.
+- `*_incomplete` means finalization safely released ownership at the current stage. Follow the `Recovery:` line in `summary.md`, reinitialize the same profile, and run only the named stage command.
+- `completed` means state and summary were persisted before lease release. `already_completed` is idempotent and must not republish or rewrite output.
+- If terminal state persisted but lease release was interrupted, do not delete the lock. A later initializer recognizes the terminal owner, atomically quarantines the lease, and then returns `no_op` for the completed episode or resumes an eligible failure.

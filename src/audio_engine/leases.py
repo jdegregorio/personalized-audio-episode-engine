@@ -138,6 +138,30 @@ class LeaseManager:
         finally:
             os.close(descriptor)
 
+    def transfer(self, episode_key: str, current_run_id: str, resumed_run_id: str) -> LeaseRecord:
+        """Atomically move newly acquired ownership to a selected resumable run."""
+        path = self.lease_path(episode_key)
+        descriptor = self._open_current_locked(path)
+        if descriptor is None:  # pragma: no cover - missing_ok is false
+            raise LeaseError("episode lease does not exist")
+        try:
+            record = self._read_descriptor(descriptor)
+            self._require_owner(record, episode_key, current_run_id)
+            now = self._now()
+            updated = LeaseRecord(
+                contract_version=LEASE_CONTRACT_VERSION,
+                run_id=resumed_run_id,
+                episode_key=record.episode_key,
+                created_at=record.created_at,
+                last_heartbeat_at=now,
+            )
+            atomic_write_json(path, updated.model_dump(mode="json"))
+            return updated
+        except OSError as error:
+            raise LeaseError("episode lease ownership could not be transferred") from error
+        finally:
+            os.close(descriptor)
+
     @contextmanager
     def mutation(self, episode_key: str, run_id: str) -> Generator[LeaseRecord]:
         """Fence one complete state mutation against recovery or another mutator."""

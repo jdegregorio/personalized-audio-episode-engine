@@ -33,6 +33,8 @@ def test_prohibited_paths_reject_runtime_secrets_credentials_and_audio() -> None
         "config/secrets.env",
         "credentials/private.pem",
         "episode.mp3",
+        "scripts/run-production.sh",
+        "src/audio_engine/seattle_news.py",
     ]
 
     errors = prohibited_path_errors(paths)

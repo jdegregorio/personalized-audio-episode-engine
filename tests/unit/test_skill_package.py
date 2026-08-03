@@ -28,6 +28,7 @@ def test_skill_package_is_concise_linked_and_command_complete() -> None:
         "tts-rendering.md",
         "audio-assembly.md",
         "publication.md",
+        "finalization.md",
         "run-state.md",
     }
     references = SKILL_ROOT / "references"
@@ -50,6 +51,7 @@ def test_skill_package_is_concise_linked_and_command_complete() -> None:
         "scripts/render_audio.py",
         "scripts/assemble_audio.py",
         "scripts/publish_episode.py",
+        "scripts/finalize_run.py",
         "scripts/select_collection_method.py",
     }
     repository_root = SKILL_ROOT.parents[2]
@@ -135,3 +137,13 @@ def test_publication_reference_preserves_asset_and_conditional_feed_boundary() -
     assert "If-Match" in instructions
     assert "If-None-Match" in instructions
     assert "Do not rerender or reassemble valid audio" in instructions
+
+
+def test_finalization_reference_requires_terminal_state_before_release() -> None:
+    instructions = (SKILL_ROOT / "references" / "finalization.md").read_text(encoding="utf-8")
+
+    assert "persisting terminal state before releasing" in instructions
+    assert "finalize_run.py" in instructions
+    assert "resumed" in instructions
+    assert "same compatible workspace" in instructions
+    assert "Never hand-edit terminal state" in instructions

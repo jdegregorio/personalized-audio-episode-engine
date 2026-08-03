@@ -1,6 +1,6 @@
 # Personalized Audio Episode Engine
 
-This repository will contain a profile-driven workflow that turns source-grounded research into a two-host audio episode and publishes it to a private-by-secret-link podcast feed. The approved MVP is intentionally one vertical slice: Codex supplies editorial judgment, while small Python scripts provide deterministic validation, state, audio, and publication operations.
+This repository contains a profile-driven workflow that turns source-grounded research into a two-host audio episode and publishes it to a private-by-secret-link podcast feed. The approved MVP is intentionally one vertical slice: Codex supplies editorial judgment, while small Python scripts provide deterministic validation, state, audio, publication, and finalization operations.
 
 Implementation follows the ordered pull requests in [`plan.md`](plan.md). The current delivery status is recorded in [`docs/implementation-status.md`](docs/implementation-status.md).
 
@@ -57,7 +57,7 @@ uv run python scripts/init_run.py \
   --profile examples/profiles/world-us-seattle-news.yaml
 ```
 
-The run layout, lifecycle stages, invalidation, same-episode no-op behavior, and stale-lease recovery are documented in [`docs/run-lifecycle.md`](docs/run-lifecycle.md).
+The initializer returns `initialized`, `resumed`, or `no_op`. A resumed result reuses the same compatible workspace and run ID only after ownership and persisted-hash validation; a completed same-day episode is a no-op. The run layout, lifecycle stages, invalidation, and lease recovery are documented in [`docs/run-lifecycle.md`](docs/run-lifecycle.md).
 
 ## Collection workflow
 
@@ -133,6 +133,18 @@ uv run python scripts/publish_episode.py --run <run-directory>
 
 Publication uploads and publicly verifies MP3, transcript, escaped source-grouped HTML notes, and JSON metadata before it conditionally upserts the stable daily GUID into RSS. The feed is always written last, remains outside the expiring `episodes/` prefix, and is protected by a local feed lock plus remote ETag preconditions. A deferred run resumes publication without rerendering. Complete R2 bootstrap, AntennaPod, lifecycle, recovery, and rotation instructions are in [`docs/cloudflare-r2.md`](docs/cloudflare-r2.md).
 
+## Finalization and cross-invocation resume
+
+After successful publication—or before an owning invocation stops with state still `running`—finalize it:
+
+```bash
+uv run python scripts/finalize_run.py --run <run-directory>
+```
+
+Successful finalization persists `status: completed`, advances to `finalized`, regenerates the one-screen `summary.md`, and releases the episode lease. Incomplete work is recorded as failed with a stage-specific recovery command before release. A later `init_run.py --profile <same-profile>` returns `resumed` for the same compatible workspace and preserves valid dossier/plan/script files, completed TTS segments, and final audio; publication-only retry never rerenders.
+
+The intended user interface is one instruction invoking [`$produce-audio-episode`](.agents/skills/produce-audio-episode/SKILL.md) with one profile. The skill routes by authoritative state through the documented commands above; there is intentionally no all-in-one application CLI.
+
 ## Security boundary
 
-The MVP feed contains public-news content but uses an unguessable URL. That URL is access material, not authentication. Never commit or paste credentials, tokenized object keys, runtime data, or complete feed URLs. Profiles containing personal or otherwise sensitive information are outside the MVP and require a separate authenticated or encrypted publication design.
+The MVP feed contains public-news content but uses an unguessable URL. That URL is access material, not authentication. Never commit or paste credentials, tokenized object keys, runtime data, generated audio, or complete feed URLs. State, command output, and `summary.md` contain only local paths and redacted publication labels. Profiles containing personal or otherwise sensitive information are outside the MVP and require a separate authenticated or encrypted publication design.

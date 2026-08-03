@@ -82,8 +82,8 @@ Confirm a first live publication without exposing its token:
 
 1. Record the command's redacted `published` result and verify `summary.md` says valid audio and publication succeeded.
 2. In a private shell, fetch the feed and each item URL. Require HTTP `200`, the declared media type, the enclosure byte length, and readable transcript/notes.
-3. Run the same publication command again. Require `already_published` and exactly one item with the canonical GUID.
-4. Run `uv run pytest -q tests/integration/test_publication_concurrency.py tests/smoke/test_audio_assembly_workflow.py` for the deterministic two-publisher race and injected external-feed revision. The disposable live R2 probe separately proves that the real service rejects a stale ETag; never edit the production feed manually.
+3. Run the same publication command again. Require `already_published` and exactly one item with the canonical GUID, then run `uv run python scripts/finalize_run.py --run <run-directory>` and require `completed` with only redacted publication labels.
+4. Run `uv run pytest -q tests/integration/test_publication_concurrency.py tests/integration/test_cross_invocation_resume.py tests/smoke/test_audio_assembly_workflow.py` for deterministic races, publication-only resume with an unchanged audio hash, and the finalized offline slice. The disposable live R2 probe separately proves that the real service rejects a stale ETag; never edit the production feed manually.
 
 The publisher prunes an item when its publication date is at or before the current episode date minus `R2_RETENTION_DAYS`. The `episodes/` lifecycle rule remains the physical cleanup mechanism and may act asynchronously; `feeds/` must never be included in that rule.
 

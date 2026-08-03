@@ -17,6 +17,10 @@ _ATX_HEADING_PATTERN = re.compile(r"^ {0,3}#{1,6}(?:[ \t]+(?P<heading>.*?))?[ \t
 _SETEXT_HEADING_PATTERN = re.compile(r"^ {0,3}(?:=+|-+)[ \t]*$")
 _FENCE_PATTERN = re.compile(r"^ {0,3}(?P<fence>`{3,}|~{3,})")
 _AUDIO_SUFFIXES = {".aac", ".flac", ".m4a", ".mp3", ".ogg", ".pcm", ".wav"}
+_SHELL_SUFFIXES = {".bash", ".sh", ".zsh"}
+_TOPIC_MODULE_PATTERN = re.compile(
+    r"(?:^|[-_])(marine|news|seattle|world(?:[-_]us)?)(?:[-_]|$)", re.IGNORECASE
+)
 _COMMAND_DOCUMENTS = {"CONTRIBUTORS.md", "README.md"}
 
 
@@ -109,6 +113,14 @@ def prohibited_path_errors(paths: list[str]) -> list[str]:
             errors.append(f"prohibited credential file: {raw_path}")
         elif path.suffix.lower() in _AUDIO_SUFFIXES:
             errors.append(f"prohibited generated audio: {raw_path}")
+        elif path.suffix.lower() in _SHELL_SUFFIXES:
+            errors.append(f"prohibited undocumented production shell command: {raw_path}")
+        elif (
+            lowered_parts[:2] == ("src", "audio_engine")
+            and path.suffix.lower() == ".py"
+            and _TOPIC_MODULE_PATTERN.search(path.stem)
+        ):
+            errors.append(f"prohibited topic-specific engine module: {raw_path}")
     return errors
 
 

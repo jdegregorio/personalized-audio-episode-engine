@@ -15,4 +15,6 @@ Interpret results as follows:
 - `deferred`: the bounded feed lock or ETag retry did not converge. Valid audio and uploaded-but-undiscoverable assets remain safe; rerun only this command. The CLI exits `2` for this result.
 - `publication_failed`: correct the named configuration, public-read, asset, or feed problem and rerun this command. Do not rerender or reassemble valid audio.
 
+After `published` or `already_published`, load `finalization.md` and finalize the run. If publication cannot complete during this invocation, finalize the running state as failed before stopping; the next initializer will reacquire the same compatible workspace for publication-only resume.
+
 Never print, inspect, or paste the feed token, tokenized object keys, complete public feed URL, R2 credentials, or provider error bodies. Do not create buckets, domains, tokens, or lifecycle rules from the runtime. `episode.json` omits only its mathematically self-referential own content hash; the uploaded object is still verified by its actual SHA-256 and the local metadata artifact is hash-bound in state.

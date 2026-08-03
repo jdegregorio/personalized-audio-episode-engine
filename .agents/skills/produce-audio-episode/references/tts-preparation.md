@@ -12,7 +12,7 @@ The command revalidates the complete script lineage and exact transcript before 
 
 - `prepared`: reload `state.json`, then inspect `tts/manifest.json` and every referenced `tts/segment-<NNN>.json`.
 - `already_prepared`: every input, manifest, prompt, speaker, token estimate, and transcript projection was reverified without rewriting valid outputs.
-- `failed`: stop and report the concise recovery message. Do not bypass the token limit or split a spoken turn manually in generated files.
+- `failed`: do not bypass the token limit or split a spoken turn manually in generated files. If the invocation must stop while state remains `running`, use `finalize_run.py` before reporting its recovery message.
 
 Each prompt keeps scene direction, director notes, host descriptions/voices, segment position, and minimal prior context in separate fields from `transcript`. The transcript fields, in manifest order, must reproduce `transcript.txt` byte for byte. Host names and voices remain identical across prompts.
 

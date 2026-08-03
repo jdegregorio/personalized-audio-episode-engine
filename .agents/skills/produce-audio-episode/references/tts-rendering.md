@@ -12,6 +12,6 @@ The command revalidates every preparation input and completed segment before con
 
 - `rendered`: reload state, require `current_stage: audio` and `tts_rendering.status: complete`, then inspect every recorded raw/WAV reference and duration.
 - `already_rendered`: all preparation, raw/WAV hashes, and WAV parameters revalidated without a provider call.
-- `failed`: read `tts_rendering.failed_segment_id` and its redacted recovery guidance. Correct the provider/configuration issue and rerun the same command; never remove completed segments.
+- `failed`: read `tts_rendering.failed_segment_id` and its redacted recovery guidance. If the issue cannot be corrected in this invocation, use `finalize_run.py`; the next initializer resumes the same workspace and only this command. Do not retry prior work; never remove completed segments.
 
 Only `scripts/render_audio.py` may advance the run from `tts` to `audio`. Do not concatenate, encode, publish, or make subjective automated quality decisions in this stage. Generated audio is private runtime data and must never be committed or pasted into PR evidence.
