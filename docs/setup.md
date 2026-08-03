@@ -63,6 +63,16 @@ source /Users/jdegregorio/.config/personalized-audio-episode-engine/secrets.env
 set +a
 ```
 
+After setup, validate configuration locally, then exercise providers only through their owning explicit probes:
+
+```bash
+uv run python scripts/doctor.py --profile examples/profiles/world-us-seattle-news.yaml
+uv run python scripts/smoke_gemini.py --output "$(mktemp -d)/sample.wav"
+uv run python scripts/smoke_r2.py
+```
+
+The R2 probe needs only the two R2 credentials plus endpoint, bucket, and public base URL. It does not need or reveal `GEMINI_API_KEY` or `PODCAST_FEED_TOKEN`.
+
 The required names are also documented with placeholders in [`.env.example`](../.env.example):
 
 | Kind | Name | Owner and purpose |

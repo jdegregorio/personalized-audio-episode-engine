@@ -29,6 +29,10 @@ class LeaseError(RuntimeError):
     """A lease is corrupt, unavailable, or owned by another run."""
 
 
+class FeedLockTimeout(LeaseError):
+    """The bounded local feed lock wait expired."""
+
+
 class LeaseRecord(BaseModel):
     """Durable ownership record stored at the deterministic episode lock path."""
 
@@ -300,3 +304,59 @@ class LeaseManager:
         if now.tzinfo is None or now.utcoffset() is None:
             raise LeaseError("lease clock must return a timezone-aware datetime")
         return now.astimezone(UTC)
+
+
+class FeedLockManager:
+    """Bound one local read-modify-write cycle for a configured feed."""
+
+    def __init__(
+        self,
+        runtime_root: Path,
+        *,
+        timeout_seconds: float = 2.0,
+        retry_delay_seconds: float = 0.05,
+        monotonic: Callable[[], float] = time.monotonic,
+    ) -> None:
+        if timeout_seconds < 0 or retry_delay_seconds <= 0:
+            raise ValueError("feed lock timing must be non-negative with a positive retry delay")
+        try:
+            self.runtime_root = runtime_root.resolve(strict=True)
+        except (OSError, RuntimeError) as error:
+            raise LeaseError("runtime root does not exist or cannot be resolved") from error
+        if not self.runtime_root.is_dir():
+            raise LeaseError("runtime root must be a directory")
+        self.locks_root = self.runtime_root / "locks"
+        self.timeout_seconds = timeout_seconds
+        self.retry_delay_seconds = retry_delay_seconds
+        self._monotonic = monotonic
+
+    def lock_path(self, feed_id: str) -> Path:
+        digest = hashlib.sha256(feed_id.encode("utf-8")).hexdigest()
+        return self.locks_root / f"feed-{digest}.lock"
+
+    @contextmanager
+    def acquire(self, feed_id: str) -> Generator[None]:
+        """Hold the deterministic advisory lock or fail after the configured wait."""
+        self.locks_root.mkdir(mode=0o700, parents=True, exist_ok=True)
+        path = self.lock_path(feed_id)
+        flags = os.O_RDWR | os.O_CREAT | getattr(os, "O_NOFOLLOW", 0)
+        try:
+            descriptor = os.open(path, flags, 0o600)
+            os.fchmod(descriptor, 0o600)
+        except OSError as error:
+            raise LeaseError("feed lock could not be opened safely") from error
+        deadline = self._monotonic() + self.timeout_seconds
+        try:
+            while True:
+                try:
+                    fcntl.flock(descriptor, fcntl.LOCK_EX | fcntl.LOCK_NB)
+                    break
+                except BlockingIOError:
+                    if self._monotonic() >= deadline:
+                        raise FeedLockTimeout("feed publication lock timed out") from None
+                    time.sleep(self.retry_delay_seconds)
+            yield
+        finally:
+            with suppress(OSError):
+                fcntl.flock(descriptor, fcntl.LOCK_UN)
+            os.close(descriptor)

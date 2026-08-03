@@ -20,6 +20,8 @@ Unknown required versions fail with `unsupported_version`. JSON scalar types are
 
 Every factual claim must resolve through a claim-support record to a source. Supports record `direct`, `attributed`, `inferred`, or `disputed` classification, an excerpt or precise locator, attribution/qualification data, and the source's originality/independence group. An excerpt may be omitted only for a retrievable primary source with a precise locator. Duplicate representations with the same locator or content hash cannot claim separate independence groups.
 
+`published-episode` records the four public assets, stable GUID, enclosure metadata, duration, and current local lineage. Audio, transcript, and show-notes entries carry their exact content hashes. The `episode_metadata` entry uses `sha256: null` because embedding an object's own byte hash in those same bytes is self-referential; the publisher still verifies the uploaded metadata against its separately computed SHA-256 and state hash-binds the local `published-episode.json` artifact.
+
 Source material is untrusted inert data. Validation parses JSON and compares values only; it does not import code, follow source instructions, invoke a shell, download a locator, or modify the input. Excerpts are capped at 1,000 characters to keep fixtures and dossiers focused rather than archiving articles.
 
 Canonical locators may be ordinary web URLs, generic resource URIs such as `connector://...`, or absolute filesystem paths. Unsafe schemes, malformed ports, embedded URL credentials, relative/traversal paths, and filesystem paths outside explicit allowed roots fail. Filesystem locators require `--allowed-input-root`; the validator never infers a broad root.

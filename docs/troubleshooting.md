@@ -63,3 +63,13 @@ If collection is already valid, `record_collection.py` returns `already_valid` a
 - A missing, empty, corrupt, hash-mismatched, or wrongly formatted segment fails closed before final promotion. Preserve the workspace for diagnosis and restore/recreate only through the owning rendering command.
 - A final codec, media type, duration, sample-rate, channel, size, or decode mismatch never advances to `publication`. The canonical `episode.mp3` is authoritative only when `final_audio_validation.status` is `valid` and its artifact matches `artifacts.final_audio`.
 - `already_assembled` means the MP3 hash and all technical validation fields were rechecked without changing the file.
+
+## R2 publication
+
+- Run `smoke_r2.py` first when S3 authentication, bucket access, public access, or media types are uncertain. Its successful output reports only redacted status and cleanup; it never prints an object key.
+- `episode assets could not be verified` means an upload, HEAD, public GET, media type, byte count, or SHA-256 check failed before the feed write. Confirm bucket-scoped Object Read & Write permission and public bucket/domain access, then rerun `publish_episode.py`. Do not rerender or reassemble valid audio.
+- `deferred` means the local feed lock was busy or three ETag precondition attempts lost to concurrent revisions. This is safe: the previous feed is unchanged or another complete revision won, and uploaded assets remain undiscoverable until a later merge. Rerun only publication.
+- A feed read/parse failure fails closed. Inspect the current object through an owner-controlled Cloudflare session without pasting its tokenized URL. Restore the last known valid feed object or remove an invalid initial object, then rerun; never change the publisher to overwrite unconditionally.
+- A successful remote feed followed by `local publication state needs a safe rerun` is recoverable. Rerun publication: the stable GUID upsert is idempotent, and the valid remote revision is not duplicated.
+- A prior `published` revision remains recorded if a later refresh fails. Correct the refresh issue and rerun; do not delete the already playable episode.
+- Do not “fix” a 404 by enabling object listing, widening token permission, moving the feed below `episodes/`, or printing the complete URL. Follow [`cloudflare-r2.md`](cloudflare-r2.md) for endpoint, lifecycle, rotation, and rollback checks.

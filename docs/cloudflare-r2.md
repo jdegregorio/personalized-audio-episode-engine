@@ -51,14 +51,41 @@ The local mode-`0600` file is the source of truth. The GitHub `live-smoke` envir
 
 ## Validation
 
-PR 02's doctor validates configuration shape without network writes. PR 11 adds the first authorized non-sensitive R2 probe. That probe will:
+The doctor validates configuration shape without network writes. Run the implemented non-sensitive probe after loading the central environment:
+
+```bash
+uv run python scripts/smoke_r2.py
+```
+
+Success verifies S3 read/HEAD, public retrieval, stale-ETag rejection, and cleanup using one random object below `probes/`.
+
+That probe:
 
 1. Upload a randomly named text object below a dedicated probe prefix.
 2. read and HEAD it through the S3 endpoint;
 3. fetch it through `PODCAST_BASE_URL` and validate status and media type; and
 4. delete the probe object.
 
-The probe must not use the feed token in its object name or output. Production publication remains disabled unless the object probe, public endpoint, asset validation, and conditional feed-write tests pass.
+The probe uses a random `probes/` key, never requires the feed token or Gemini key, and emits only pass/fail, media-type, and cleanup status. Production publication remains disabled unless the object probe, public endpoint, asset validation, and conditional feed-write tests pass.
+
+## Publish and verify an episode
+
+After `assemble_audio.py` reports valid final audio, run:
+
+```bash
+uv run python scripts/publish_episode.py --run <run-directory>
+```
+
+The runtime credential performs only GetObject, HeadObject, PutObject, and DeleteObject for the disposable probe; the episode publisher does not delete. It never calls bucket, domain, lifecycle, token, or account administration APIs. Episode assets use a one-day public cache directive and explicit media types. `feed.xml` uses `application/rss+xml` with `no-cache, no-store, must-revalidate` and is written last under an ETag precondition.
+
+Confirm a first live publication without exposing its token:
+
+1. Record the command's redacted `published` result and verify `summary.md` says valid audio and publication succeeded.
+2. In a private shell, fetch the feed and each item URL. Require HTTP `200`, the declared media type, the enclosure byte length, and readable transcript/notes.
+3. Run the same publication command again. Require `already_published` and exactly one item with the canonical GUID.
+4. Run `uv run pytest -q tests/integration/test_publication_concurrency.py tests/smoke/test_audio_assembly_workflow.py` for the deterministic two-publisher race and injected external-feed revision. The disposable live R2 probe separately proves that the real service rejects a stale ETag; never edit the production feed manually.
+
+The publisher prunes an item when its publication date is at or before the current episode date minus `R2_RETENTION_DAYS`. The `episodes/` lifecycle rule remains the physical cleanup mechanism and may act asynchronously; `feeds/` must never be included in that rule.
 
 ## AntennaPod acceptance
 
@@ -68,7 +95,7 @@ After the first validated publication, subscribe AntennaPod to:
 <PODCAST_BASE_URL>/feeds/<PODCAST_FEED_TOKEN>/feed.xml
 ```
 
-Treat the complete value as a secret. Confirm refresh, download, playback, transcript and show-notes links, correct response media types, and same-day rerun behavior. Optional refresh and auto-download settings are a listener preference, not an engine requirement.
+Treat the complete value as a secret. Confirm refresh, streaming, download/playback, episode metadata, the in-app description, the full HTML show notes opened through the episode's web/globe action, correct response media types, and same-day rerun behavior. The full notes contain a direct transcript link; separately confirm that the RSS-advertised plain-text transcript URL returns HTTP `200` as `text/plain`. Current physical-device UAT did not expose a separate native transcript view. That client integration is tracked as a post-MVP follow-up in [`plan.md`](../plan.md); do not add an unvalidated second transcript format during MVP qualification. If AntennaPod reports an error, inspect only its status category in shared evidence; do not screenshot or paste the subscription URL. Optional refresh and auto-download settings are a listener preference, not an engine requirement.
 
 ## Rotation and rollback
 

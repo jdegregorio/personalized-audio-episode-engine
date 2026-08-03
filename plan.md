@@ -639,7 +639,7 @@ Each PR's listed acceptance criteria are cumulative with the definition of done 
 
 - Offline smoke: publish a fixture episode through the fake adapter, inspect the exact logical objects and headers, rerun, and confirm one updated feed item.
 - Live R2 smoke: run the disposable probe locally from the PR worktree using the central env file, confirm S3 and public reads plus cleanup, and attach only redacted status/content-type evidence. Immediately after merge, dispatch the same protected job on `main` and require it to pass before PR 12 starts.
-- UAT: publish the live sample to R2, fetch the feed and every linked asset publicly, subscribe with AntennaPod, play it, open transcript/show notes, and confirm a rerun does not duplicate it.
+- UAT: publish the live sample to R2, fetch the feed and every linked asset publicly, subscribe with AntennaPod, play it, open the full HTML show notes and transcript link through the episode's web/globe action, and confirm a rerun does not duplicate it. Require the plain-text transcript URL to resolve publicly; a separate native transcript view inside AntennaPod is a post-MVP follow-up rather than a PR 11 gate.
 - Concurrency UAT: run two fixture publications plus one injected external ETag change and inspect a final feed containing every entry.
 - Bootstrap UAT: an owner follows `docs/cloudflare-r2.md` from bucket setup through probe/rotation/rollback without relying on undocumented knowledge; record any dashboard drift in the same PR.
 
@@ -648,7 +648,7 @@ Each PR's listed acceptance criteria are cumulative with the definition of done 
 - The remote feed is always either the previous valid version or the complete new valid version; it never references an unverified asset and never overwrites a concurrent ETag revision.
 - Publication failure, lock deferral, or exhausted precondition retry preserves final audio and can resume without rendering again.
 - Feed retention and R2 lifecycle configuration agree, and the feed object is retained outside the expiring prefix.
-- AntennaPod discovers and plays the R2-hosted episode and can reach transcript and notes over ordinary internet access.
+- AntennaPod discovers and plays the R2-hosted episode, and its web/globe action reaches the full HTML notes and published plain-text transcript over ordinary internet access. A separate native transcript view is not an MVP gate.
 - The committed repository contains neither the feed token nor generated publication output.
 - Runtime R2 credentials have Object Read & Write access only to the configured bucket, and application code contains no administrative Cloudflare operation.
 
@@ -730,7 +730,7 @@ Each PR's listed acceptance criteria are cumulative with the definition of done 
 
 - Smoke: invoke the scheduled prompt manually in a fresh Codex context and verify one complete live episode before enabling the schedule.
 - Scheduled UAT: three consecutive scheduled dates each produce a validated playable MP3 without manual code/config/intermediate changes; record run IDs, dates, audio validation, publication result, and redacted locations.
-- Feed UAT: AntennaPod refreshes the R2 URL and plays the episode, transcript and source notes resolve, public responses have expected media types, and same-day rerun updates rather than duplicates.
+- Feed UAT: AntennaPod refreshes the R2 URL, plays the episode, and reaches the full source notes plus transcript link through its web/globe action; the transcript object resolves independently, public responses have expected media types, and same-day rerun updates rather than duplicates. A separate native AntennaPod transcript view remains outside the MVP gate.
 - Concurrency UAT: same-key simultaneous initialization produces one owner/one no-op; different-key and external-ETag concurrent publication preserves every feed item.
 - Recovery UAT: demonstrate failed-segment resume and publication-only resume without repeating successful work.
 
@@ -787,3 +787,11 @@ The MVP is complete only when PR 13 is merged and all of the following are true:
 12. The source tree remains unchanged by production runs, runtime artifacts remain ignored, no source-specific collector or deferred feature entered the MVP, and every PR's implementation-status and affected operator/developer documentation are current.
 
 If any release-gate item fails, the MVP is not accepted. Add the smallest regression test and fix within the owning release-qualification scope, rerun the full local and GitHub gates, and restart any affected consecutive-run qualification window.
+
+## 6. Post-MVP follow-up backlog
+
+### AntennaPod plain-text transcript discoverability
+
+- **Observed:** August 3, 2026 physical-device UAT confirmed feed subscription, refresh, streaming, download/playback, episode metadata, and the in-app description. AntennaPod's web/globe action opened the full HTML show notes with their transcript link, and the RSS-advertised `transcript.txt` returned HTTP `200` with `text/plain`. AntennaPod did not expose a separate native transcript view.
+- **MVP disposition:** Transcript and show-notes reachability pass through the web/globe action, so the missing native transcript view does not block the audio-first MVP. Keep publishing and verifying the required plain-text transcript and its stable RSS URL, but do not add speculative VTT, SRT, JSON, timing generation, or client-specific feed variants during PR 11–13.
+- **Post-MVP acceptance:** Reproduce against a then-current supported AntennaPod release, identify whether media-type support, RSS parsing, HTML sanitization, or episode caching prevents discovery, and implement the smallest maintainable correction. A subscribed user must be able to discover and open the transcript after refresh while the existing `transcript.txt` URL/media type, stable episode GUID, idempotent rerun behavior, and other podcast clients remain compatible.

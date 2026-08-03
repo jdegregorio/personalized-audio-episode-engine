@@ -582,7 +582,7 @@ class PublishedAsset(_ContractModel):
     public_url: HttpUrl
     media_type: ShortText
     bytes: Annotated[int, Field(ge=1)]
-    sha256: Sha256
+    sha256: Sha256 | None
 
     @field_validator("object_key")
     @classmethod
@@ -603,6 +603,15 @@ class PublishedAsset(_ContractModel):
         if value.scheme != "https":
             raise ValueError("published public URL must use HTTPS")
         return value
+
+    @model_validator(mode="after")
+    def content_hash_is_not_self_referential(self) -> Self:
+        if self.kind == "episode_metadata":
+            if self.sha256 is not None:
+                raise ValueError("episode metadata cannot contain its own content hash")
+        elif self.sha256 is None:
+            raise ValueError("published assets require a content hash")
+        return self
 
 
 class PublishedEpisode(_ContractModel):

@@ -29,6 +29,7 @@ from audio_engine.artifacts import (
     FinalAudioValidation,
     PlanValidationState,
     PublicationState,
+    PublishedEpisode,
     RequestScope,
     RequestTimeWindow,
     RunFailure,
@@ -1231,6 +1232,138 @@ def record_final_audio_failure(
             _write_summary(workspace, updated)
     except (OSError, StorageError, ValidationError) as error:
         raise LifecycleError("audio failure state could not be persisted") from error
+    except LeaseError as error:
+        raise LifecycleError(str(error)) from None
+    return updated
+
+
+def record_publication_success(
+    workspace: RunWorkspace,
+    manager: LeaseManager,
+    run_id: str,
+    *,
+    episode: PublishedEpisode,
+    show_notes: ArtifactReference,
+    published_episode: ArtifactReference,
+) -> RunState:
+    """Record a remotely discoverable episode after its feed write succeeds."""
+    try:
+        with manager.mutation(workspace.episode_key, run_id):
+            state = load_run_state(workspace.state_path)
+            if (
+                state.run_id != run_id
+                or state.status != "running"
+                or state.current_stage != "publication"
+                or state.final_audio_validation.status != "valid"
+            ):
+                raise LifecycleError(
+                    "publication recording requires valid audio and active ownership"
+                )
+            if (
+                episode.run_id != run_id
+                or episode.episode_key != state.episode_key
+                or episode.profile_id != state.profile_id
+                or episode.episode_date != state.episode_date
+                or episode.audio != state.final_audio_validation.artifact
+                or episode.episode_script != state.artifacts.get("episode_script")
+                or episode.transcript != state.artifacts.get("transcript")
+                or episode.show_notes != show_notes
+            ):
+                raise LifecycleError("published episode lineage does not match the active run")
+            notes_path = resolve_within_roots(
+                workspace.run_directory / show_notes.path,
+                [workspace.run_directory],
+                must_exist=True,
+            )
+            metadata_path = resolve_within_roots(
+                workspace.run_directory / published_episode.path,
+                [workspace.run_directory],
+                must_exist=True,
+            )
+            persisted, report = load_artifact_file("published-episode", metadata_path)
+            if (
+                show_notes.artifact_type != "show-notes"
+                or published_episode.artifact_type != "published-episode"
+                or sha256_file(notes_path) != show_notes.sha256
+                or sha256_file(metadata_path) != published_episode.sha256
+                or not report.valid
+                or persisted != episode
+            ):
+                raise LifecycleError("publication artifacts failed durable verification")
+            updated = _validated_state_update(
+                state,
+                {
+                    "artifacts": {
+                        **state.artifacts,
+                        "show_notes": show_notes,
+                        "published_episode": published_episode,
+                    },
+                    "last_completed_valid_stage": "publication",
+                    "publication": PublicationState(
+                        status="published",
+                        redacted_locations=["private podcast feed", "published episode assets"],
+                        message=None,
+                    ),
+                },
+            )
+            _write_run_state(workspace, updated)
+            _write_summary(workspace, updated)
+    except (OSError, SafetyError, StorageError, ValidationError) as error:
+        raise LifecycleError("publication state could not be persisted") from error
+    except LeaseError as error:
+        raise LifecycleError(str(error)) from None
+    return updated
+
+
+def record_publication_issue(
+    workspace: RunWorkspace,
+    manager: LeaseManager,
+    run_id: str,
+    *,
+    status: Literal["deferred", "failed"],
+    message: str,
+    sensitive_values: Sequence[str] = (),
+    feed_token: str | None = None,
+) -> RunState:
+    """Record a resumable publication problem without discarding valid audio."""
+    safe_message = redact_text(
+        message,
+        sensitive_values=sensitive_values,
+        feed_token=feed_token,
+    )
+    try:
+        with manager.mutation(workspace.episode_key, run_id):
+            state = load_run_state(workspace.state_path)
+            if (
+                state.run_id != run_id
+                or state.status != "running"
+                or state.current_stage != "publication"
+                or state.final_audio_validation.status != "valid"
+            ):
+                raise LifecycleError("publication issue recording requires valid audio ownership")
+            previous_published = state.publication.status == "published"
+            publication_status = "published" if previous_published else status
+            if previous_published:
+                safe_message = (
+                    "A publication refresh failed; the prior revision remains published. "
+                    f"{safe_message}"
+                )
+            updated = _validated_state_update(
+                state,
+                {
+                    "publication": PublicationState(
+                        status=publication_status,
+                        redacted_locations=(
+                            state.publication.redacted_locations if previous_published else []
+                        ),
+                        message=safe_message,
+                    )
+                },
+            )
+            _write_run_state(workspace, updated)
+            _write_summary(workspace, updated)
+    except (OSError, StorageError, ValidationError) as error:
+        raise LifecycleError("publication issue could not be persisted") from error
     except LeaseError as error:
         raise LifecycleError(str(error)) from None
     return updated

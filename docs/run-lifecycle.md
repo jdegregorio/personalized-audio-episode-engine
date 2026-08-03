@@ -22,7 +22,8 @@ An initialized owner creates:
 ```text
 <runtime-root>/
 ├── locks/
-│   └── episode-<sha256-of-episode-key>.json
+│   ├── episode-<sha256-of-episode-key>.json
+│   └── feed-<sha256-of-feed-id>.lock
 └── runs/<local-date>/<profile-id>/<run-id>/
     ├── collection-request.json
     ├── evidence-dossier.json                  # after valid collection
@@ -42,6 +43,8 @@ An initialized owner creates:
     │   ├── audio/segment-001.wav               # validated intermediate audio
     │   └── ...
     ├── episode.mp3                            # validated final audio after assembly
+    ├── show-notes.html                        # after successful publication
+    ├── published-episode.json                 # after successful publication
     ├── state.json
     └── summary.md
 ```
@@ -62,6 +65,7 @@ PR 04 owns these transitions; later PRs add the remaining transition helpers:
 | Episode script | `tts` | `script` |
 | Complete rendered segment set | `audio` | `tts` |
 | Validated final MP3 | `publication` | `audio` |
+| Verified conditional feed publication | `publication` | `publication` |
 
 Replacing an artifact with identical validated bytes preserves state. A changed hash replaces that artifact, retains valid upstream references, rolls the run back to the owning validation stage, and removes all downstream references. Profile changes roll back to `initialized`; an accepted dossier replacement clears collection, plan, and script validation and returns to `collection`; an accepted plan replacement clears plan/script validation and returns to `editorial`; an accepted script replacement clears script validation and returns to `script`. Final-audio and publication status return to pending/not started whenever an invalidated dependency could affect them.
 
@@ -76,6 +80,8 @@ TTS preparation remains at the `tts` stage because no audio has been rendered. I
 TTS rendering also remains at `tts` until every manifest segment is complete. For each missing segment it preserves raw PCM, packages and decodes a WAV, then records hashes, audio parameters, duration, attempts, and completion time before requesting the next segment. Retry exhaustion records a resumable failure without releasing or discarding successful work. A rerun verifies every recorded file and starts with the first missing segment. The final success atomically changes the current stage to `audio` and the last completed valid stage to `tts`.
 
 Final audio assembly runs only from the complete rendered prefix. It rechecks each exact ordered WAV with FFprobe and full decode, concatenates and encodes through bounded FFmpeg processes, validates the final mono 48 kHz MP3 against the summed segment duration, and atomically promotes `episode.mp3`. Only then are its hash and full validation metadata recorded and state advanced to `publication`. Failure records recovery guidance at `audio`, removes any publishable final reference, and preserves every rendered segment. An unchanged rerun at `publication` fully revalidates the MP3 and returns without rewriting it.
+
+Publication revalidates that complete lineage and MP3 before any network mutation. It uploads and verifies all four episode assets before taking the feed lock and re-reading the current feed. The episode lease is always owned first; code never acquires an episode lease while holding the feed lock. Existing feeds use their latest ETag with `If-Match`, initial feeds use `If-None-Match: *`, and three conflicts cause resumable deferral rather than overwrite. Feed-lock timeout follows the same rule. Success leaves `current_stage` at `publication` for PR 12 finalization, advances `last_completed_valid_stage` to `publication`, and records only local artifact hashes plus redacted remote locations.
 
 ## Lease and failure recovery
 

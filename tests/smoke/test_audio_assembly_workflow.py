@@ -1,13 +1,23 @@
 from __future__ import annotations
 
 import json
+import xml.etree.ElementTree as ET
 from pathlib import Path
 
 import pytest
 
 import scripts.render_audio as render_audio_script
 from audio_engine.audio import FfmpegTools
+from audio_engine.config import EngineSettings
 from audio_engine.lifecycle import load_run_state
+from audio_engine.publication import (
+    MemoryObjectStore,
+    PreconditionFailed,
+    PublicationError,
+    publish_episode,
+    validate_rss,
+)
+from audio_engine.storage import sha256_bytes
 from audio_engine.tts import (
     SpeechRendererCapabilities,
     SpeechResponse,
@@ -34,13 +44,75 @@ class _OfflineRenderer:
         return SpeechResponse(PCM, "audio/L16;codec=pcm;rate=24000")
 
 
-@pytest.mark.smoke
-def test_documented_audio_cli_creates_decodable_final_mp3(
+class _AlwaysConflictingStore(MemoryObjectStore):
+    def put(self, key: str, *args: object, **kwargs: object) -> str:
+        if kwargs.get("content_type") == "application/rss+xml":
+            raise PreconditionFailed("synthetic feed conflict")
+        return super().put(key, *args, **kwargs)  # type: ignore[arg-type]
+
+
+class _UnreadableAssetStore(MemoryObjectStore):
+    def verify_public(
+        self,
+        key: str,
+        *,
+        content_type: str,
+        bytes: int,
+        sha256: str,
+    ) -> None:
+        del key, content_type, bytes, sha256
+        raise PublicationError("synthetic public asset fetch failure")
+
+
+class _ExternalRaceStore(MemoryObjectStore):
+    def __init__(self) -> None:
+        super().__init__()
+        self.operations: list[str] = []
+        self.injected = False
+
+    def put(self, key: str, *args: object, **kwargs: object) -> str:
+        content_type = kwargs.get("content_type")
+        self.operations.append(str(content_type))
+        if content_type == "application/rss+xml" and not self.injected:
+            self.injected = True
+            body = args[0]
+            assert isinstance(body, bytes)
+            root = ET.fromstring(body)
+            channel = root.find("channel")
+            assert channel is not None
+            item = channel.find("item")
+            assert item is not None
+            external = ET.fromstring(ET.tostring(item))
+            external.find("guid").text = "external-feed:other-profile:2026-01-15"  # type: ignore[union-attr]
+            external.find("title").text = "Concurrent external episode"  # type: ignore[union-attr]
+            channel.append(external)
+            concurrent = ET.tostring(root, encoding="utf-8", xml_declaration=True)
+            super().put(
+                key,
+                concurrent,
+                content_type="application/rss+xml",
+                cache_control="no-cache, no-store, must-revalidate",
+                sha256=sha256_bytes(concurrent),
+            )
+            raise PreconditionFailed("synthetic external revision")
+        return super().put(key, *args, **kwargs)  # type: ignore[arg-type]
+
+
+@pytest.mark.parametrize(
+    "test_layer",
+    [
+        pytest.param("integration", marks=pytest.mark.integration),
+        pytest.param("smoke", marks=pytest.mark.smoke),
+    ],
+)
+def test_documented_audio_and_offline_publication_create_a_resumable_podcast(
     synthetic_collection_profile_path: Path,
     settings_values: dict[str, str],
     monkeypatch: pytest.MonkeyPatch,
     capsys: pytest.CaptureFixture[str],
+    test_layer: str,
 ) -> None:
+    del test_layer
     configure_environment(monkeypatch, settings_values)
     run_directory = ready_tts_run(synthetic_collection_profile_path, settings_values)
     capsys.readouterr()
@@ -64,3 +136,68 @@ def test_documented_audio_cli_creates_decodable_final_mp3(
     assert probe.duration_seconds == pytest.approx(40, abs=0.5)
     assert state.current_stage == "publication"
     assert state.final_audio_validation.status == "valid"
+
+    settings = EngineSettings.from_mapping(settings_values)
+    unreadable = _UnreadableAssetStore()
+    with pytest.raises(PublicationError, match="assets could not be verified"):
+        publish_episode(
+            run_directory,
+            settings=settings,
+            repo_root=Path(__file__).parents[2],
+            store=unreadable,
+        )
+    failed_state = load_run_state(run_directory / "state.json")
+    assert failed_state.publication.status == "failed"
+    assert failed_state.final_audio_validation.status == "valid"
+    assert not any(key.startswith("feeds/") for key in unreadable.objects)
+
+    conflicting = _AlwaysConflictingStore()
+    deferred = publish_episode(
+        run_directory,
+        settings=settings,
+        repo_root=Path(__file__).parents[2],
+        store=conflicting,
+    )
+    deferred_state = load_run_state(run_directory / "state.json")
+    assert deferred.status == "deferred"
+    assert deferred_state.publication.status == "deferred"
+    assert deferred_state.final_audio_validation.status == "valid"
+    assert not any(key.startswith("feeds/") for key in conflicting.objects)
+    assert len(conflicting.objects) == 4
+
+    store = _ExternalRaceStore()
+    published = publish_episode(
+        run_directory,
+        settings=settings,
+        repo_root=Path(__file__).parents[2],
+        store=store,
+    )
+    rerun = publish_episode(
+        run_directory,
+        settings=settings,
+        repo_root=Path(__file__).parents[2],
+        store=store,
+    )
+    published_state = load_run_state(run_directory / "state.json")
+    feed_objects = [value for key, value in store.objects.items() if key.startswith("feeds/")]
+    assert published.status == "published"
+    assert rerun.status == "already_published"
+    assert published_state.publication.status == "published"
+    assert published_state.last_completed_valid_stage == "publication"
+    assert len(feed_objects) == 1
+    assert len(store.objects) == 5
+    assert feed_objects[0].content_type == "application/rss+xml"
+    assert feed_objects[0].cache_control == "no-cache, no-store, must-revalidate"
+    validate_rss(feed_objects[0].body)
+    items = ET.fromstring(feed_objects[0].body).findall("channel/item")
+    guids = [item.findtext("guid") for item in items]
+    assert guids.count("marine-brief:marine-brief:2026-01-15") == 1
+    assert "external-feed:other-profile:2026-01-15" in guids
+    assert store.operations[:4] == [
+        "audio/mpeg",
+        "text/plain; charset=utf-8",
+        "text/html; charset=utf-8",
+        "application/json",
+    ]
+    assert (run_directory / "show-notes.html").is_file()
+    assert (run_directory / "published-episode.json").is_file()

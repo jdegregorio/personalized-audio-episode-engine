@@ -11,7 +11,14 @@ from threading import Event, current_thread
 
 import pytest
 
-from audio_engine.leases import LeaseAcquisition, LeaseError, LeaseManager, LeaseRecord
+from audio_engine.leases import (
+    FeedLockManager,
+    FeedLockTimeout,
+    LeaseAcquisition,
+    LeaseError,
+    LeaseManager,
+    LeaseRecord,
+)
 from audio_engine.storage import atomic_write_json
 
 FIXTURE_ROOT = Path(__file__).parents[1] / "fixtures" / "artifacts" / "valid"
@@ -19,6 +26,26 @@ FIXTURE_ROOT = Path(__file__).parents[1] / "fixtures" / "artifacts" / "valid"
 
 def _clock(current: list[datetime]) -> datetime:
     return current[0]
+
+
+def test_feed_lock_is_deterministic_bounded_and_mode_0600(tmp_path: Path) -> None:
+    runtime = tmp_path / "runtime"
+    runtime.mkdir()
+    first = FeedLockManager(runtime, timeout_seconds=0)
+    second = FeedLockManager(runtime, timeout_seconds=0)
+
+    with (
+        first.acquire("private-feed"),
+        pytest.raises(FeedLockTimeout, match="timed out"),
+        second.acquire("private-feed"),
+    ):
+        pytest.fail("contending feed lock unexpectedly acquired")
+
+    path = first.lock_path("private-feed")
+    assert path == second.lock_path("private-feed")
+    assert path.stat().st_mode & 0o777 == 0o600
+    with second.acquire("private-feed"):
+        pass
 
 
 def test_lease_acquire_noop_refresh_and_owner_only_release(tmp_path: Path) -> None:

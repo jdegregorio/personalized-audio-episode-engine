@@ -21,7 +21,9 @@ The CI workflow also checks `uv.lock`, builds the wheel and source distribution,
 
 ## Secret isolation
 
-Ordinary `pull_request` and default-branch checks declare no production environment and receive no production secrets. The manually dispatched `Gemini live smoke` job runs only on `main`, uses the protected `live-smoke` environment, receives only `GEMINI_API_KEY`, and retains its synthetic PCM/WAV/metadata artifact for one day. It receives no R2 credential or setting. Fork pull requests never receive live credentials. GitHub workflow logs and uploaded artifacts must contain only redacted evidence.
+Ordinary `pull_request` and default-branch checks declare no production environment and receive no production secrets. The manually dispatched `Gemini live smoke` job runs only on `main`, uses the protected `live-smoke` environment, receives only `GEMINI_API_KEY`, and retains its synthetic PCM/WAV/metadata artifact for one day. It receives no R2 credential or setting.
+
+The separate manually dispatched `R2 live smoke` also runs only on `main` in `live-smoke`. It receives only the bucket-scoped R2 access key/secret and the endpoint, bucket, and public-base variables. It does not receive Gemini or the feed token, publishes one random non-sensitive `probes/` text object, verifies S3/public reads and conditional-write protection, and deletes it without retaining an artifact. Neither live workflow publishes the production feed. Fork pull requests never receive live credentials. GitHub workflow logs and uploaded artifacts must contain only redacted evidence.
 
 ## Main ruleset
 
