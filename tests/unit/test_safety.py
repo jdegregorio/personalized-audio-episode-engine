@@ -28,6 +28,16 @@ def test_resolve_within_roots_accepts_child_and_rejects_traversal(tmp_path: Path
         resolve_within_roots(allowed / ".." / "outside.txt", [allowed])
 
 
+def test_resolve_within_roots_rejects_symlink_loop_root(tmp_path: Path) -> None:
+    first = tmp_path / "first"
+    second = tmp_path / "second"
+    first.symlink_to(second)
+    second.symlink_to(first)
+
+    with pytest.raises(SafetyError, match="configured root.*cannot be resolved"):
+        resolve_within_roots(tmp_path / "input.yaml", [first])
+
+
 def test_local_path_policy_keeps_runtime_staging_and_inputs_separate(tmp_path: Path) -> None:
     runtime = tmp_path / "runtime"
     staging = tmp_path / "staging"

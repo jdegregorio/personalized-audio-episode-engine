@@ -79,6 +79,29 @@ def test_doctor_reports_unresolvable_roots_without_traceback(
     assert "roots must be resolvable" in settings_check.message
 
 
+def test_doctor_reports_unresolvable_input_root_without_traceback(
+    tmp_path: Path,
+    example_profile_path: Path,
+    settings_values: dict[str, str],
+) -> None:
+    first = tmp_path / "input-first"
+    second = tmp_path / "input-second"
+    first.symlink_to(second)
+    second.symlink_to(first)
+    settings_values["AUDIO_ENGINE_INPUT_ROOTS"] = str(first)
+
+    report = run_doctor(
+        example_profile_path,
+        repo_root=Path(__file__).parents[2],
+        environment=settings_values,
+    )
+
+    profile_check = next(check for check in report.checks if check.name == "profile")
+    assert not profile_check.passed
+    assert "configured root" in profile_check.message
+    assert "cannot be resolved" in profile_check.message
+
+
 def test_format_report_is_concise() -> None:
     report = DoctorReport((CheckResult("one", True, "ok"),))
 

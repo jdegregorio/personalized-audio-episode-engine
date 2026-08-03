@@ -56,9 +56,12 @@ def resolve_within_roots(
         raise SafetyError("no allowed roots are configured")
     try:
         resolved = path.expanduser().resolve(strict=must_exist)
-    except OSError:
+    except (OSError, RuntimeError):
         raise SafetyError("path does not exist or cannot be resolved") from None
-    resolved_roots = [root.expanduser().resolve() for root in allowed_roots]
+    try:
+        resolved_roots = [root.expanduser().resolve() for root in allowed_roots]
+    except (OSError, RuntimeError):
+        raise SafetyError("a configured root does not exist or cannot be resolved") from None
     if not any(resolved.is_relative_to(root) for root in resolved_roots):
         raise SafetyError("path is outside the configured roots")
     return resolved
