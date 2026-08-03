@@ -11,8 +11,8 @@ The approved scope and sequence live in [`plan.md`](../plan.md). This page recor
 | 05 | Capability-aware collection skill | Implemented on `main` |
 | 06 | Editorial planning | Implemented on `main` |
 | 07 | Grounded two-host scripting | Implemented on `main` |
-| 08 | TTS preparation | Implemented in PR 08 |
-| 09 | Gemini rendering and voice selection | Not started |
+| 08 | TTS preparation | Implemented on `main` |
+| 09 | Gemini rendering and voice selection | Implemented in PR 09 |
 | 10 | Audio assembly | Not started |
 | 11 | Cloudflare R2 publication | Not started |
 | 12 | Complete offline vertical slice | Not started |
@@ -80,3 +80,12 @@ Workflow mutation, research, speech, audio processing, publication behavior, and
 - Deterministic natural-boundary packing toward two-to-four-minute segments, with mid-discussion splitting only when required and fail-closed oversized turns.
 - Versioned manifest and atomic structured prompts containing stable hosts/voices/descriptions, scene, direction, position, minimal continuity, and exact transcript in separate fields.
 - Durable preparation hashes/state, exact turn/transcript reconstruction, tamper-checked no-rewrite resume, upstream invalidation, boundary/property coverage, and short/maximum-size CLI smoke.
+
+## PR 09 delivered surface
+
+- A narrow `google-genai` adapter for the configured Gemini preview model with one bounded SDK request, SDK retries disabled, exact two-speaker configuration, supported distinct voice validation, response-part extraction, and provider prompt version `1.1.0` with explicit synthesis/transcript delimiters.
+- Project-owned initial request plus up to three jittered retries near 2, 5, and 12 seconds, with deterministic clock/random/delay injection for tests.
+- Raw 24 kHz mono PCM preservation before standard-library WAV packaging, followed by non-empty, media-type, sample-rate, frame, duration, hash, and decode validation.
+- Per-segment durable rendering state, fail-closed tamper detection, segment-specific exhaustion guidance, completed-segment resume without rewrites, and final advancement to `audio` only after all segments validate.
+- A synthetic offline renderer smoke plus a protected, manually dispatched Gemini live smoke that receives only the Gemini key and retains its sample for one day.
+- The initial selected pairing is Maya/Kore and Daniel/Charon, chosen for a firm/informative contrast and retained as profile configuration rather than engine policy.

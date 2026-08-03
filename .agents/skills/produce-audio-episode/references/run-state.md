@@ -16,6 +16,7 @@
 - `artifacts.episode_script`, `artifacts.transcript`, and `artifacts.script_validation` bind the accepted structured script, exact transcript projection, and report.
 - `tts_preparation` binds the current script/transcript inputs, segment count, and hashed manifest.
 - `artifacts.tts_manifest` binds the manifest; each manifest segment binds one ordered prompt file by path and SHA-256.
+- `tts_rendering` records ordered successful segments with prompt/raw/WAV references, audio metadata, attempts, and timestamps; failed rendering names one resumable segment, while complete rendering contains every manifest segment.
 
 The recorder creates `evidence-validation-attempt-1.json` and, only after one invalid result, `evidence-validation-attempt-2.json`. Summary warnings expose dossier warning counts and invalid/repair status.
 
@@ -24,6 +25,8 @@ The editorial recorder uses the parallel `plan-validation-attempt-1.json` and op
 The script recorder uses `script-validation-attempt-1.json` and an optional attempt-2 report. It generates `transcript.txt` from validated turns rather than accepting separate prose. A changed accepted plan clears script state; a changed accepted script clears its validation and returns the run to `script`.
 
 The TTS preparer writes `tts/manifest.json` last after its atomic `tts/segment-<NNN>.json` prompt files, then records preparation in state. Unreferenced files after an interrupted write are incomplete and may be safely overwritten by a retry. Any accepted upstream change clears the preparation reference and all later audio/publication state.
+
+The renderer writes raw PCM before WAV packaging and records each validated pair before continuing. A file without `tts_rendering.completed_segments` state is not successful work. Retry exhaustion keeps completed references unchanged and records the failed segment; final completion advances to `audio`.
 
 ## Resume rules
 
@@ -36,6 +39,8 @@ The TTS preparer writes `tts/manifest.json` last after its atomic `tts/segment-<
 - At `script` with invalid script attempt 1 and `repair_allowed: true`, make exactly one focused repair.
 - At `tts` with a valid script and no preparation state, run `prepare_tts.py` once; do not rewrite dialogue or contact a provider.
 - At `tts` with valid preparation state, an unchanged rerun returns `already_prepared` only after rechecking every input, manifest, prompt, token estimate, speaker assignment, and transcript projection.
+- At `tts` with valid preparation, run `render_audio.py`. A failed rendering resumes at `failed_segment_id`; never delete or rerender completed entries.
+- At `audio` with complete rendering, an unchanged `render_audio.py` rerun returns `already_rendered` only after rechecking every raw/WAV hash and WAV parameter.
 - In a failed state, stop and use the recorded recovery guidance. Do not acquire or mutate the released workspace manually.
 
 All state changes go through documented commands while the run owns the episode lease. Never hand-edit state, hashes, summaries, reports, or leases.

@@ -102,6 +102,16 @@ uv run python scripts/prepare_tts.py --run <run-directory>
 
 The command revalidates the accepted script/transcript, rejects an unknown provider/model capability or unsafe token configuration, packs natural boundaries toward two-to-four-minute segments, and refuses a spoken turn that cannot fit. It writes private atomic `tts/segment-<NNN>.json` prompts followed by `tts/manifest.json` and state. The manifest records prompt hashes, token estimates, stable speakers/voices/direction, and exact ordered turn coverage. An unchanged rerun returns `already_prepared` without rewriting valid outputs. No provider is contacted.
 
+## Gemini rendering
+
+With a valid preparation, follow the skill's [`tts-rendering.md`](../.agents/skills/produce-audio-episode/references/tts-rendering.md) reference and run:
+
+```bash
+uv run python scripts/render_audio.py --run <run-directory>
+```
+
+The command sends one bounded request at a time and disables the SDK's independent retries. It retries a failed response up to three times near 2, 5, and 12 seconds, saves raw PCM before local WAV packaging, verifies duration/format/decode health, and records every successful segment before continuing. Exhaustion remains resumable at the named segment; an unchanged complete rerun contacts no provider. Only a complete set advances state to `audio`.
+
 ## Production invariants
 
 - One independent Codex run processes one profile.
@@ -114,6 +124,6 @@ The command revalidates the accepted script/transcript, rejects an unknown provi
 
 ## Rollback at this phase
 
-No current command contacts Gemini or R2. Initialization, collection, editorial, script recording, and TTS preparation create only local runtime files after acquiring an episode lease; Codex research itself may access public sources or an already configured capability. Follow the lease-aware rollback in [`run-lifecycle.md`](run-lifecycle.md); do not manually remove a live lock. Invalid generated artifacts are repaired at their owning stage rather than bypassing version, lineage, locator, evidence, plan, script, or token-limit validation.
+`render_audio.py` contacts Gemini; no current command contacts R2. Stop safely by ending the renderer process. Valid segment state remains reusable, while an in-flight or unreferenced file is not authoritative. Correct the provider/configuration issue and rerun the same command; do not remove completed files or manually edit state. Follow the lease-aware rollback in [`run-lifecycle.md`](run-lifecycle.md) and never remove a live lock.
 
 Service-specific recovery and rotation are documented in [`cloudflare-r2.md`](cloudflare-r2.md) and will be expanded alongside their implementations.

@@ -23,12 +23,12 @@
   "hosts": [
     {
       "name": "Maya",
-      "voice": "selected-gemini-voice",
+      "voice": "Kore",
       "description": "calm, incisive, warm, concise"
     },
     {
       "name": "Daniel",
-      "voice": "selected-gemini-voice",
+      "voice": "Charon",
       "description": "curious, analytical, grounded, concise"
     }
   ],

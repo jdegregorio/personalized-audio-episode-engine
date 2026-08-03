@@ -37,7 +37,10 @@ from audio_engine.artifacts import (
     ScriptValidationState,
     SourcePolicy,
     TtsManifest,
+    TtsManifestSegment,
     TtsPreparationState,
+    TtsRenderedSegment,
+    TtsRenderingState,
     TtsSegmentPrompt,
 )
 from audio_engine.config import EngineSettings
@@ -1009,6 +1012,153 @@ def record_tts_preparation(
     return updated
 
 
+def record_rendered_tts_segment(
+    workspace: RunWorkspace,
+    manager: LeaseManager,
+    run_id: str,
+    *,
+    manifest: TtsManifest,
+    manifest_segment: TtsManifestSegment,
+    rendered: TtsRenderedSegment,
+) -> RunState:
+    """Record one already-written, validated segment and advance after the final segment."""
+    try:
+        with manager.mutation(workspace.episode_key, run_id):
+            state = load_run_state(workspace.state_path)
+            if state.run_id != run_id or state.status != "running" or state.current_stage != "tts":
+                raise LifecycleError("TTS rendering requires the active run at the TTS stage")
+            _require_persisted_tts_manifest(workspace, state, manifest)
+            expected = next(
+                (
+                    segment
+                    for segment in manifest.segments
+                    if segment.segment_id == rendered.segment_id
+                ),
+                None,
+            )
+            if expected != manifest_segment or rendered.order != manifest_segment.order:
+                raise LifecycleError("rendered TTS segment does not match the manifest")
+            expected_raw = f"tts/audio/segment-{rendered.order:03d}.pcm"
+            expected_audio = f"tts/audio/segment-{rendered.order:03d}.wav"
+            if (
+                rendered.prompt != manifest_segment.prompt
+                or rendered.raw_audio.path != expected_raw
+                or rendered.audio.path != expected_audio
+            ):
+                raise LifecycleError("rendered TTS segment references unexpected files")
+            for reference in (rendered.raw_audio, rendered.audio):
+                path = resolve_within_roots(
+                    workspace.run_directory / reference.path,
+                    [workspace.run_directory],
+                    must_exist=True,
+                )
+                if path.stat().st_size < 1 or sha256_file(path) != reference.sha256:
+                    raise LifecycleError("rendered TTS segment file failed durable verification")
+
+            completed = list(state.tts_rendering.completed_segments) if state.tts_rendering else []
+            existing = next(
+                (segment for segment in completed if segment.segment_id == rendered.segment_id),
+                None,
+            )
+            if existing is not None:
+                if existing != rendered:
+                    raise LifecycleError("rendered TTS segment conflicts with active state")
+                return state
+            expected_order = len(completed) + 1
+            if rendered.order != expected_order:
+                raise LifecycleError("TTS segments must be recorded in manifest order")
+            completed.append(rendered)
+            complete = len(completed) == len(manifest.segments)
+            rendering = TtsRenderingState(
+                status="complete" if complete else "in_progress",
+                segment_count=len(manifest.segments),
+                completed_segments=completed,
+            )
+            updated = _validated_state_update(
+                state,
+                {
+                    "current_stage": "audio" if complete else "tts",
+                    "last_completed_valid_stage": "tts"
+                    if complete
+                    else state.last_completed_valid_stage,
+                    "tts_rendering": rendering,
+                },
+            )
+            _write_run_state(workspace, updated)
+            _write_summary(workspace, updated)
+    except (OSError, SafetyError, StorageError, ValidationError) as error:
+        raise LifecycleError("rendered TTS segment could not be persisted") from error
+    except LeaseError as error:
+        raise LifecycleError(str(error)) from None
+    return updated
+
+
+def record_tts_render_failure(
+    workspace: RunWorkspace,
+    manager: LeaseManager,
+    run_id: str,
+    *,
+    manifest: TtsManifest,
+    segment_id: str,
+    message: str,
+    recovery_guidance: str,
+    sensitive_values: Sequence[str] = (),
+) -> RunState:
+    """Persist a resumable segment failure without discarding completed audio."""
+    try:
+        with manager.mutation(workspace.episode_key, run_id):
+            state = load_run_state(workspace.state_path)
+            if state.run_id != run_id or state.status != "running" or state.current_stage != "tts":
+                raise LifecycleError("TTS failure recording requires the active TTS stage")
+            preparation = _require_persisted_tts_manifest(workspace, state, manifest)
+            completed = list(state.tts_rendering.completed_segments) if state.tts_rendering else []
+            if segment_id not in {segment.segment_id for segment in manifest.segments}:
+                raise LifecycleError("failed TTS segment does not exist in the manifest")
+            if segment_id in {segment.segment_id for segment in completed}:
+                raise LifecycleError("completed TTS segment cannot be recorded as failed")
+            rendering = TtsRenderingState(
+                status="failed",
+                segment_count=preparation.segment_count,
+                completed_segments=completed,
+                failed_segment_id=segment_id,
+                message=redact_text(message, sensitive_values=sensitive_values),
+                recovery_guidance=redact_text(recovery_guidance, sensitive_values=sensitive_values),
+            )
+            updated = _validated_state_update(state, {"tts_rendering": rendering})
+            _write_run_state(workspace, updated)
+            _write_summary(workspace, updated)
+    except (OSError, SafetyError, StorageError, ValidationError) as error:
+        raise LifecycleError("TTS render failure could not be persisted") from error
+    except LeaseError as error:
+        raise LifecycleError(str(error)) from None
+    return updated
+
+
+def _require_persisted_tts_manifest(
+    workspace: RunWorkspace,
+    state: RunState,
+    manifest: TtsManifest,
+) -> TtsPreparationState:
+    preparation = state.tts_preparation
+    reference = state.artifacts.get("tts_manifest")
+    if (
+        preparation is None
+        or reference is None
+        or preparation.manifest != reference
+        or preparation.segment_count != len(manifest.segments)
+    ):
+        raise LifecycleError("TTS rendering requires a valid preparation state")
+    manifest_path = resolve_within_roots(
+        workspace.run_directory / reference.path,
+        [workspace.run_directory],
+        must_exist=True,
+    )
+    persisted, report = load_artifact_file("tts-manifest", manifest_path)
+    if sha256_file(manifest_path) != reference.sha256 or not report.valid or persisted != manifest:
+        raise LifecycleError("TTS manifest does not match its persisted artifact")
+    return preparation
+
+
 def refresh_run_summary(
     workspace: RunWorkspace,
     manager: LeaseManager,
@@ -1244,6 +1394,7 @@ def invalidate_for_artifact_change(
         update["last_completed_valid_stage"] = "editorial"
     if "tts_manifest" in downstream:
         update["tts_preparation"] = None
+        update["tts_rendering"] = None
     if downstream & _FINAL_OUTPUT_KEYS:
         update["final_audio_validation"] = FinalAudioValidation(
             status="pending",
@@ -1347,6 +1498,10 @@ def render_summary(workspace: RunWorkspace, state: RunState) -> str:
             warnings.append(f"episode script valid with {validation.warning_count} {label}")
     warning_text = "; ".join(warnings) if warnings else "none"
     prepared_segments = state.tts_preparation.segment_count if state.tts_preparation else 0
+    rendered_segments = len(state.tts_rendering.completed_segments) if state.tts_rendering else 0
+    if state.tts_rendering and state.tts_rendering.status == "failed":
+        warnings.append(state.tts_rendering.message or "TTS rendering failed")
+        warning_text = "; ".join(warnings)
     lines = [
         "# Run summary",
         "",
@@ -1358,6 +1513,7 @@ def render_summary(workspace: RunWorkspace, state: RunState) -> str:
         f"- Last completed valid stage: {state.last_completed_valid_stage or 'none'}",
         f"- Valid audio created: {'yes' if audio_valid else 'no'}",
         f"- TTS segments prepared: {prepared_segments}",
+        f"- TTS segments rendered: {rendered_segments}",
         f"- Publication succeeded: {'yes' if publication_succeeded else 'no'}",
         f"- Output directory: {workspace.run_directory}",
         f"- Published locations: {locations}",

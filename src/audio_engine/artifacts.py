@@ -756,6 +756,64 @@ class TtsPreparationState(_ContractModel):
         return self
 
 
+class TtsRenderedSegment(_ContractModel):
+    segment_id: TtsSegmentId
+    order: Annotated[int, Field(ge=1, le=10_000)]
+    prompt: ArtifactReference
+    raw_audio: ArtifactReference
+    audio: ArtifactReference
+    provider_media_type: ShortText
+    sample_rate_hz: Annotated[int, Field(ge=8_000, le=384_000)]
+    channels: Annotated[int, Field(ge=1, le=8)]
+    sample_width_bytes: Annotated[int, Field(ge=1, le=8)]
+    duration_seconds: Annotated[float, Field(gt=0, le=60 * 60 * 3)]
+    request_attempts: Annotated[int, Field(ge=1, le=100)]
+    completed_at: JsonAwareDatetime
+
+    @model_validator(mode="after")
+    def valid_audio_references(self) -> Self:
+        expected_types = (
+            (self.prompt, "tts-prompt"),
+            (self.raw_audio, "tts-raw-audio"),
+            (self.audio, "tts-audio"),
+        )
+        if any(reference.artifact_type != expected for reference, expected in expected_types):
+            raise ValueError("rendered TTS segment references have invalid artifact types")
+        return self
+
+
+class TtsRenderingState(_ContractModel):
+    status: Literal["in_progress", "failed", "complete"]
+    segment_count: Annotated[int, Field(ge=1, le=10_000)]
+    completed_segments: Annotated[list[TtsRenderedSegment], Field(max_length=10_000)]
+    failed_segment_id: TtsSegmentId | None = None
+    message: ShortText | None = None
+    recovery_guidance: LongText | None = None
+
+    @model_validator(mode="after")
+    def consistent_rendering(self) -> Self:
+        orders = [segment.order for segment in self.completed_segments]
+        ids = [segment.segment_id for segment in self.completed_segments]
+        if orders != list(range(1, len(orders) + 1)):
+            raise ValueError("rendered TTS segments must form a contiguous ordered prefix")
+        if len(ids) != len(set(ids)):
+            raise ValueError("rendered TTS segment IDs must be unique")
+        if any(order > self.segment_count for order in orders):
+            raise ValueError("rendered TTS segment order exceeds the manifest count")
+        failure_fields = (self.failed_segment_id, self.message, self.recovery_guidance)
+        if self.status == "failed" and any(value is None for value in failure_fields):
+            raise ValueError("failed TTS rendering requires segment-specific recovery details")
+        if self.failed_segment_id in ids:
+            raise ValueError("failed TTS segment cannot already be completed")
+        if self.status != "failed" and any(value is not None for value in failure_fields):
+            raise ValueError("only failed TTS rendering may contain failure details")
+        if self.status == "complete" and len(self.completed_segments) != self.segment_count:
+            raise ValueError("complete TTS rendering requires every manifest segment")
+        if self.status != "complete" and len(self.completed_segments) == self.segment_count:
+            raise ValueError("only complete TTS rendering may contain every manifest segment")
+        return self
+
+
 class RunState(_ContractModel):
     model_config = ConfigDict(
         extra="forbid",
@@ -782,6 +840,7 @@ class RunState(_ContractModel):
     plan_validation: PlanValidationState | None = None
     script_validation: ScriptValidationState | None = None
     tts_preparation: TtsPreparationState | None = None
+    tts_rendering: TtsRenderingState | None = None
     codex_model: ShortText | None
     gemini_model: ShortText | None
     started_at: JsonAwareDatetime

@@ -75,11 +75,11 @@ hosts:
   relationship: flexible_symmetry
   female:
     name: Maya
-    voice: selected-gemini-voice
+    voice: Kore
     profile: calm, incisive, warm, concise
   male:
     name: Daniel
-    voice: selected-gemini-voice
+    voice: Charon
     profile: curious, analytical, grounded, concise
 
 performance:

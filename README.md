@@ -100,7 +100,17 @@ At `tts`, follow the skill's [`tts-preparation.md`](.agents/skills/produce-audio
 uv run python scripts/prepare_tts.py --run <run-directory>
 ```
 
-The preparer revalidates the script/transcript, applies the configured model capability limits, prefers natural two-to-four-minute boundaries, and writes `tts/manifest.json` plus ordered atomic segment prompt files. Each prompt keeps direction and continuity separate from its exact transcript. It makes no Gemini request; rendering begins in PR 09. An unchanged rerun verifies hashes and returns `already_prepared` without rewriting valid outputs.
+The preparer revalidates the script/transcript, applies the configured model capability limits, prefers natural two-to-four-minute boundaries, and writes `tts/manifest.json` plus ordered atomic segment prompt files. Each provider input begins with an explicit synthesis instruction and delimits the exact spoken transcript from non-spoken direction. An unchanged rerun verifies hashes and returns `already_prepared` without rewriting valid outputs.
+
+## Gemini rendering workflow
+
+After preparation, follow the skill's [`tts-rendering.md`](.agents/skills/produce-audio-episode/references/tts-rendering.md) reference and render only missing segments:
+
+```bash
+uv run python scripts/render_audio.py --run <run-directory>
+```
+
+The renderer makes bounded Gemini calls with exactly two configured voices and project-owned retries near 2, 5, and 12 seconds. It preserves raw 24 kHz PCM before packaging each decodable WAV, then records that segment immediately. Exhaustion leaves the run at `tts` with completed segments intact and segment-specific resume guidance; completion advances to `audio`. An unchanged rerun validates hashes and audio before returning `already_rendered` without contacting Gemini.
 
 ## Security boundary
 

@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import json
 import math
 import re
 from collections.abc import Sequence
@@ -40,7 +39,7 @@ from audio_engine.validation import (
     validate_transcript_projection,
 )
 
-TTS_PROMPT_VERSION = "1.0.0"
+TTS_PROMPT_VERSION = "1.1.0"
 _WORD = re.compile(r"\b[\w’'-]+\b", re.UNICODE)
 _MINIMUM_TARGET_SECONDS = 2 * 60
 _MAXIMUM_TARGET_SECONDS = 4 * 60
@@ -48,6 +47,14 @@ _MAXIMUM_TARGET_SECONDS = 4 * 60
 
 class TtsPreparationError(RuntimeError):
     """A safe TTS preparation or resume failure."""
+
+
+class SpeechRendererError(RuntimeError):
+    """A provider request or response failure that may be retried."""
+
+
+class SpeechRendererConfigurationError(SpeechRendererError):
+    """A non-retryable provider configuration failure."""
 
 
 @dataclass(frozen=True)
@@ -63,12 +70,21 @@ class SpeechRendererCapabilities:
 
 
 class SpeechRenderer(Protocol):
-    """Provider-neutral boundary implemented by live renderers in their owning PR."""
+    """Provider-neutral speech provider boundary."""
 
     @property
     def capabilities(self) -> SpeechRendererCapabilities: ...
 
-    def render(self, request: TtsSegmentPrompt) -> bytes: ...
+    def render(self, request: TtsSegmentPrompt) -> SpeechResponse: ...
+
+
+@dataclass(frozen=True)
+class SpeechResponse:
+    """One provider response before local audio packaging or validation."""
+
+    audio: bytes | None
+    mime_type: str | None
+    text: str | None = None
 
 
 _MODEL_CAPABILITIES = {
@@ -136,19 +152,23 @@ def estimate_input_tokens(value: str) -> int:
 
 
 def renderer_input(prompt: TtsSegmentPrompt) -> str:
-    """Serialize only structured provider input; local provenance remains out of band."""
-    payload = {
-        "continuity_context": prompt.continuity_context,
-        "director_notes": prompt.director_notes,
-        "hosts": [host.model_dump(mode="json") for host in prompt.hosts],
-        "position": {
-            "count": prompt.segment_count,
-            "index": prompt.position,
-        },
-        "scene_description": prompt.scene_description,
-        "transcript": prompt.transcript,
-    }
-    return json.dumps(payload, ensure_ascii=False, separators=(",", ":"), sort_keys=True)
+    """Build the complete, explicitly delimited provider input for one segment."""
+    hosts = "\n".join(
+        f"- {host.name}: voice {host.voice}; {host.description}" for host in prompt.hosts
+    )
+    notes = "\n".join(f"- {note}" for note in prompt.director_notes)
+    continuity = prompt.continuity_context or "None; this is the first segment."
+    return (
+        "Synthesize speech for the exact two-speaker conversation below.\n"
+        "Read only the text inside <TRANSCRIPT>; never speak these production instructions, "
+        "labels, voice IDs, or continuity context.\n\n"
+        f"Scene: {prompt.scene_description}\n"
+        f"Segment: {prompt.position} of {prompt.segment_count}\n"
+        f"Continuity context (not spoken): {continuity}\n"
+        f"Host performances (not spoken):\n{hosts}\n"
+        f"Director notes (not spoken):\n{notes}\n\n"
+        f"<TRANSCRIPT>\n{prompt.transcript}</TRANSCRIPT>\n"
+    )
 
 
 def open_tts_run(
@@ -162,8 +182,8 @@ def open_tts_run(
     state = load_run_state(script_context.workspace.state_path)
     if state.script_validation is None or state.script_validation.status != "valid":
         raise TtsPreparationError("TTS preparation requires a valid script outcome")
-    if state.current_stage != "tts":
-        raise TtsPreparationError("TTS preparation can only run during the TTS stage")
+    if state.current_stage not in {"tts", "audio"}:
+        raise TtsPreparationError("TTS preparation can only run during the TTS or audio stage")
     result = record_script_attempt(
         script_context.workspace,
         script_context.manager,

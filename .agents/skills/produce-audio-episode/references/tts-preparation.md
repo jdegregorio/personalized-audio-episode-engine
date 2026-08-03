@@ -18,4 +18,4 @@ Each prompt keeps scene direction, director notes, host descriptions/voices, seg
 
 Natural script, planned-segment, section, transition, and closing-recap boundaries are preferred. Preparation targets two-to-four-minute requests and splits a discussion only when the configured safe token limit requires it. A single spoken turn that cannot fit fails closed so no prose is silently rewritten.
 
-Preparation has no credential or network requirement beyond the repository's normal configured preflight. Rendering, retries, raw audio, and voice-pair selection begin in PR 09.
+Preparation has no credential or network requirement beyond the repository's normal configured preflight. After `tts_preparation` is valid, load `tts-rendering.md`; do not call the provider from this preparation phase.

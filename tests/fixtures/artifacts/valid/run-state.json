@@ -77,6 +77,67 @@
       "sha256": "sha256:5555555555555555555555555555555555555555555555555555555555555555"
     }
   },
+  "tts_rendering": {
+    "status": "complete",
+    "segment_count": 2,
+    "completed_segments": [
+      {
+        "segment_id": "tts_segment_001",
+        "order": 1,
+        "prompt": {
+          "artifact_type": "tts-prompt",
+          "path": "tts/segment-001.json",
+          "sha256": "sha256:6666666666666666666666666666666666666666666666666666666666666666"
+        },
+        "raw_audio": {
+          "artifact_type": "tts-raw-audio",
+          "path": "tts/audio/segment-001.pcm",
+          "sha256": "sha256:7777777777777777777777777777777777777777777777777777777777777777"
+        },
+        "audio": {
+          "artifact_type": "tts-audio",
+          "path": "tts/audio/segment-001.wav",
+          "sha256": "sha256:8888888888888888888888888888888888888888888888888888888888888888"
+        },
+        "provider_media_type": "audio/L16;codec=pcm;rate=24000",
+        "sample_rate_hz": 24000,
+        "channels": 1,
+        "sample_width_bytes": 2,
+        "duration_seconds": 145.5,
+        "request_attempts": 1,
+        "completed_at": "2026-01-15T15:13:00Z"
+      },
+      {
+        "segment_id": "tts_segment_002",
+        "order": 2,
+        "prompt": {
+          "artifact_type": "tts-prompt",
+          "path": "tts/segment-002.json",
+          "sha256": "sha256:9999999999999999999999999999999999999999999999999999999999999999"
+        },
+        "raw_audio": {
+          "artifact_type": "tts-raw-audio",
+          "path": "tts/audio/segment-002.pcm",
+          "sha256": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        },
+        "audio": {
+          "artifact_type": "tts-audio",
+          "path": "tts/audio/segment-002.wav",
+          "sha256": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+        },
+        "provider_media_type": "audio/L16;codec=pcm;rate=24000",
+        "sample_rate_hz": 24000,
+        "channels": 1,
+        "sample_width_bytes": 2,
+        "duration_seconds": 154.5,
+        "request_attempts": 2,
+        "completed_at": "2026-01-15T15:18:00Z"
+      }
+    ],
+    "failed_segment_id": null,
+    "message": null,
+    "recovery_guidance": null
+  },
   "codex_model": "synthetic-codex-model",
   "gemini_model": "synthetic-tts-model",
   "started_at": "2026-01-15T15:00:00Z",

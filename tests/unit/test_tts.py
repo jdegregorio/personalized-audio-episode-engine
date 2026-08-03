@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import copy
-import json
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any, cast
@@ -150,9 +149,10 @@ def test_provider_instructions_do_not_leak_into_exact_transcript() -> None:
         assert all(note not in prompt.transcript for note in prompt.director_notes)
         if prompt.continuity_context:
             assert prompt.continuity_context not in prompt.transcript
-        payload = json.loads(renderer_input(prompt))
-        assert payload["transcript"] == prompt.transcript
-        assert "sha256" not in renderer_input(prompt)
+        provider_prompt = renderer_input(prompt)
+        assert provider_prompt.startswith("Synthesize speech")
+        assert f"<TRANSCRIPT>\n{prompt.transcript}</TRANSCRIPT>" in provider_prompt
+        assert "sha256" not in provider_prompt
 
 
 def test_prompt_rejects_a_transcript_speaker_name_mismatch() -> None:

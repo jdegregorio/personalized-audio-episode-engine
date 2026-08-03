@@ -389,6 +389,164 @@
       ],
       "title": "TtsPreparationState",
       "type": "object"
+    },
+    "TtsRenderedSegment": {
+      "additionalProperties": false,
+      "properties": {
+        "audio": {
+          "$ref": "#/$defs/ArtifactReference"
+        },
+        "channels": {
+          "maximum": 8,
+          "minimum": 1,
+          "title": "Channels",
+          "type": "integer"
+        },
+        "completed_at": {
+          "format": "date-time",
+          "title": "Completed At",
+          "type": "string"
+        },
+        "duration_seconds": {
+          "exclusiveMinimum": 0,
+          "maximum": 10800,
+          "title": "Duration Seconds",
+          "type": "number"
+        },
+        "order": {
+          "maximum": 10000,
+          "minimum": 1,
+          "title": "Order",
+          "type": "integer"
+        },
+        "prompt": {
+          "$ref": "#/$defs/ArtifactReference"
+        },
+        "provider_media_type": {
+          "maxLength": 500,
+          "minLength": 1,
+          "title": "Provider Media Type",
+          "type": "string"
+        },
+        "raw_audio": {
+          "$ref": "#/$defs/ArtifactReference"
+        },
+        "request_attempts": {
+          "maximum": 100,
+          "minimum": 1,
+          "title": "Request Attempts",
+          "type": "integer"
+        },
+        "sample_rate_hz": {
+          "maximum": 384000,
+          "minimum": 8000,
+          "title": "Sample Rate Hz",
+          "type": "integer"
+        },
+        "sample_width_bytes": {
+          "maximum": 8,
+          "minimum": 1,
+          "title": "Sample Width Bytes",
+          "type": "integer"
+        },
+        "segment_id": {
+          "pattern": "^tts_[A-Za-z0-9][A-Za-z0-9_-]*$",
+          "title": "Segment Id",
+          "type": "string"
+        }
+      },
+      "required": [
+        "segment_id",
+        "order",
+        "prompt",
+        "raw_audio",
+        "audio",
+        "provider_media_type",
+        "sample_rate_hz",
+        "channels",
+        "sample_width_bytes",
+        "duration_seconds",
+        "request_attempts",
+        "completed_at"
+      ],
+      "title": "TtsRenderedSegment",
+      "type": "object"
+    },
+    "TtsRenderingState": {
+      "additionalProperties": false,
+      "properties": {
+        "completed_segments": {
+          "items": {
+            "$ref": "#/$defs/TtsRenderedSegment"
+          },
+          "maxItems": 10000,
+          "title": "Completed Segments",
+          "type": "array"
+        },
+        "failed_segment_id": {
+          "anyOf": [
+            {
+              "pattern": "^tts_[A-Za-z0-9][A-Za-z0-9_-]*$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Failed Segment Id"
+        },
+        "message": {
+          "anyOf": [
+            {
+              "maxLength": 500,
+              "minLength": 1,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Message"
+        },
+        "recovery_guidance": {
+          "anyOf": [
+            {
+              "maxLength": 10000,
+              "minLength": 1,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Recovery Guidance"
+        },
+        "segment_count": {
+          "maximum": 10000,
+          "minimum": 1,
+          "title": "Segment Count",
+          "type": "integer"
+        },
+        "status": {
+          "enum": [
+            "in_progress",
+            "failed",
+            "complete"
+          ],
+          "title": "Status",
+          "type": "string"
+        }
+      },
+      "required": [
+        "status",
+        "segment_count",
+        "completed_segments"
+      ],
+      "title": "TtsRenderingState",
+      "type": "object"
     }
   },
   "$id": "urn:personalized-audio-episode-engine:schema:run-state:1.0",
@@ -650,6 +808,17 @@
       "anyOf": [
         {
           "$ref": "#/$defs/TtsPreparationState"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null
+    },
+    "tts_rendering": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/TtsRenderingState"
         },
         {
           "type": "null"

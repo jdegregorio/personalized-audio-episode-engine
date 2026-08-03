@@ -572,6 +572,35 @@ def test_artifact_change_invalidates_exact_downstream_dependencies(
         "transcript": data["artifacts"]["transcript"],
         "manifest": data["artifacts"]["tts_manifest"],
     }
+    data["tts_rendering"] = {
+        "status": "in_progress",
+        "segment_count": 2,
+        "completed_segments": [
+            {
+                "segment_id": "tts_segment_001",
+                "order": 1,
+                "prompt": _reference("tts-prompt", "tts/segment-001.json", "8").model_dump(
+                    mode="json"
+                ),
+                "raw_audio": _reference(
+                    "tts-raw-audio", "tts/audio/segment-001.pcm", "9"
+                ).model_dump(mode="json"),
+                "audio": _reference("tts-audio", "tts/audio/segment-001.wav", "a").model_dump(
+                    mode="json"
+                ),
+                "provider_media_type": "audio/L16;rate=24000",
+                "sample_rate_hz": 24000,
+                "channels": 1,
+                "sample_width_bytes": 2,
+                "duration_seconds": 20.0,
+                "request_attempts": 1,
+                "completed_at": FIXED_NOW.isoformat(),
+            }
+        ],
+        "failed_segment_id": None,
+        "message": None,
+        "recovery_guidance": None,
+    }
     state = RunState.model_validate(data)
     old = state.artifacts[changed_key]
     replacement = ArtifactReference(
@@ -593,6 +622,7 @@ def test_artifact_change_invalidates_exact_downstream_dependencies(
     assert updated.final_audio_validation.status == "pending"
     assert updated.publication.status == "not_started"
     assert updated.tts_preparation is None
+    assert updated.tts_rendering is None
     if changed_key == "profile":
         assert updated.profile_version == "0.2.0"
         assert updated.collection_method is None

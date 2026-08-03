@@ -47,3 +47,11 @@ If collection is already valid, `record_collection.py` returns `already_valid` a
 - `one spoken turn exceeds the safe TTS input limit`: repair the structured script in a new valid script attempt/run so the spoken turn can be split naturally. Do not hand-edit transcript or generated prompt files.
 - A manifest/prompt/input hash or reconstruction mismatch means the recorded preparation is not resumable. Preserve the workspace for diagnosis; do not treat unreferenced files as valid state.
 - `already_prepared`: every input, manifest, prompt, estimate, host assignment, and transcript byte was revalidated. Do not rewrite or reprepare.
+
+## Gemini rendering
+
+- `Gemini hosts require two distinct supported prebuilt voices`: use two different documented Gemini voice IDs in the profile; do not substitute display descriptions or arbitrary labels.
+- `speech provider returned text instead of audio`, empty audio, an unsupported media type/rate, incomplete PCM, implausibly short output, or undecodable WAV is retryable for the current segment. After exhaustion, preserve the workspace and rerun `render_audio.py`; completed segments are not requested again.
+- `Gemini speech request failed` covers bounded timeout, rate-limit, and provider failures without echoing response details that could contain credentials. Confirm key/model/quota/billing/region access, then rerun the same segment.
+- A completed raw/WAV hash or decode mismatch fails closed. Preserve the workspace for diagnosis; never hand-edit a segment or its state reference.
+- `already_rendered` means every raw and WAV hash plus WAV metadata revalidated. Do not rerender before assembly.

@@ -205,7 +205,7 @@ class Tts(_ProfileModel):
     model: NonEmptyText
     safe_input_tokens: Annotated[int, Field(ge=1, le=8_192)]
     target_segment_minutes: Annotated[int, Field(ge=1, le=10)]
-    maximum_retries: Annotated[int, Field(ge=0, le=10)]
+    maximum_retries: Annotated[int, Field(ge=0, le=3)]
 
 
 class Publishing(_ProfileModel):
