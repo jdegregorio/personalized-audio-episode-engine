@@ -1,11 +1,13 @@
 from __future__ import annotations
 
+import fcntl
 import json
+import time
 from concurrent.futures import ThreadPoolExecutor
 from concurrent.futures import TimeoutError as FutureTimeoutError
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
-from threading import Event
+from threading import Event, current_thread
 
 import pytest
 
@@ -47,6 +49,64 @@ def test_lease_acquire_noop_refresh_and_owner_only_release(tmp_path: Path) -> No
 
     manager.release(acquired.lease.episode_key, "run_owner")
     assert not manager.lease_path(acquired.lease.episode_key).exists()
+
+
+def test_contender_retries_lease_visible_before_creator_locks(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    runtime = tmp_path / "runtime"
+    runtime.mkdir()
+    manager = LeaseManager(runtime, maximum_age=timedelta(minutes=1))
+    episode_key = "synthetic-lifecycle:2026-01-15"
+    creator_waiting = Event()
+    release_creator = Event()
+    observer_locked = Event()
+    release_observer = Event()
+    observer_retries = 0
+    real_flock = fcntl.flock
+    real_sleep = time.sleep
+
+    def controlled_flock(descriptor: int, operation: int) -> None:
+        thread_name = current_thread().name
+        if thread_name.startswith("lease-creator") and not creator_waiting.is_set():
+            creator_waiting.set()
+            assert release_creator.wait(timeout=5)
+        real_flock(descriptor, operation)
+        if thread_name.startswith("lease-observer") and not observer_locked.is_set():
+            observer_locked.set()
+            assert release_observer.wait(timeout=5)
+
+    def controlled_sleep(delay: float) -> None:
+        nonlocal observer_retries
+        if current_thread().name.startswith("lease-observer"):
+            observer_retries += 1
+            if observer_retries == 3:
+                release_creator.set()
+        real_sleep(delay)
+
+    monkeypatch.setattr("audio_engine.leases.fcntl.flock", controlled_flock)
+    monkeypatch.setattr("audio_engine.leases.time.sleep", controlled_sleep)
+    with (
+        ThreadPoolExecutor(max_workers=1, thread_name_prefix="lease-creator") as creators,
+        ThreadPoolExecutor(max_workers=1, thread_name_prefix="lease-observer") as observers,
+    ):
+        creator = creators.submit(manager.acquire, episode_key, "run_creator")
+        assert creator_waiting.wait(timeout=5)
+        observer = observers.submit(manager.acquire, episode_key, "run_observer")
+        assert observer_locked.wait(timeout=5)
+        release_observer.set()
+        try:
+            created = creator.result(timeout=5)
+            observed = observer.result(timeout=5)
+        finally:
+            release_creator.set()
+            release_observer.set()
+
+    assert created.acquired
+    assert not observed.acquired
+    assert observed.lease.run_id == "run_creator"
+    assert observer_retries >= 3
 
 
 def test_stale_lease_is_quarantined_before_new_owner(tmp_path: Path) -> None:
@@ -126,6 +186,22 @@ def test_corrupt_lease_fails_closed_without_quarantine(tmp_path: Path) -> None:
     path.write_text("not-json", encoding="utf-8")
 
     with pytest.raises(LeaseError, match="unreadable or invalid"):
+        manager.acquire(episode_key, "run_new")
+
+    assert path.exists()
+    assert not list(path.parent.glob("episode-*.stale-*.json"))
+
+
+def test_persistently_empty_lease_fails_closed_without_quarantine(tmp_path: Path) -> None:
+    runtime = tmp_path / "runtime"
+    runtime.mkdir()
+    manager = LeaseManager(runtime, maximum_age=timedelta(minutes=1))
+    episode_key = "synthetic-lifecycle:2026-01-15"
+    path = manager.lease_path(episode_key)
+    path.parent.mkdir(parents=True)
+    path.touch(mode=0o600)
+
+    with pytest.raises(LeaseError, match="did not converge"):
         manager.acquire(episode_key, "run_new")
 
     assert path.exists()

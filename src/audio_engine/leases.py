@@ -5,6 +5,7 @@ from __future__ import annotations
 import fcntl
 import hashlib
 import os
+import time
 import uuid
 from collections.abc import Callable, Generator
 from contextlib import contextmanager, suppress
@@ -21,6 +22,7 @@ from audio_engine.validation import load_artifact_file
 
 LEASE_CONTRACT_VERSION = "1.0"
 _MAX_LEASE_BYTES = 64 * 1024
+_RETRY_DELAY_SECONDS = 0.01
 
 
 class LeaseError(RuntimeError):
@@ -100,6 +102,7 @@ class LeaseManager:
                 if existing is not None:
                     return LeaseAcquisition(False, existing, recovered=False)
                 recovered = True
+                time.sleep(_RETRY_DELAY_SECONDS)
                 continue
             except OSError as error:
                 raise LeaseError("episode lease could not be created") from error
@@ -184,6 +187,11 @@ class LeaseManager:
         if descriptor is None:
             return None
         try:
+            # O_EXCL publishes an empty inode just before its creator can lock and fill it.
+            # A contender that wins that first flock must yield and retry the same path.
+            # A persistently empty lease still fails closed when acquisition cannot converge.
+            if os.fstat(descriptor).st_size == 0:
+                return None
             record = self._read_descriptor(descriptor)
             if record.episode_key != episode_key:
                 raise LeaseError("episode lease key does not match its deterministic path")
