@@ -40,10 +40,15 @@ Run the applicable local gate before review. Once PR 01 introduces the project t
 uv sync --locked --all-extras --dev
 uv lock --check
 uv build
+artifact_venv="$(mktemp -d)/venv"
+uv venv --python 3.12 "${artifact_venv}"
+uv pip install --python "${artifact_venv}/bin/python" dist/*.whl
+"${artifact_venv}/bin/python" -c "import audio_engine; print(audio_engine.__version__)"
+uv run python scripts/check_repository.py
 uv run ruff format --check .
 uv run ruff check .
 uv run pyright
-uv run pytest -m "not live and not smoke"
+uv run pytest -m "not live and not smoke" --cov=audio_engine --cov=scripts --cov-report=term-missing --cov-fail-under=85
 uv run pytest -m "smoke and not live"
 ```
 
