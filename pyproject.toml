@@ -1,0 +1,60 @@
+[build-system]
+requires = ["hatchling>=1.27,<2"]
+build-backend = "hatchling.build"
+
+[project]
+name = "personalized-audio-episode-engine"
+version = "0.1.0"
+description = "Profile-driven production of source-grounded conversational audio episodes"
+readme = "README.md"
+requires-python = ">=3.12,<3.13"
+dependencies = [
+  "boto3>=1.40,<2",
+  "google-genai>=1.30,<2",
+  "httpx>=0.28,<1",
+  "pydantic>=2.11,<3",
+  "pydantic-settings>=2.10,<3",
+  "PyYAML>=6,<7",
+]
+
+[dependency-groups]
+dev = [
+  "pyright>=1.1.400,<2",
+  "pytest>=8.4,<10",
+  "pytest-cov>=6,<8",
+  "respx>=0.22,<1",
+  "ruff>=0.12,<1",
+]
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/audio_engine"]
+
+[tool.pyright]
+include = ["src", "scripts", "tests"]
+pythonVersion = "3.12"
+typeCheckingMode = "strict"
+
+[tool.pytest.ini_options]
+addopts = ["--strict-config", "--strict-markers"]
+pythonpath = ["."]
+testpaths = ["tests"]
+markers = [
+  "integration: deterministic tests spanning component boundaries",
+  "live: tests that require external services and credentials",
+  "smoke: functional tests of the smallest documented runnable path",
+]
+
+[tool.ruff]
+target-version = "py312"
+line-length = 100
+
+[tool.ruff.lint]
+select = ["B", "E", "F", "I", "SIM", "UP"]
+
+[tool.coverage.run]
+branch = true
+source = ["audio_engine", "scripts"]
+
+[tool.coverage.report]
+show_missing = true
+skip_covered = true
