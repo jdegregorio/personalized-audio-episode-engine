@@ -17,7 +17,7 @@ The required workflow surface is deliberately small:
 | `Dependency review` | Pull-request dependency risk review |
 | `CodeQL (python)` | Python static security analysis |
 
-The CI workflow also checks `uv.lock`, builds the wheel and source distribution, and imports the wheel from an isolated environment rather than the editable checkout. The repository tests its integrity guard with prohibited fake paths, confirms Ruff rejects a deliberately unformatted temporary Python file, and runs `scripts/check_artifacts.py` so committed schemas and synthetic fixture expectations cannot drift from their Pydantic models and semantic validators. The existing Ubuntu/macOS package matrix also runs the narrow lease/concurrency subset with real local processes and filesystem operations, while the complete offline and functional-smoke suites remain on Ubuntu.
+The CI workflow also checks `uv.lock`, builds the wheel and source distribution, and imports the wheel from an isolated environment rather than the editable checkout. The repository tests its integrity guard with prohibited fake paths, confirms Ruff rejects a deliberately unformatted temporary Python file, runs `scripts/check_artifacts.py` so committed schemas and synthetic fixture expectations cannot drift from their Pydantic models and semantic validators, and verifies the production skill's concise metadata, direct progressive-disclosure references, security guardrails, and documented command paths. The existing Ubuntu/macOS package matrix also runs the narrow lease/concurrency subset with real local processes and filesystem operations, while the complete offline and functional-smoke suites remain on Ubuntu.
 
 ## Secret isolation
 

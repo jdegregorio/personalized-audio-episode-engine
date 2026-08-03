@@ -65,6 +65,16 @@ def test_profile_rejects_unknown_section_reference(example_profile_data: dict[st
         validate_profile_data(example_profile_data)
 
 
+def test_profile_rejects_inverted_collection_token_limits(
+    example_profile_data: dict[str, Any],
+) -> None:
+    example_profile_data["collection"]["warning_estimated_tokens"] = 100_001
+    example_profile_data["collection"]["maximum_estimated_tokens"] = 100_000
+
+    with pytest.raises(ProfileError, match="warning_estimated_tokens"):
+        validate_profile_data(example_profile_data)
+
+
 def test_profile_requires_publication_environment_names(
     example_profile_data: dict[str, Any],
 ) -> None:

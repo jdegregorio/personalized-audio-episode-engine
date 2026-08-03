@@ -54,6 +54,8 @@ collection:
     local: 8
   maximum_candidates: 40
   maximum_sources: 100
+  warning_estimated_tokens: 50000
+  maximum_estimated_tokens: 100000
 
 editorial:
   target_minutes: 10

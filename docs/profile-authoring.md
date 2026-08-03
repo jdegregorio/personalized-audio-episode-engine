@@ -10,12 +10,12 @@ The main groups are:
 
 - `identity` for feed identity and a title template containing `{date}`.
 - `episode` and `audience` for the topic, arbitrary section IDs, exclusions, timezone, locale, and preferences.
-- `collection` for source types, suggested or explicitly required capabilities, time window, and generic candidate targets.
+- `collection` for source types, suggested or explicitly required capabilities, time window, generic candidate targets, and dossier warning/hard token limits.
 - `editorial` for duration/item bounds, section targets, empty-section policy, and topic-specific policy data.
 - `hosts`, `performance`, and `tts` for the two recurring speakers and provider-neutral preparation limits.
 - `publishing` for feed metadata and environment-variable names. Never put an endpoint, bucket, public URL, token, retention value, or credential directly in a profile.
 
-Every key is validated and unknown keys fail closed. Section IDs may be any lowercase identifier, but all candidate targets, editorial targets, and allowed-empty references must name a declared section. `required_capabilities` is a hard preflight requirement; `suggested_capabilities` is advisory. Leave the required list empty when native Codex research is an allowed fallback.
+Every key is validated and unknown keys fail closed. Section IDs may be any lowercase identifier, but all candidate targets, editorial targets, and allowed-empty references must name a declared section. `required_capabilities` is a hard preflight requirement; `suggested_capabilities` is advisory. Leave the required list empty when native Codex research is an allowed fallback. `warning_estimated_tokens` defaults to 50,000 and `maximum_estimated_tokens` to 100,000; the warning may be lowered for tighter contexts, but it cannot exceed the hard limit.
 
 ## Validate safely
 

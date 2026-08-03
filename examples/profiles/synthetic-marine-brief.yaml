@@ -1,0 +1,102 @@
+schema_version: "1.0"
+
+id: marine-brief
+version: "0.1.0"
+enabled: true
+
+identity:
+  feed_id: marine-brief
+  title_template: "Synthetic marine research — {date}"
+  description: A non-current, local-fixture profile for collection workflow verification.
+
+episode:
+  topic: Synthetic coastal habitat research and instrumentation updates
+  scope:
+    sections:
+      - id: habitat
+        description: Material changes observed in the fictional coastal habitat plots
+      - id: methods
+        description: Material changes to fictional monitoring instruments or methods
+    exclude:
+      - observations without a documented consequence
+
+audience:
+  timezone: America/Los_Angeles
+  locale: en-US
+  knowledge_level: informed_generalist
+  preferences:
+    - explain relevant context without assuming specialist knowledge
+
+collection:
+  source_types:
+    - fixture_corpus
+    - public_web
+  suggested_capabilities:
+    - fixture_research
+  required_capabilities: []
+  allow_native_research_fallback: true
+  evidence_contract_version: "1.0"
+  time_window:
+    recency_hours: 72
+  target_candidates:
+    habitat: 1
+    methods: 1
+  maximum_candidates: 10
+  maximum_sources: 20
+  warning_estimated_tokens: 50000
+  maximum_estimated_tokens: 100000
+
+editorial:
+  target_minutes: 8
+  minimum_minutes: 5
+  maximum_minutes: 10
+  target_sections:
+    habitat:
+      minimum_items: 1
+      maximum_items: 1
+    methods:
+      minimum_items: 1
+      maximum_items: 1
+  maximum_total_items: 2
+  allow_empty_sections: []
+  policy:
+    synthetic_only: true
+    fixture_corpus: tests/fixtures/sources/marine-brief
+    prefer_primary: true
+    multiple_sources_for_consequential_claims: false
+
+hosts:
+  format: two_speaker
+  relationship: flexible_symmetry
+  female:
+    name: Maya
+    voice: selected-gemini-voice
+    profile: calm, incisive, warm, concise
+  male:
+    name: Daniel
+    voice: selected-gemini-voice
+    profile: curious, analytical, grounded, concise
+
+performance:
+  style: calm_public_radio_conversation
+  pace: conversational
+  use_audio_tags: sparingly
+  prohibit_fake_personal_experience: true
+  prohibit_urls_in_speech: true
+
+tts:
+  provider: gemini
+  model: gemini-3.1-flash-tts-preview
+  safe_input_tokens: 7000
+  target_segment_minutes: 3
+  maximum_retries: 3
+
+publishing:
+  feed_title: Synthetic Marine Brief
+  language: en-US
+  provider: cloudflare_r2
+  private_path_env: PODCAST_FEED_TOKEN
+  endpoint_url_env: R2_ENDPOINT_URL
+  bucket_name_env: R2_BUCKET_NAME
+  base_url_env: PODCAST_BASE_URL
+  retention_days_env: R2_RETENTION_DAYS

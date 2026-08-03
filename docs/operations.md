@@ -1,6 +1,6 @@
 # Operations
 
-The engine supports validated environment/profile preflight, deterministic artifact/lineage validation, and owner-checked run initialization. Research, rendering, and publication arrive only in their owning PRs in [`plan.md`](../plan.md).
+The engine supports validated environment/profile preflight, deterministic artifact/lineage validation, owner-checked run initialization, and capability-neutral evidence collection. Editorial planning, rendering, and publication arrive only in their owning PRs in [`plan.md`](../plan.md).
 
 ## Development gate
 
@@ -56,6 +56,22 @@ uv run python scripts/init_run.py \
 
 The command returns compact JSON for either an initialized owner or a successful same-episode no-op. See [`run-lifecycle.md`](run-lifecycle.md) for the layout, state transitions, invalidation rules, concurrency UAT, stale recovery, and rollback procedure.
 
+## Evidence collection
+
+Follow the production [skill](../.agents/skills/produce-audio-episode/SKILL.md). After inspecting available capabilities, record either an already available suitable capability or native public-web fallback:
+
+```bash
+uv run python scripts/select_collection_method.py --run <run-directory>
+```
+
+The agent writes one dossier to the generated request's `output_path`, then records it:
+
+```bash
+uv run python scripts/record_collection.py --run <run-directory>
+```
+
+The recorder binds current request lineage, selected method, prompt version, and configured limits; validates and persists the dossier; writes a hashed validation report; and advances only valid evidence. It returns `repair_required` once, fails/releases after a second invalid attempt, and returns `already_valid` when resuming verified collection. See [`optional-collectors.md`](optional-collectors.md) and [`troubleshooting.md`](troubleshooting.md).
+
 ## Production invariants
 
 - One independent Codex run processes one profile.
@@ -68,6 +84,6 @@ The command returns compact JSON for either an initialized owner or a successful
 
 ## Rollback at this phase
 
-No current command contacts Gemini or R2. Initialization creates only local runtime files after acquiring an episode lease. Follow the lease-aware rollback in [`run-lifecycle.md`](run-lifecycle.md); do not manually remove a live lock. Invalid generated artifacts are repaired at their owning stage rather than bypassing version, lineage, locator, or evidence validation.
+No current command contacts Gemini or R2. Initialization and collection create only local runtime files after acquiring an episode lease; Codex research itself may access public sources or an already configured capability. Follow the lease-aware rollback in [`run-lifecycle.md`](run-lifecycle.md); do not manually remove a live lock. Invalid generated artifacts are repaired at their owning stage rather than bypassing version, lineage, locator, or evidence validation.
 
 Service-specific recovery and rotation are documented in [`cloudflare-r2.md`](cloudflare-r2.md) and will be expanded alongside their implementations.

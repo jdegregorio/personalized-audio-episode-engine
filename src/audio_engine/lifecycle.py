@@ -19,8 +19,10 @@ from audio_engine.artifacts import (
     ArtifactReference,
     CollectionAudience,
     CollectionEditorialPriorities,
+    CollectionMethod,
     CollectionRequest,
     CollectionTargets,
+    CollectionValidationState,
     EditorialPlan,
     EpisodeScript,
     EvidenceDossier,
@@ -48,7 +50,7 @@ from audio_engine.storage import (
 )
 from audio_engine.validation import load_artifact_file, validate_artifact_data
 
-SKILL_VERSION = "0.1.0"
+SKILL_VERSION = "1.0.0"
 
 
 class LifecycleError(RuntimeError):
@@ -237,7 +239,7 @@ def initialize_run(
                 now=now,
                 run_directory=run_directory,
             )
-            state = _persist_stage_artifact_owned(
+            state, _ = _prepare_stage_artifact_owned(
                 workspace,
                 run_id,
                 artifact_key="collection_request",
@@ -245,6 +247,8 @@ def initialize_run(
                 data=request.model_dump(mode="json"),
                 allowed_input_roots=(),
             )
+            _write_run_state(workspace, state)
+            _write_summary(workspace, state)
     except (LifecycleError, LeaseError, StorageError, OSError, ValidationError):
         terminal_persisted = False
         if workspace is None:
@@ -323,9 +327,10 @@ def build_collection_request(
         topic=profile.episode.topic,
         scope=RequestScope(
             sections=[section.id for section in profile.episode.scope.sections],
-            notes=(
-                "Profile-defined section identifiers; descriptions remain authoritative in profile."
-            ),
+            section_descriptions={
+                section.id: section.description for section in profile.episode.scope.sections
+            },
+            notes="Profile-defined section identifiers and descriptions.",
         ),
         audience=CollectionAudience(
             locale=profile.audience.locale,
@@ -339,6 +344,7 @@ def build_collection_request(
         time_window=RequestTimeWindow(hours=profile.collection.time_window.recency_hours),
         source_types=profile.collection.source_types,
         suggested_capabilities=profile.collection.suggested_capabilities,
+        required_capabilities=profile.collection.required_capabilities,
         allow_native_research_fallback=profile.collection.allow_native_research_fallback,
         evidence_contract_version=profile.collection.evidence_contract_version,
         source_policy=SourcePolicy(
@@ -353,6 +359,8 @@ def build_collection_request(
             by_section=profile.collection.target_candidates,
             maximum_candidates=profile.collection.maximum_candidates,
             maximum_sources=profile.collection.maximum_sources,
+            warning_estimated_tokens=profile.collection.warning_estimated_tokens,
+            maximum_estimated_tokens=profile.collection.maximum_estimated_tokens,
         ),
         output_path=str(run_directory / "evidence-dossier.json"),
     )
@@ -373,7 +381,7 @@ def persist_stage_artifact(
         raise LifecycleError("artifact key does not own a lifecycle stage")
     try:
         with manager.mutation(workspace.episode_key, run_id):
-            return _persist_stage_artifact_owned(
+            updated, changed = _prepare_stage_artifact_owned(
                 workspace,
                 run_id,
                 artifact_key=artifact_key,
@@ -381,11 +389,142 @@ def persist_stage_artifact(
                 data=data,
                 allowed_input_roots=allowed_input_roots,
             )
+            if changed:
+                _write_run_state(workspace, updated)
+            _write_summary(workspace, updated)
+            return updated
     except LeaseError as error:
         raise LifecycleError(str(error)) from None
 
 
-def _persist_stage_artifact_owned(
+def record_collection_method(
+    workspace: RunWorkspace,
+    manager: LeaseManager,
+    run_id: str,
+    *,
+    method: CollectionMethod,
+    prompt_version: str,
+    failed_capabilities: Sequence[str] = (),
+) -> RunState:
+    """Record the agent-selected collection route before source retrieval."""
+    try:
+        with manager.mutation(workspace.episode_key, run_id):
+            state = load_run_state(workspace.state_path)
+            if (
+                state.run_id != run_id
+                or state.status != "running"
+                or state.current_stage != "collection"
+            ):
+                raise LifecycleError("collection method can only be selected during collection")
+            if state.collection_validation and not state.collection_validation.repair_allowed:
+                raise LifecycleError("collection validation does not allow another attempt")
+            prompt_versions = {**state.prompt_versions, "collection": prompt_version}
+            failed = list(
+                dict.fromkeys([*state.failed_collection_capabilities, *failed_capabilities])
+            )
+            updated = _validated_state_update(
+                state,
+                {
+                    "collection_method": method,
+                    "failed_collection_capabilities": failed,
+                    "prompt_versions": prompt_versions,
+                },
+            )
+            _write_run_state(workspace, updated)
+            _write_summary(workspace, updated)
+            return updated
+    except ValidationError as error:
+        raise LifecycleError("collection capability metadata is invalid") from error
+    except LeaseError as error:
+        raise LifecycleError(str(error)) from None
+
+
+def record_collection_validation(
+    workspace: RunWorkspace,
+    manager: LeaseManager,
+    run_id: str,
+    *,
+    outcome: CollectionValidationState,
+    now: datetime,
+    dossier: EvidenceDossier | None = None,
+    allowed_input_roots: Sequence[Path] = (),
+) -> RunState:
+    """Persist one collection outcome and terminalize the second invalid attempt."""
+    should_release = False
+    try:
+        with manager.mutation(workspace.episode_key, run_id):
+            state = load_run_state(workspace.state_path)
+            if state.run_id != run_id or state.status != "running":
+                raise LifecycleError("collection validation requires the active run owner")
+            if state.collection_method is None:
+                raise LifecycleError("collection method must be selected before validation")
+            previous = state.collection_validation
+            if previous == outcome and outcome.status == "valid":
+                _write_summary(workspace, state)
+                return state
+            expected_attempt = 1
+            if previous is not None:
+                if not previous.repair_allowed:
+                    raise LifecycleError("collection validation does not allow another attempt")
+                expected_attempt = previous.attempt + 1
+            if outcome.attempt != expected_attempt:
+                raise LifecycleError(f"collection validation attempt must be {expected_attempt}")
+            if outcome.status == "valid":
+                if dossier is None:
+                    raise LifecycleError("valid collection outcome requires an evidence dossier")
+                state, _ = _prepare_stage_artifact_owned(
+                    workspace,
+                    run_id,
+                    artifact_key="evidence_dossier",
+                    rule=_ARTIFACT_RULES["evidence_dossier"],
+                    data=dossier.model_dump(mode="json"),
+                    allowed_input_roots=allowed_input_roots,
+                )
+                if state.current_stage != "editorial" or "evidence_dossier" not in state.artifacts:
+                    raise LifecycleError("valid collection outcome requires a persisted dossier")
+            else:
+                if dossier is not None:
+                    raise LifecycleError("invalid collection outcome cannot persist a dossier")
+                if state.current_stage != "collection":
+                    raise LifecycleError("invalid collection outcome must remain in collection")
+
+            artifacts = {**state.artifacts, "evidence_validation": outcome.report}
+            update: dict[str, object] = {
+                "artifacts": artifacts,
+                "collection_validation": outcome,
+            }
+            if outcome.status == "invalid" and not outcome.repair_allowed:
+                update.update(
+                    {
+                        "completed_at": _aware_utc(now),
+                        "failure": RunFailure(
+                            stage="collection",
+                            code="collection_validation_failed",
+                            message="Evidence dossier remained invalid after one repair attempt.",
+                            recovery_guidance=(
+                                "Inspect the latest evidence-validation-attempt file, correct the "
+                                "collection input or capability configuration, and start a new "
+                                "owning run."
+                            ),
+                        ),
+                        "status": "failed",
+                    }
+                )
+                should_release = True
+            updated = _validated_state_update(state, update)
+            _write_run_state(workspace, updated)
+            _write_summary(workspace, updated)
+    except LeaseError as error:
+        raise LifecycleError(str(error)) from None
+    if should_release:
+        try:
+            manager.release(workspace.episode_key, run_id)
+        except LeaseError as error:
+            raise LifecycleError(str(error)) from None
+    return updated
+
+
+def _prepare_stage_artifact_owned(
     workspace: RunWorkspace,
     run_id: str,
     *,
@@ -393,7 +532,7 @@ def _persist_stage_artifact_owned(
     rule: _ArtifactStageRule,
     data: object,
     allowed_input_roots: Sequence[Path],
-) -> RunState:
+) -> tuple[RunState, bool]:
     state = load_run_state(workspace.state_path)
     if state.run_id != run_id or state.status != "running":
         raise LifecycleError("only the active run owner may mutate running state")
@@ -429,8 +568,7 @@ def _persist_stage_artifact_owned(
         and artifact_path.is_file()
         and sha256_file(artifact_path) == predicted_hash
     ):
-        _write_summary(workspace, state)
-        return state
+        return state, False
 
     atomic_write_bytes(artifact_path, payload)
     _, disk_report = load_artifact_file(
@@ -447,9 +585,7 @@ def _persist_stage_artifact_owned(
         sha256=sha256_file(artifact_path),
     )
     updated = invalidate_for_artifact_change(state, artifact_key, reference)
-    _write_run_state(workspace, updated)
-    _write_summary(workspace, updated)
-    return updated
+    return updated, True
 
 
 def _require_current_lineage(
@@ -562,6 +698,8 @@ def invalidate_for_artifact_change(
         update["profile_version"] = profile_version
     if artifact_key in {"profile", "collection_request"}:
         update["collection_method"] = None
+        update["failed_collection_capabilities"] = []
+        update["collection_validation"] = None
     if downstream & _FINAL_OUTPUT_KEYS:
         update["final_audio_validation"] = FinalAudioValidation(
             status="pending",
@@ -639,6 +777,14 @@ def render_summary(workspace: RunWorkspace, state: RunState) -> str:
         warnings.append(state.final_audio_validation.message)
     if state.publication.message:
         warnings.append(state.publication.message)
+    if state.collection_validation:
+        validation = state.collection_validation
+        if validation.status == "invalid":
+            repair = "repair available" if validation.repair_allowed else "no repairs remain"
+            warnings.append(f"dossier invalid ({validation.error_count} errors; {repair})")
+        elif validation.warning_count:
+            label = "warning" if validation.warning_count == 1 else "warnings"
+            warnings.append(f"dossier valid with {validation.warning_count} {label}")
     warning_text = "; ".join(warnings) if warnings else "none"
     lines = [
         "# Run summary",
@@ -694,6 +840,7 @@ def _initial_state(
         skill_version=SKILL_VERSION,
         prompt_versions={},
         collection_method=None,
+        failed_collection_capabilities=[],
         codex_model=codex_model,
         gemini_model=profile.tts.model,
         started_at=now,

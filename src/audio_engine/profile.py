@@ -109,6 +109,14 @@ class Collection(_ProfileModel):
     target_candidates: dict[Identifier, Annotated[int, Field(ge=0, le=1_000)]]
     maximum_candidates: Annotated[int, Field(ge=1, le=5_000)]
     maximum_sources: Annotated[int, Field(ge=1, le=10_000)]
+    warning_estimated_tokens: Annotated[int, Field(ge=1, le=1_000_000)] = 50_000
+    maximum_estimated_tokens: Annotated[int, Field(ge=1, le=2_000_000)] = 100_000
+
+    @model_validator(mode="after")
+    def ordered_token_limits(self) -> Collection:
+        if self.warning_estimated_tokens > self.maximum_estimated_tokens:
+            raise ValueError("warning_estimated_tokens must not exceed maximum_estimated_tokens")
+        return self
 
 
 class SectionTarget(_ProfileModel):

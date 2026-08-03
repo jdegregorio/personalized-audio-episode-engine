@@ -498,6 +498,48 @@ def load_artifact_file(
     )
 
 
+def validate_dossier_against_request(
+    dossier: EvidenceDossier,
+    request: CollectionRequest,
+) -> tuple[tuple[ValidationIssue, ...], tuple[ValidationIssue, ...]]:
+    """Validate request-owned section identity without making editorial judgments."""
+    errors: list[ValidationIssue] = []
+    counts: dict[str, int] = defaultdict(int)
+    declared = set(request.scope.sections)
+    for index, candidate in enumerate(dossier.candidates):
+        section = candidate.classification.get("section")
+        path = f"/candidates/{index}/classification/section"
+        if not isinstance(section, str):
+            errors.append(
+                _issue(
+                    "candidate_section_missing",
+                    path,
+                    "candidate classification requires a section from the collection request",
+                )
+            )
+        elif section not in declared:
+            errors.append(
+                _issue(
+                    "candidate_section_unknown",
+                    path,
+                    "candidate section is not declared in the collection request",
+                )
+            )
+        else:
+            counts[section] += 1
+
+    warnings = [
+        _issue(
+            "candidate_target_shortfall",
+            "/candidates",
+            f"credible candidates for section {section!r} did not reach its configured target",
+        )
+        for section, target in request.targets.by_section.items()
+        if counts[section] < target
+    ]
+    return tuple(sorted(errors)), tuple(sorted(warnings))
+
+
 def validate_plan_against_dossier(
     plan: EditorialPlan, dossier: EvidenceDossier
 ) -> tuple[ValidationIssue, ...]:

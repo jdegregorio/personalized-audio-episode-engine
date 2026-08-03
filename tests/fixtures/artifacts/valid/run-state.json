@@ -19,6 +19,21 @@
     "name": "Synthetic fixture research",
     "version": null
   },
+  "failed_collection_capabilities": [
+    "synthetic_failed_collector"
+  ],
+  "collection_validation": {
+    "attempt": 1,
+    "status": "valid",
+    "error_count": 0,
+    "warning_count": 0,
+    "repair_allowed": false,
+    "report": {
+      "artifact_type": "validation",
+      "path": "evidence-validation-attempt-1.json",
+      "sha256": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+    }
+  },
   "codex_model": "synthetic-codex-model",
   "gemini_model": "synthetic-tts-model",
   "started_at": "2026-01-15T15:00:00Z",
@@ -37,6 +52,11 @@
       "artifact_type": "evidence",
       "path": "evidence-dossier.json",
       "sha256": "sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"
+    },
+    "evidence_validation": {
+      "artifact_type": "validation",
+      "path": "evidence-validation-attempt-1.json",
+      "sha256": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
     },
     "editorial_plan": {
       "artifact_type": "plan",

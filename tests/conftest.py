@@ -57,3 +57,14 @@ def synthetic_profile_path(
     path = input_root / "synthetic-lifecycle.yaml"
     path.write_text(yaml.safe_dump(data, sort_keys=False), encoding="utf-8")
     return path
+
+
+@pytest.fixture
+def synthetic_collection_profile_path(settings_values: dict[str, str]) -> Path:
+    source = Path(__file__).parents[1] / "examples" / "profiles" / "synthetic-marine-brief.yaml"
+    data = yaml.safe_load(source.read_text(encoding="utf-8"))
+    assert isinstance(data, dict)
+    input_root = Path(settings_values["AUDIO_ENGINE_INPUT_ROOTS"])
+    path = input_root / "synthetic-marine-brief.yaml"
+    path.write_text(yaml.safe_dump(data, sort_keys=False), encoding="utf-8")
+    return path
