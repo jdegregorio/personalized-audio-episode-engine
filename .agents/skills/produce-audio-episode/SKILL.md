@@ -19,7 +19,8 @@ Process exactly one enabled episode profile through the repository's durable, va
 8. For `script`, start a distinct script phase and read [references/scriptwriting.md](references/scriptwriting.md).
 9. For `tts` without `tts_preparation`, read [references/tts-preparation.md](references/tts-preparation.md) and prepare deterministic provider inputs.
 10. For `tts` with valid preparation, read [references/tts-rendering.md](references/tts-rendering.md) and render only missing segments.
-11. For `audio`, read [references/audio-assembly.md](references/audio-assembly.md) and assemble only the validated rendered segments. Publication detail remains unavailable until its owning implementation PR lands.
+11. For `audio`, read [references/audio-assembly.md](references/audio-assembly.md) and assemble only the validated rendered segments.
+12. For `publication`, read [references/publication.md](references/publication.md), publish only after final-audio revalidation, and resume publication without rerendering.
 
 ## Non-negotiable rules
 

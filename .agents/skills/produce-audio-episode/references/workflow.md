@@ -21,11 +21,12 @@ Capture `run_directory` from the initializer's compact JSON. If `result` is `no_
 | `tts` without preparation | Load `tts-preparation.md` and prepare token-bounded manifest/prompt files from the accepted script. |
 | `tts` with preparation | Load `tts-rendering.md` and render missing Gemini segments without repeating completed requests. |
 | `audio` | Load `audio-assembly.md`, assemble and validate the final MP3 without creative processing. |
-| `publication` or later | Do not improvise. The stage-specific reference and command arrive in that phase's owning PR. |
+| `publication` | Load `publication.md`; upload and verify assets, then conditionally upsert the RSS feed last. |
+| `finalized` | Do not improvise. Finalization arrives in its owning implementation PR. |
 | failed/completed terminal state | Stop. Follow the recorded recovery guidance or report the completed result. |
 
 After each deterministic command, read its compact JSON and then reload `state.json`. Do not infer success from a file's presence alone.
 
 ## Current implementation boundary
 
-PR 10 ends after manifest-ordered WAVs become one validated `episode.mp3` and state advances to `publication`. Do not write dialogue in the editorial phase, synthesize speech in the script or preparation phase, add creative processing during assembly, or publish before the publication phase. Preserve prepared inputs, completed segments, and valid final audio for PR 11.
+PR 11 ends after verified episode assets and a conditional RSS upsert record a published outcome while the run remains ready for finalization. Do not write dialogue in the editorial phase, synthesize speech in the script or preparation phase, add creative processing during assembly, or expose a feed item before every asset is publicly readable. Preserve valid final audio when publication defers or fails.

@@ -13,8 +13,8 @@ The approved scope and sequence live in [`plan.md`](../plan.md). This page recor
 | 07 | Grounded two-host scripting | Implemented on `main` |
 | 08 | TTS preparation | Implemented on `main` |
 | 09 | Gemini rendering and voice selection | Implemented on `main` |
-| 10 | Audio assembly | Implemented in PR 10 |
-| 11 | Cloudflare R2 publication | Not started |
+| 10 | Audio assembly | Implemented on `main` |
+| 11 | Cloudflare R2 publication | Implemented in PR 11 |
 | 12 | Complete offline vertical slice | Not started |
 | 13 | Scheduled execution and release qualification | Not started |
 
@@ -97,3 +97,12 @@ Later workflow capabilities remain deliberately unavailable until their ordered 
 - Codec/container, `audio/mpeg`, duration, sample-rate, channel, byte-size, hash, and full-decode validation before atomic `episode.mp3` promotion and advancement to `publication`.
 - Durable final-audio metadata and matching artifact state, invalid-output rollback to resumable `audio`, rendered-segment preservation, tamper detection, and no-rewrite `already_assembled` resume.
 - Real FFmpeg integration and smoke coverage for order, conversion, summed duration, missing/empty/corrupt input, timeout/partial cleanup, atomic promotion failure, and final-file tampering on macOS and Ubuntu CI.
+
+## PR 11 delivered surface
+
+- Deterministic escaped show notes with summary, planned timestamps/headings, concise segment context, grouped source links and source dates, a plain-text transcript link, AI disclosure, and generation date; exact transcript export is reused from its validated projection. AntennaPod's web/globe action reaches the full notes and transcript link, and the transcript object/RSS URL pass public retrieval; a separate native transcript view is explicitly tracked after MVP.
+- One narrow object-store protocol, thread-safe in-memory test adapter, and bounded boto3 Cloudflare R2 adapter using only object read/write/head/delete operations, explicit media/cache metadata, SHA-256 object metadata, and complete public-body verification.
+- Fixed tokenized episode/feed key layout, stable `<feed-id>:<profile-id>:<date>` GUID, RSS 2.0 with enclosure/duration/transcript/show-notes data, same-day upsert, expiry-bound pruning, and valid newest-first ordering.
+- Episode-lease-first local feed locking, latest-feed reread, `If-Match`/`If-None-Match: *`, bounded re-read/reapply on 412, safe deferral, harmless orphan assets, and preservation of concurrent revisions.
+- Publication state and local artifact hashing without remote token disclosure, plus explicit recovery that preserves valid audio across asset, public-read, lock, and conditional-write failures.
+- Offline asset-order/idempotency/concurrency smoke, deterministic two-host initial-feed race coverage, R2 adapter tests, and a main-only disposable R2 probe that receives no Gemini credential or feed token.

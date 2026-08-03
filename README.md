@@ -122,6 +122,17 @@ uv run python scripts/assemble_audio.py --run <run-directory>
 
 The command revalidates each ordered PCM WAV, uses bounded FFmpeg/FFprobe processes to concatenate and encode a 48 kHz mono MP3, performs a full decode check, and atomically promotes `episode.mp3` only after codec, media type, duration, sample rate, channels, and size pass. Success advances to `publication`; a failed conversion leaves all rendered segments reusable at `audio` with recovery guidance. An unchanged rerun revalidates the recorded MP3 and returns `already_assembled` without rewriting it.
 
+## Podcast publication
+
+Verify the configured R2 bucket and public endpoint with a disposable object, then publish a run whose final audio is valid:
+
+```bash
+uv run python scripts/smoke_r2.py
+uv run python scripts/publish_episode.py --run <run-directory>
+```
+
+Publication uploads and publicly verifies MP3, transcript, escaped source-grouped HTML notes, and JSON metadata before it conditionally upserts the stable daily GUID into RSS. The feed is always written last, remains outside the expiring `episodes/` prefix, and is protected by a local feed lock plus remote ETag preconditions. A deferred run resumes publication without rerendering. Complete R2 bootstrap, AntennaPod, lifecycle, recovery, and rotation instructions are in [`docs/cloudflare-r2.md`](docs/cloudflare-r2.md).
+
 ## Security boundary
 
 The MVP feed contains public-news content but uses an unguessable URL. That URL is access material, not authentication. Never commit or paste credentials, tokenized object keys, runtime data, or complete feed URLs. Profiles containing personal or otherwise sensitive information are outside the MVP and require a separate authenticated or encrypted publication design.

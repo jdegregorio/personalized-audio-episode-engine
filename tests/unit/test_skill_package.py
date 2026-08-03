@@ -27,6 +27,7 @@ def test_skill_package_is_concise_linked_and_command_complete() -> None:
         "tts-preparation.md",
         "tts-rendering.md",
         "audio-assembly.md",
+        "publication.md",
         "run-state.md",
     }
     references = SKILL_ROOT / "references"
@@ -48,6 +49,7 @@ def test_skill_package_is_concise_linked_and_command_complete() -> None:
         "scripts/prepare_tts.py",
         "scripts/render_audio.py",
         "scripts/assemble_audio.py",
+        "scripts/publish_episode.py",
         "scripts/select_collection_method.py",
     }
     repository_root = SKILL_ROOT.parents[2]
@@ -123,3 +125,13 @@ def test_audio_assembly_reference_preserves_validation_and_creative_boundary() -
     assert "full-decode checks" in instructions
     assert "already_assembled" in instructions
     assert "do not call Gemini again" in instructions
+
+
+def test_publication_reference_preserves_asset_and_conditional_feed_boundary() -> None:
+    instructions = (SKILL_ROOT / "references" / "publication.md").read_text(encoding="utf-8")
+
+    assert "S3 HEAD and public-body verification" in instructions
+    assert "feed lock" in instructions
+    assert "If-Match" in instructions
+    assert "If-None-Match" in instructions
+    assert "Do not rerender or reassemble valid audio" in instructions

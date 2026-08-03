@@ -18,6 +18,7 @@
 - `artifacts.tts_manifest` binds the manifest; each manifest segment binds one ordered prompt file by path and SHA-256.
 - `tts_rendering` records ordered successful segments with prompt/raw/WAV references, audio metadata, attempts, and timestamps; failed rendering names one resumable segment, while complete rendering contains every manifest segment.
 - `final_audio_validation` records valid `audio/mpeg`/MP3, duration, sample rate, channels, bytes, and full-decode status only when its artifact exactly matches `artifacts.final_audio` at `episode.mp3`.
+- `publication` records `not_started`, resumable `deferred`/`failed`, or `published` with redacted locations only. Published state requires hash-bound `artifacts.show_notes` and `artifacts.published_episode`; tokenized remote locations never enter state.
 
 The recorder creates `evidence-validation-attempt-1.json` and, only after one invalid result, `evidence-validation-attempt-2.json`. Summary warnings expose dossier warning counts and invalid/repair status.
 
@@ -46,6 +47,7 @@ The assembler validates all ordered WAVs, writes a temporary MP3, probes and ful
 - At `audio` with complete rendering, an unchanged `render_audio.py` rerun returns `already_rendered` only after rechecking every raw/WAV hash and WAV parameter.
 - At `audio`, run `assemble_audio.py`. A failed assembly preserves all rendered segments and remains at `audio`; correct the local tool/input issue and rerun without rendering again.
 - At `publication`, an unchanged `assemble_audio.py` rerun returns `already_assembled` only after rechecking the MP3 hash, technical metadata, and full decode. Do not publish if that check rolls state back to `audio`.
+- At `publication` with valid audio, run `publish_episode.py`. A deferred or failed publication reruns only this command; uploaded orphan assets are harmless and valid audio must remain unchanged. `already_published` still revalidates the assets and upserts exactly one stable GUID.
 - In a failed state, stop and use the recorded recovery guidance. Do not acquire or mutate the released workspace manually.
 
 All state changes go through documented commands while the run owns the episode lease. Never hand-edit state, hashes, summaries, reports, or leases.

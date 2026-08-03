@@ -63,9 +63,16 @@
           "type": "string"
         },
         "sha256": {
-          "pattern": "^sha256:[0-9a-f]{64}$",
-          "title": "Sha256",
-          "type": "string"
+          "anyOf": [
+            {
+              "pattern": "^sha256:[0-9a-f]{64}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Sha256"
         }
       },
       "required": [

@@ -1,6 +1,6 @@
 # Operations
 
-The engine supports validated environment/profile preflight, deterministic artifact/lineage validation, owner-checked run initialization, capability-neutral evidence collection, profile-driven editorial planning, grounded two-host scriptwriting, token-bounded TTS preparation/rendering, and validated FFmpeg assembly. Publication arrives in its owning PR in [`plan.md`](../plan.md).
+The engine supports validated environment/profile preflight, deterministic artifact/lineage validation, owner-checked run initialization, capability-neutral evidence collection, profile-driven editorial planning, grounded two-host scriptwriting, token-bounded TTS preparation/rendering, validated FFmpeg assembly, and conditional Cloudflare R2 podcast publication.
 
 ## Development gate
 
@@ -122,6 +122,24 @@ uv run python scripts/assemble_audio.py --run <run-directory>
 
 The command rechecks every manifest-ordered WAV, runs bounded FFprobe and full-decode checks, concatenates without creative processing, and encodes a 96 kbps mono 48 kHz MP3. It validates codec/container, duration against the sum of segments, sample rate, channel count, bytes, and complete decode before atomically promoting `episode.mp3` and advancing to `publication`. `already_assembled` means the recorded hash and all technical validation fields were rechecked without rewriting the file. Failure stays resumable at `audio`; rerun the same command after correcting FFmpeg/FFprobe or the named segment-file issue.
 
+## R2 probe and episode publication
+
+Before the first live publication, verify the configured bucket, S3 credential, public endpoint, media type, and cleanup with one random non-sensitive object:
+
+```bash
+uv run python scripts/smoke_r2.py
+```
+
+The probe uses `probes/`, never the feed token, and deletes the object in the same invocation. It does not inspect lifecycle configuration or publish a feed. After a valid final MP3, follow the skill's [`publication.md`](../.agents/skills/produce-audio-episode/references/publication.md) reference and run:
+
+```bash
+uv run python scripts/publish_episode.py --run <run-directory>
+```
+
+The publisher fully revalidates final audio, writes deterministic HTML notes and JSON metadata, then uploads MP3, transcript, notes, and metadata with explicit content/cache metadata. Every asset must match S3 HEAD and a complete public GET before the RSS item can be exposed. While the episode lease remains owned, the publisher takes the bounded `feed-<sha256-feed-id>.lock`, reads the latest feed and ETag, prunes entries at or before the configured expiry boundary, upserts the stable GUID, validates the merged RSS, and writes it last with `If-Match` or `If-None-Match: *`. Success is recorded only after S3 HEAD/read and a complete public GET also verify the winning feed revision.
+
+`deferred` exits `2` and means the lock or three conditional attempts did not converge. Rerun only publication; valid audio and harmless orphan assets are retained. `already_published` is a successful verified same-day upsert, not a duplicate.
+
 ## Production invariants
 
 - One independent Codex run processes one profile.
@@ -134,6 +152,6 @@ The command rechecks every manifest-ordered WAV, runs bounded FFprobe and full-d
 
 ## Rollback at this phase
 
-`render_audio.py` contacts Gemini; no current command contacts R2. Stop either renderer or assembler safely. Valid segment state remains reusable, while an in-flight or unreferenced output is not authoritative. Correct the provider/configuration or FFmpeg issue and rerun the owning command; do not remove completed files or manually edit state. Follow the lease-aware rollback in [`run-lifecycle.md`](run-lifecycle.md) and never remove a live lock.
+`render_audio.py` contacts Gemini and `publish_episode.py` contacts R2. Stop either safely; validated local artifacts remain authoritative. A publication interruption may leave episode objects that are not referenced by the feed; let the `episodes/` lifecycle rule remove them and rerun publication without touching audio. Never manually overwrite `feed.xml`, delete a live lock, or edit state.
 
-Service-specific recovery and rotation are documented in [`cloudflare-r2.md`](cloudflare-r2.md) and will be expanded alongside their implementations.
+Service-specific recovery and rotation are documented in [`cloudflare-r2.md`](cloudflare-r2.md).
