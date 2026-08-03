@@ -25,6 +25,8 @@ Ordinary `pull_request` and default-branch checks declare no production environm
 
 The separate manually dispatched `R2 live smoke` also runs only on `main` in `live-smoke`. It receives only the bucket-scoped R2 access key/secret and the endpoint, bucket, and public-base variables. It does not receive Gemini or the feed token, publishes one random non-sensitive `probes/` text object, verifies S3/public reads and conditional-write protection, and deletes it without retaining an artifact. Neither live workflow publishes the production feed. Fork pull requests never receive live credentials. GitHub workflow logs and uploaded artifacts must contain only redacted evidence.
 
+The manually dispatched `Release candidate` workflow is also secret-free. It reruns repository/artifact integrity, Ruff, Pyright, the deterministic coverage gate, the functional smoke suite, package build, and an isolated Python 3.12 wheel import on the selected ref. It retains JUnit, coverage, concise integrity/import results, and commit identity for seven days. It never loads the production environment, researches current news, calls Gemini, contacts R2, or publishes a feed. Dispatch it on merged `main` before creating the MVP tag.
+
 ## Main ruleset
 
 The repository uses one `main-minimal` ruleset. It applies to the default branch, requires a pull request with squash merge, blocks deletion and non-fast-forward pushes, requires conversation resolution, and requires the stable checks above. The solo-maintainer workflow intentionally requires zero approvals. During accelerated MVP delivery for PR 06 through PR 13, required tests, real UAT, GitHub checks, and final correctness/simplification records are the merge gate; GitHub Codex review is not requested or awaited.

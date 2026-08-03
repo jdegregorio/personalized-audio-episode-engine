@@ -145,6 +145,10 @@ Successful finalization persists `status: completed`, advances to `finalized`, r
 
 The intended user interface is one instruction invoking [`$produce-audio-episode`](.agents/skills/produce-audio-episode/SKILL.md) with one profile. The skill routes by authoritative state through the documented commands above; there is intentionally no all-in-one application CLI.
 
+## Scheduled production and release
+
+The daily Codex task uses the canonical prompt, local execution settings, stable-checkout rules, and promotion procedure in [`docs/scheduled-task.md`](docs/scheduled-task.md). Release qualification uses [`docs/release-checklist.md`](docs/release-checklist.md) and the redacted [`docs/uat-evidence-template.md`](docs/uat-evidence-template.md). GitHub's manually dispatched `Release candidate` workflow reruns the complete secret-free offline gate and retains only validation reports; live research, Gemini, R2 publication, and playback remain local acceptance work.
+
 ## Security boundary
 
 The MVP feed contains public-news content but uses an unguessable URL. That URL is access material, not authentication. Never commit or paste credentials, tokenized object keys, runtime data, generated audio, or complete feed URLs. State, command output, and `summary.md` contain only local paths and redacted publication labels. Profiles containing personal or otherwise sensitive information are outside the MVP and require a separate authenticated or encrypted publication design.

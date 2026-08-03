@@ -152,6 +152,10 @@ The command validates recorded local artifacts before terminal success, writes `
 
 Read the user-facing outcome from `summary.md`. It reports audio/publication status, warnings, local output directory, redacted publication labels, and recovery without exposing a tokenized URL.
 
+## Scheduled production
+
+Configure the standalone daily Codex task with the exact prompt, local environment, model guidance, independent-context rule, and stable-checkout qualification procedure in [`scheduled-task.md`](scheduled-task.md). Use [`release-checklist.md`](release-checklist.md) for the three-run, device, idempotency, recovery, concurrency, promotion, and tag gates. Do not introduce an operating-system cron wrapper or an all-in-one production command.
+
 ## Production invariants
 
 - One independent Codex run processes one profile.
