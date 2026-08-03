@@ -31,7 +31,7 @@ An initialized owner creates:
 
 The canonical episode key is `<profile-id>:<local-date>`. State records the profile/local date, profile/engine/skill/prompt versions, engine Git commit, observable models and collection method, timestamps, current and last valid stages, artifact paths/hashes, failure details, final-audio validity, and redacted publication locations. Prompt and collection provenance starts empty until its owning phase selects them.
 
-Files are written to a private temporary sibling, synchronized, and atomically renamed. A stage advances only after its artifact validates on both sides of the write, its declared run identity and upstream references match current state, and its SHA-256 hash is recorded. State is authoritative if a machine failure leaves an unreferenced file between the artifact and state renames.
+Files are written to a private temporary sibling, synchronized, and atomically renamed. A stage advances only after its artifact validates on both sides of the write, its declared run identity and upstream references match current state, each referenced upstream file still exists and revalidates at its recorded SHA-256, and the new hash is recorded. State is authoritative if a machine failure leaves an unreferenced file between the artifact and state renames. An identical validated retry leaves the artifact/state unchanged but regenerates `summary.md`, repairing a transient summary-write failure.
 
 ## Stages and invalidation
 
@@ -49,6 +49,7 @@ Replacing an artifact with identical validated bytes preserves state. A changed 
 ## Lease and failure recovery
 
 - A current nonterminal owner causes a successful no-op. No run directory is selected, created, or mutated.
+- Profile, Git, model, and initial-state validation completes in memory before lease acquisition, so preparation failure leaves neither a misleading live owner nor a partial workspace.
 - A lease is recoverable when its validated owner state is terminal or its heartbeat is strictly older than the configured maximum age. Exact expiry remains live.
 - Recovery atomically renames the old record to a unique `.stale-...json` quarantine file, then retries exclusive creation. Do not manually delete quarantine evidence.
 - A mutating helper holds the current lease's advisory lock from state read through artifact/state/summary persistence. Recovery waits for that critical section, then rechecks the replaced lease inode and refreshed heartbeat before deciding whether takeover is safe.

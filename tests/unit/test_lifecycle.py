@@ -220,6 +220,27 @@ def test_initialization_failure_persists_terminal_recovery_and_releases_lease(
     assert not manager.lease_path(state.episode_key).exists()
 
 
+def test_initial_state_validation_failure_happens_before_lease_or_workspace(
+    synthetic_profile_path: Path,
+    settings_values: dict[str, str],
+) -> None:
+    settings = _settings(settings_values)
+
+    with pytest.raises(LifecycleError):
+        initialize_run(
+            synthetic_profile_path,
+            settings=settings,
+            repo_root=Path(__file__).parents[2],
+            clock=lambda: FIXED_NOW,
+            run_id_factory=_fixed_run_id,
+            codex_model="x" * 501,
+        )
+
+    assert not list(settings.runtime_root.rglob("episode-*.json"))
+    assert not list(settings.runtime_root.rglob("state.json"))
+    assert not list(settings.runtime_root.rglob("summary.md"))
+
+
 def test_persisted_stage_artifact_advances_only_after_validation_and_hashing(
     synthetic_profile_path: Path,
     settings_values: dict[str, str],
@@ -259,6 +280,7 @@ def test_rewriting_identical_validated_artifact_is_idempotent(
     )
     request_path = workspace.run_directory / "collection-request.json"
     modified_at = request_path.stat().st_mtime_ns
+    workspace.summary_path.write_text("stale summary\n", encoding="utf-8")
 
     after = persist_stage_artifact(
         workspace,
@@ -270,6 +292,7 @@ def test_rewriting_identical_validated_artifact_is_idempotent(
 
     assert after == before
     assert request_path.stat().st_mtime_ns == modified_at
+    assert "Current stage: collection" in workspace.summary_path.read_text(encoding="utf-8")
 
 
 def test_stage_artifacts_must_bind_identity_and_upstream_hashes(
@@ -282,6 +305,19 @@ def test_stage_artifacts_must_bind_identity_and_upstream_hashes(
         maximum_age=timedelta(hours=6),
         clock=lambda: FIXED_NOW + timedelta(minutes=1),
     )
+
+    request_path = workspace.run_directory / "collection-request.json"
+    request_bytes = request_path.read_bytes()
+    request_path.write_text("{}\n", encoding="utf-8")
+    with pytest.raises(LifecycleError, match="hash does not match"):
+        persist_stage_artifact(
+            workspace,
+            manager,
+            state.run_id,
+            artifact_key="evidence_dossier",
+            data=_evidence_for(state),
+        )
+    request_path.write_bytes(request_bytes)
 
     with pytest.raises(LifecycleError, match="inputs do not match"):
         persist_stage_artifact(

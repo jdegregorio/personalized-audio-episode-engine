@@ -196,19 +196,28 @@ def initialize_run(
         else generate_run_id(profile.id, episode_date, now=now)
     )
     try:
+        state = _initial_state(
+            profile,
+            resolved_profile_path,
+            episode_key=episode_key,
+            episode_date=episode_date,
+            run_id=run_id,
+            now=now,
+            repo_root=repo_root,
+            codex_model=codex_model,
+        )
         manager = LeaseManager(
             settings.runtime_root,
             maximum_age=timedelta(seconds=settings.maximum_run_age_seconds),
             clock=current_time,
         )
         acquisition = manager.acquire(episode_key, run_id)
-    except (LeaseError, ValidationError) as error:
+    except (LifecycleError, LeaseError, StorageError, ValidationError) as error:
         raise LifecycleError(str(error)) from None
     if not acquisition.acquired:
         return InitializationResult("no_op", episode_key, None, None)
 
     workspace: RunWorkspace | None = None
-    state: RunState | None = None
     try:
         with manager.mutation(episode_key, run_id):
             run_directory = _create_run_directory(
@@ -219,16 +228,6 @@ def initialize_run(
             )
             title = profile.identity.title_template.replace("{date}", episode_date.isoformat())
             workspace = RunWorkspace(run_directory, title, episode_key)
-            state = _initial_state(
-                profile,
-                resolved_profile_path,
-                episode_key=episode_key,
-                episode_date=episode_date,
-                run_id=run_id,
-                now=now,
-                repo_root=repo_root,
-                codex_model=codex_model,
-            )
             _write_run_state(workspace, state)
             _write_summary(workspace, state)
             request = build_collection_request(
@@ -248,7 +247,10 @@ def initialize_run(
             )
     except (LifecycleError, LeaseError, StorageError, OSError, ValidationError):
         terminal_persisted = False
-        if workspace is not None and state is not None:
+        if workspace is None:
+            with suppress(LeaseError):
+                manager.release(episode_key, run_id)
+        else:
             try:
                 with manager.mutation(episode_key, run_id):
                     failed_base = (
@@ -407,7 +409,13 @@ def _persist_stage_artifact_owned(
     )
     if not preflight.valid or artifact is None:
         raise LifecycleError("stage artifact failed validation before persistence")
-    _require_current_lineage(workspace, state, artifact_key, artifact)
+    _require_current_lineage(
+        workspace,
+        state,
+        artifact_key,
+        artifact,
+        allowed_input_roots=allowed_input_roots,
+    )
     artifact_path = resolve_within_roots(
         workspace.run_directory / rule.filename,
         [workspace.run_directory],
@@ -421,6 +429,7 @@ def _persist_stage_artifact_owned(
         and artifact_path.is_file()
         and sha256_file(artifact_path) == predicted_hash
     ):
+        _write_summary(workspace, state)
         return state
 
     atomic_write_bytes(artifact_path, payload)
@@ -448,6 +457,8 @@ def _require_current_lineage(
     state: RunState,
     artifact_key: str,
     artifact: Artifact,
+    *,
+    allowed_input_roots: Sequence[Path],
 ) -> None:
     """Reject a valid standalone artifact whose declared inputs are not this run's."""
     expected_date = state.episode_date or date.fromisoformat(state.episode_key.rsplit(":", 1)[1])
@@ -483,6 +494,25 @@ def _require_current_lineage(
         raise LifecycleError(f"artifact {artifact_key} has no lifecycle lineage rule")
     if any(state.artifacts.get(key) != reference for key, reference in required):
         raise LifecycleError("stage artifact inputs do not match current run state")
+    for _, reference in required:
+        try:
+            path = resolve_within_roots(
+                workspace.run_directory / reference.path,
+                [workspace.run_directory],
+                must_exist=True,
+            )
+            if sha256_file(path) != reference.sha256:
+                raise LifecycleError("recorded upstream artifact hash does not match its file")
+            _, report = load_artifact_file(
+                reference.artifact_type,
+                path,
+                allowed_input_roots=allowed_input_roots,
+                allowed_output_roots=[workspace.run_directory],
+            )
+        except (SafetyError, StorageError) as error:
+            raise LifecycleError("recorded upstream artifact is missing or unsafe") from error
+        if not report.valid:
+            raise LifecycleError("recorded upstream artifact is no longer valid")
 
 
 def invalidate_for_artifact_change(
