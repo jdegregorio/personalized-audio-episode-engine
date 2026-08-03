@@ -8,7 +8,7 @@ The approved scope and sequence live in [`plan.md`](../plan.md). This page recor
 | 02 | Configuration, profile loading, path safety, and doctor | Implemented on `main` |
 | 03 | Artifact contracts, validators, and fixtures | Implemented on `main` |
 | 04 | Run lifecycle, state, leases, and invalidation | Implemented on `main` |
-| 05 | Capability-aware collection skill | Implemented on `feature/pr-05-collection-skill`; pending review and merge |
+| 05 | Capability-aware collection skill | Implemented in PR 05 |
 | 06 | Editorial planning | Not started |
 | 07 | Grounded two-host scripting | Not started |
 | 08 | TTS preparation | Not started |
