@@ -551,6 +551,8 @@ class RunState(_ContractModel):
     episode_key: EpisodeKey
     profile_id: Identifier
     profile_version: Version
+    episode_date: JsonDate | None = None
+    engine_version: Version | None = None
     engine_git_commit: Annotated[str, Field(pattern=r"^[0-9a-f]{7,40}$")]
     skill_version: Version
     prompt_versions: dict[Identifier, Version]
@@ -569,6 +571,10 @@ class RunState(_ContractModel):
 
     @model_validator(mode="after")
     def consistent_terminal_state(self) -> Self:
+        if self.episode_date is not None:
+            expected_key = f"{self.profile_id}:{self.episode_date.isoformat()}"
+            if self.episode_key != expected_key:
+                raise ValueError("episode key must match the profile and local episode date")
         if self.status == "failed" and self.failure is None:
             raise ValueError("failed run state requires failure details")
         if self.status != "failed" and self.failure is not None:

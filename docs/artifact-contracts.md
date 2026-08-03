@@ -11,9 +11,9 @@ Pipeline handoffs are strict JSON files with `contract_version: "1.0"`. The Pyda
 | `plan` | [`editorial-plan-v1.0.schema.json`](../schemas/editorial-plan-v1.0.schema.json) | Ordered candidate selection, claim requirements, treatment, exclusions, and host intent |
 | `script` | [`episode-script-v1.0.schema.json`](../schemas/episode-script-v1.0.schema.json) | Two-speaker turns, claim lineage, planned-segment references, and TTS boundaries |
 | `published-episode` | [`published-episode-v1.0.schema.json`](../schemas/published-episode-v1.0.schema.json) | Validated publication metadata and asset references; upload behavior arrives in PR 11 |
-| `run-state` | [`run-state-v1.0.schema.json`](../schemas/run-state-v1.0.schema.json) | Minimal operational recovery state; mutation and transition rules arrive in PR 04 |
+| `run-state` | [`run-state-v1.0.schema.json`](../schemas/run-state-v1.0.schema.json) | Minimal operational recovery state, provenance, artifact hashes, and publication outcome |
 
-Unknown required versions fail with `unsupported_version`. JSON scalar types are strict, while ISO date and timezone-aware datetime strings retain their schema-defined parsing. Adding compatible optional fields requires an intentional model/schema update and contract tests; incompatible changes require a new contract version.
+Unknown required versions fail with `unsupported_version`. JSON scalar types are strict, while ISO date and timezone-aware datetime strings retain their schema-defined parsing. Adding compatible optional fields requires an intentional model/schema update and contract tests; incompatible changes require a new contract version. PR 04 adds optional episode/engine provenance fields to v1.0 for compatibility, while every newly initialized run populates both and validates the episode key against the profile/local date.
 
 ## Evidence boundary
 

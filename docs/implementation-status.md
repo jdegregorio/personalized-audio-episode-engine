@@ -6,8 +6,8 @@ The approved scope and sequence live in [`plan.md`](../plan.md). This page recor
 | --- | --- | --- |
 | 01 | Repository foundation and delivery guardrails | Implemented on `main` |
 | 02 | Configuration, profile loading, path safety, and doctor | Implemented on `main` |
-| 03 | Artifact contracts, validators, and fixtures | Implemented on `feature/pr-03-artifact-contracts`; pending review and merge |
-| 04 | Run lifecycle, state, leases, and invalidation | Not started |
+| 03 | Artifact contracts, validators, and fixtures | Implemented on `main` |
+| 04 | Run lifecycle, state, leases, and invalidation | Implemented on `feature/pr-04-run-lifecycle`; pending review and merge |
 | 05 | Capability-aware collection skill | Not started |
 | 06 | Editorial planning | Not started |
 | 07 | Grounded two-host scripting | Not started |
@@ -42,3 +42,11 @@ Workflow mutation, research, speech, audio processing, publication behavior, and
 - Deterministic evidence referential validation plus baseline plan/script lineage hooks; phase-specific editorial and prose policy remains in PRs 06–07.
 - Public read-only artifact validation with concise JSON errors, exact JSON-pointer paths, optional full reports, and no input mutation.
 - Synthetic valid, invalid, prompt-injection, and RSS golden fixtures enforced by permanent repository-integrity CI.
+
+## PR 04 delivered surface
+
+- Canonical episode keys and unique run IDs with the date/profile/run filesystem layout, private atomic writes, SHA-256 references, and additive run provenance.
+- An owner-checked initialization command that creates a validated collection request, durable state, and one-screen summary only after exclusive episode ownership.
+- Heartbeat leases with live-owner no-op behavior, owner-only refresh/release, terminal and stale recovery, fail-closed corruption handling, and atomic stale quarantine.
+- Validated stage transitions and exact hash-based downstream invalidation for profile, request, dossier, plan, and script changes.
+- Process concurrency, stale-race, mutation-safety, recovery, secret-redaction, and public-command smoke coverage using temporary local roots.

@@ -78,6 +78,7 @@ The required names are also documented with placeholders in [`.env.example`](../
 | Path | `AUDIO_ENGINE_RUNTIME_ROOT` | Existing writable root for durable run state |
 | Path | `AUDIO_ENGINE_STAGING_ROOT` | Existing writable root for temporary assembled output |
 | Optional paths | `AUDIO_ENGINE_INPUT_ROOTS` | Additional absolute profile/input roots separated by `:` on macOS/Linux |
+| Optional setting | `AUDIO_ENGINE_MAX_RUN_AGE_SECONDS` | Stale episode-lease threshold, 60–604,800 seconds; defaults to 21,600 |
 | Optional setting | `AUDIO_ENGINE_AVAILABLE_CAPABILITIES` | Comma-separated identifiers for capabilities a profile explicitly requires |
 
 Never print values while checking configuration. On the target zsh host, verify presence only:

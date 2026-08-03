@@ -40,6 +40,10 @@ class EngineSettings(BaseSettings):
     input_roots: Annotated[tuple[Path, ...], NoDecode] = Field(
         default=(), validation_alias="AUDIO_ENGINE_INPUT_ROOTS"
     )
+    maximum_run_age_seconds: Annotated[int, Field(ge=60, le=7 * 24 * 60 * 60)] = Field(
+        default=6 * 60 * 60,
+        validation_alias="AUDIO_ENGINE_MAX_RUN_AGE_SECONDS",
+    )
 
     @field_validator("podcast_feed_token")
     @classmethod
@@ -101,3 +105,8 @@ class EngineSettings(BaseSettings):
     def from_mapping(cls, values: Mapping[str, str]) -> EngineSettings:
         """Validate an explicit mapping without reading the developer's environment."""
         return cls.model_validate(dict(values))
+
+    @classmethod
+    def from_environment(cls) -> EngineSettings:
+        """Load the process environment through the BaseSettings source chain."""
+        return cls()  # pyright: ignore[reportCallIssue]
