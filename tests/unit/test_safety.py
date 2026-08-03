@@ -69,7 +69,7 @@ def test_episode_date_uses_profile_timezone_across_midnight() -> None:
 def test_redaction_removes_secrets_and_complete_tokenized_locations() -> None:
     token = "t" * 43
     text = (
-        f"key=gemini-secret id=r2-access secret=r2-secret "
+        f"key=gemini-secret id=r2-access secret=r2-secret token={token} "
         f"https://public.invalid/feeds/{token}/feed.xml "
         f"episodes/{token}/profile-2026-08-03/episode.mp3"
     )

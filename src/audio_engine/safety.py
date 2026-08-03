@@ -22,6 +22,11 @@ class SafetyError(ValueError):
     """A path or key crossed a configured safety boundary."""
 
 
+def is_safe_object_key_segment(value: str) -> bool:
+    """Return whether a value uses the shared ASCII object-key segment alphabet."""
+    return _SAFE_SEGMENT.fullmatch(value) is not None
+
+
 @dataclass(frozen=True)
 class LocalPathPolicy:
     """Resolve runtime, staging, and input paths against distinct configured roots."""
@@ -63,7 +68,7 @@ class ObjectKeyPolicy:
     """Construct and validate keys below one secret feed token's roots."""
 
     def __init__(self, feed_token: str) -> None:
-        if len(feed_token) < 32 or not _SAFE_SEGMENT.fullmatch(feed_token):
+        if len(feed_token) < 32 or not is_safe_object_key_segment(feed_token):
             raise SafetyError("feed token is not a safe key segment")
         self._feed_token = feed_token
 
@@ -79,7 +84,7 @@ class ObjectKeyPolicy:
         return f"{self.feed_prefix}feed.xml"
 
     def episode_key(self, profile_id: str, episode_date: date, asset_name: str) -> str:
-        if not _SAFE_SEGMENT.fullmatch(profile_id):
+        if not is_safe_object_key_segment(profile_id):
             raise SafetyError("profile identifier is not a safe key segment")
         if asset_name not in EPISODE_ASSET_NAMES:
             raise SafetyError("episode asset name is not allowed")
@@ -124,6 +129,7 @@ def redact_text(
         token = re.escape(feed_token)
         location = re.compile(rf"(?:https://[^\s]+)?(?:feeds|episodes)/{token}/[^\s]*")
         redacted = location.sub(REDACTED_LOCATION, redacted)
+        redacted = redacted.replace(feed_token, REDACTED)
     values = sorted((value for value in sensitive_values if value), key=len, reverse=True)
     for value in values:
         redacted = redacted.replace(value, REDACTED)

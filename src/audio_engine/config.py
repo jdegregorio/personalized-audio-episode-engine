@@ -10,6 +10,8 @@ from typing import Annotated, Self
 from pydantic import Field, HttpUrl, SecretStr, field_validator, model_validator
 from pydantic_settings import BaseSettings, NoDecode, SettingsConfigDict
 
+from audio_engine.safety import is_safe_object_key_segment
+
 
 class EngineSettings(BaseSettings):
     """Validated settings loaded from the process environment only."""
@@ -43,9 +45,7 @@ class EngineSettings(BaseSettings):
     @classmethod
     def valid_feed_token(cls, value: SecretStr) -> SecretStr:
         token = value.get_secret_value()
-        if len(token) < 32 or not all(
-            character.isalnum() or character in "_-" for character in token
-        ):
+        if len(token) < 32 or not is_safe_object_key_segment(token):
             raise ValueError("feed token must be at least 32 URL-safe characters")
         return value
 
@@ -88,7 +88,12 @@ class EngineSettings(BaseSettings):
 
     @model_validator(mode="after")
     def distinct_output_roots(self) -> Self:
-        if self.runtime_root.resolve() == self.staging_root.resolve():
+        try:
+            runtime_root = self.runtime_root.resolve()
+            staging_root = self.staging_root.resolve()
+        except (OSError, RuntimeError) as error:
+            raise ValueError("runtime and staging roots must be resolvable") from error
+        if runtime_root == staging_root:
             raise ValueError("runtime and staging roots must be distinct")
         return self
 

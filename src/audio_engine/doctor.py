@@ -67,8 +67,15 @@ def _writable_directory_check(name: str, root: Path) -> CheckResult:
 
 
 def _settings_failure(error: ValidationError) -> CheckResult:
-    names = sorted({str(item["loc"][0]) for item in error.errors() if item["loc"]})
-    joined = ", ".join(names) if names else "environment settings"
+    details: set[str] = set()
+    for item in error.errors():
+        reason = str(item["msg"]).removeprefix("Value error, ")
+        if item["loc"]:
+            name = str(item["loc"][0])
+            details.add(f"{name} ({reason})")
+        else:
+            details.add(reason)
+    joined = "; ".join(sorted(details)) if details else "environment settings"
     return CheckResult("settings", False, f"set or correct: {joined}")
 
 

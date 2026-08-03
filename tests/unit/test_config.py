@@ -21,6 +21,7 @@ def test_settings_load_valid_environment(settings_values: dict[str, str]) -> Non
     ("name", "value"),
     [
         ("PODCAST_FEED_TOKEN", "short"),
+        ("PODCAST_FEED_TOKEN", "é" * 32),
         ("GEMINI_API_KEY", ""),
         ("R2_ENDPOINT_URL", "http://example.invalid"),
         ("R2_ENDPOINT_URL", "https://example.invalid/path"),
@@ -48,3 +49,16 @@ def test_settings_report_missing_values_without_reading_process_environment(
         EngineSettings.from_mapping(settings_values)
 
     assert "GEMINI_API_KEY" in str(captured.value)
+
+
+def test_settings_convert_symlink_loop_to_validation_error(
+    tmp_path: Path, settings_values: dict[str, str]
+) -> None:
+    first = tmp_path / "first"
+    second = tmp_path / "second"
+    first.symlink_to(second)
+    second.symlink_to(first)
+    settings_values["AUDIO_ENGINE_RUNTIME_ROOT"] = str(first)
+
+    with pytest.raises(ValidationError, match="roots must be resolvable"):
+        EngineSettings.from_mapping(settings_values)
