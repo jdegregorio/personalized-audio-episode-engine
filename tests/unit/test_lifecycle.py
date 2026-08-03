@@ -601,6 +601,18 @@ def test_artifact_change_invalidates_exact_downstream_dependencies(
         "message": None,
         "recovery_guidance": None,
     }
+    data["final_audio_validation"] = {
+        "status": "valid",
+        "artifact": data["artifacts"]["final_audio"],
+        "media_type": "audio/mpeg",
+        "codec": "mp3",
+        "duration_seconds": 40.0,
+        "sample_rate_hz": 48000,
+        "channels": 1,
+        "bytes": 480000,
+        "decode_status": "passed",
+        "message": "Synthetic final audio is valid.",
+    }
     state = RunState.model_validate(data)
     old = state.artifacts[changed_key]
     replacement = ArtifactReference(

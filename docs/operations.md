@@ -1,6 +1,6 @@
 # Operations
 
-The engine supports validated environment/profile preflight, deterministic artifact/lineage validation, owner-checked run initialization, capability-neutral evidence collection, profile-driven editorial planning, grounded two-host scriptwriting, and token-bounded provider-neutral TTS preparation. Rendering and publication arrive only in their owning PRs in [`plan.md`](../plan.md).
+The engine supports validated environment/profile preflight, deterministic artifact/lineage validation, owner-checked run initialization, capability-neutral evidence collection, profile-driven editorial planning, grounded two-host scriptwriting, token-bounded TTS preparation/rendering, and validated FFmpeg assembly. Publication arrives in its owning PR in [`plan.md`](../plan.md).
 
 ## Development gate
 
@@ -112,6 +112,16 @@ uv run python scripts/render_audio.py --run <run-directory>
 
 The command sends one bounded request at a time and disables the SDK's independent retries. It retries a failed response up to three times near 2, 5, and 12 seconds, saves raw PCM before local WAV packaging, verifies duration/format/decode health, and records every successful segment before continuing. Exhaustion remains resumable at the named segment; an unchanged complete rerun contacts no provider. Only a complete set advances state to `audio`.
 
+## Final audio assembly
+
+At `audio`, follow the skill's [`audio-assembly.md`](../.agents/skills/produce-audio-episode/references/audio-assembly.md) reference and run:
+
+```bash
+uv run python scripts/assemble_audio.py --run <run-directory>
+```
+
+The command rechecks every manifest-ordered WAV, runs bounded FFprobe and full-decode checks, concatenates without creative processing, and encodes a 96 kbps mono 48 kHz MP3. It validates codec/container, duration against the sum of segments, sample rate, channel count, bytes, and complete decode before atomically promoting `episode.mp3` and advancing to `publication`. `already_assembled` means the recorded hash and all technical validation fields were rechecked without rewriting the file. Failure stays resumable at `audio`; rerun the same command after correcting FFmpeg/FFprobe or the named segment-file issue.
+
 ## Production invariants
 
 - One independent Codex run processes one profile.
@@ -124,6 +134,6 @@ The command sends one bounded request at a time and disables the SDK's independe
 
 ## Rollback at this phase
 
-`render_audio.py` contacts Gemini; no current command contacts R2. Stop safely by ending the renderer process. Valid segment state remains reusable, while an in-flight or unreferenced file is not authoritative. Correct the provider/configuration issue and rerun the same command; do not remove completed files or manually edit state. Follow the lease-aware rollback in [`run-lifecycle.md`](run-lifecycle.md) and never remove a live lock.
+`render_audio.py` contacts Gemini; no current command contacts R2. Stop either renderer or assembler safely. Valid segment state remains reusable, while an in-flight or unreferenced output is not authoritative. Correct the provider/configuration or FFmpeg issue and rerun the owning command; do not remove completed files or manually edit state. Follow the lease-aware rollback in [`run-lifecycle.md`](run-lifecycle.md) and never remove a live lock.
 
 Service-specific recovery and rotation are documented in [`cloudflare-r2.md`](cloudflare-r2.md) and will be expanded alongside their implementations.

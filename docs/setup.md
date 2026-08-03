@@ -135,6 +135,7 @@ Codex native web research requires no separately installed collector. Configure 
 - If `uv sync --locked` reports drift, do not regenerate the lock outside a dependency-owning PR.
 - If Python 3.12 is missing, install it with `uv python install 3.12` and retry.
 - If FFmpeg or FFprobe is absent, install the platform package before audio-owning PRs.
+- Confirm both executables after installation with `ffmpeg -version` and `ffprobe -version`; assembly invokes each with a bounded timeout and cannot substitute a Python codec fallback.
 - If central configuration is missing, rerun the helper; never copy values into a worktree.
 - If the doctor rejects a profile outside the repository examples, add its absolute parent to `AUDIO_ENGINE_INPUT_ROOTS`; do not weaken path checks or use a symlink escape.
 - If a credential is exposed, revoke or rotate it immediately and remove it from all logs and evidence. Feed-token rotation also changes the secret feed URL and requires republishing.

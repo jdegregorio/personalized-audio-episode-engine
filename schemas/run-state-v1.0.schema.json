@@ -125,10 +125,9 @@
             }
           ]
         },
-        "duration_seconds": {
+        "bytes": {
           "anyOf": [
             {
-              "maximum": 10800,
               "minimum": 1,
               "type": "integer"
             },
@@ -136,7 +135,74 @@
               "type": "null"
             }
           ],
+          "default": null,
+          "title": "Bytes"
+        },
+        "channels": {
+          "anyOf": [
+            {
+              "maximum": 8,
+              "minimum": 1,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Channels"
+        },
+        "codec": {
+          "anyOf": [
+            {
+              "const": "mp3",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Codec"
+        },
+        "decode_status": {
+          "anyOf": [
+            {
+              "const": "passed",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Decode Status"
+        },
+        "duration_seconds": {
+          "anyOf": [
+            {
+              "exclusiveMinimum": 0,
+              "maximum": 10800,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
           "title": "Duration Seconds"
+        },
+        "media_type": {
+          "anyOf": [
+            {
+              "const": "audio/mpeg",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Media Type"
         },
         "message": {
           "anyOf": [
@@ -150,6 +216,20 @@
             }
           ],
           "title": "Message"
+        },
+        "sample_rate_hz": {
+          "anyOf": [
+            {
+              "maximum": 384000,
+              "minimum": 8000,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Sample Rate Hz"
         },
         "status": {
           "enum": [

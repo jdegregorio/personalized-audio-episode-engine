@@ -55,3 +55,11 @@ If collection is already valid, `record_collection.py` returns `already_valid` a
 - `Gemini speech request failed` covers bounded timeout, rate-limit, and provider failures without echoing response details that could contain credentials. Confirm key/model/quota/billing/region access, then rerun the same segment.
 - A completed raw/WAV hash or decode mismatch fails closed. Preserve the workspace for diagnosis; never hand-edit a segment or its state reference.
 - `already_rendered` means every raw and WAV hash plus WAV metadata revalidated. Do not rerender before assembly.
+
+## Final audio assembly
+
+- `FFmpeg ... executable is unavailable`: install FFmpeg/FFprobe for the host, rerun `doctor.py`, then rerun `assemble_audio.py` against the same workspace.
+- A timeout or FFmpeg/FFprobe failure leaves all recorded PCM/WAV segments intact. Inspect the concise state/summary guidance, correct the local tool or damaged segment issue, and rerun `assemble_audio.py`; do not rerender valid segments.
+- A missing, empty, corrupt, hash-mismatched, or wrongly formatted segment fails closed before final promotion. Preserve the workspace for diagnosis and restore/recreate only through the owning rendering command.
+- A final codec, media type, duration, sample-rate, channel, size, or decode mismatch never advances to `publication`. The canonical `episode.mp3` is authoritative only when `final_audio_validation.status` is `valid` and its artifact matches `artifacts.final_audio`.
+- `already_assembled` means the MP3 hash and all technical validation fields were rechecked without changing the file.

@@ -12,8 +12,8 @@ The approved scope and sequence live in [`plan.md`](../plan.md). This page recor
 | 06 | Editorial planning | Implemented on `main` |
 | 07 | Grounded two-host scripting | Implemented on `main` |
 | 08 | TTS preparation | Implemented on `main` |
-| 09 | Gemini rendering and voice selection | Implemented in PR 09 |
-| 10 | Audio assembly | Not started |
+| 09 | Gemini rendering and voice selection | Implemented on `main` |
+| 10 | Audio assembly | Implemented in PR 10 |
 | 11 | Cloudflare R2 publication | Not started |
 | 12 | Complete offline vertical slice | Not started |
 | 13 | Scheduled execution and release qualification | Not started |
@@ -26,7 +26,7 @@ The approved scope and sequence live in [`plan.md`](../plan.md). This page recor
 - Worktree-safe setup, Cloudflare bootstrap, CI, operations, and security-boundary documentation.
 - Pull-request evidence template plus correctness and simplification review records; the current accelerated-MVP review policy is in `CONTRIBUTORS.md`.
 
-Workflow mutation, research, speech, audio processing, publication behavior, and scheduling remain deliberately unavailable until their ordered implementation PRs.
+Later workflow capabilities remain deliberately unavailable until their ordered implementation PRs.
 
 ## PR 02 delivered surface
 
@@ -89,3 +89,11 @@ Workflow mutation, research, speech, audio processing, publication behavior, and
 - Per-segment durable rendering state, fail-closed tamper detection, segment-specific exhaustion guidance, completed-segment resume without rewrites, and final advancement to `audio` only after all segments validate.
 - A synthetic offline renderer smoke plus a protected, manually dispatched Gemini live smoke that receives only the Gemini key and retains its sample for one day.
 - The initial selected pairing is Maya/Kore and Daniel/Charon, chosen for a firm/informative contrast and retained as profile configuration rather than engine policy.
+
+## PR 10 delivered surface
+
+- One narrow FFmpeg/FFprobe adapter with bounded encode, probe, and full-decode subprocesses plus concise errors that omit command output and runtime paths.
+- Manifest-order validation of the existing 24 kHz mono PCM WAV intermediates, followed by direct concatenation and 96 kbps mono 48 kHz MP3 encoding without music, effects, mastering, overlap, or voice modification.
+- Codec/container, `audio/mpeg`, duration, sample-rate, channel, byte-size, hash, and full-decode validation before atomic `episode.mp3` promotion and advancement to `publication`.
+- Durable final-audio metadata and matching artifact state, invalid-output rollback to resumable `audio`, rendered-segment preservation, tamper detection, and no-rewrite `already_assembled` resume.
+- Real FFmpeg integration and smoke coverage for order, conversion, summed duration, missing/empty/corrupt input, timeout/partial cleanup, atomic promotion failure, and final-file tampering on macOS and Ubuntu CI.
