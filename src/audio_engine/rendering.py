@@ -191,6 +191,19 @@ def render_missing_segments(
     return RenderingResult("rendered", len(context.manifest.segments))
 
 
+def verified_rendered_segments(
+    context: RenderingContext,
+    state: RunState,
+) -> tuple[TtsRenderedSegment, ...]:
+    """Return the manifest-ordered, hash-checked rendered segment prefix."""
+    completed = _verified_completed_segments(context, state)
+    return tuple(
+        completed[segment.segment_id]
+        for segment in context.manifest.segments
+        if segment.segment_id in completed
+    )
+
+
 def write_live_sample(
     output_path: Path,
     response: SpeechResponse,

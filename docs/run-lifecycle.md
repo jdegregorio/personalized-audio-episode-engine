@@ -38,7 +38,10 @@ An initialized owner creates:
     ├── tts/
     │   ├── manifest.json                      # ordered preparation contract
     │   ├── segment-001.json                   # exact transcript plus separate direction
+    │   ├── audio/segment-001.pcm               # preserved provider response
+    │   ├── audio/segment-001.wav               # validated intermediate audio
     │   └── ...
+    ├── episode.mp3                            # validated final audio after assembly
     ├── state.json
     └── summary.md
 ```
@@ -57,6 +60,8 @@ PR 04 owns these transitions; later PRs add the remaining transition helpers:
 | Evidence dossier | `editorial` | `collection` |
 | Editorial plan | `script` | `editorial` |
 | Episode script | `tts` | `script` |
+| Complete rendered segment set | `audio` | `tts` |
+| Validated final MP3 | `publication` | `audio` |
 
 Replacing an artifact with identical validated bytes preserves state. A changed hash replaces that artifact, retains valid upstream references, rolls the run back to the owning validation stage, and removes all downstream references. Profile changes roll back to `initialized`; an accepted dossier replacement clears collection, plan, and script validation and returns to `collection`; an accepted plan replacement clears plan/script validation and returns to `editorial`; an accepted script replacement clears script validation and returns to `script`. Final-audio and publication status return to pending/not started whenever an invalidated dependency could affect them.
 
@@ -69,6 +74,8 @@ Scriptwriting reads the complete valid dossier, plan, and profile in a separate 
 TTS preparation remains at the `tts` stage because no audio has been rendered. It writes each versioned structured segment prompt atomically, writes the manifest last, then records the manifest/input hashes and segment count in state. State is authoritative if an interruption leaves unreferenced preparation files; a retry safely overwrites them. An unchanged rerun rechecks all hashes, speaker/voice consistency, estimates, ordering, and transcript reconstruction before returning `already_prepared` without rewriting valid files. Any changed accepted profile, dossier, plan, or script clears preparation and downstream audio/publication state.
 
 TTS rendering also remains at `tts` until every manifest segment is complete. For each missing segment it preserves raw PCM, packages and decodes a WAV, then records hashes, audio parameters, duration, attempts, and completion time before requesting the next segment. Retry exhaustion records a resumable failure without releasing or discarding successful work. A rerun verifies every recorded file and starts with the first missing segment. The final success atomically changes the current stage to `audio` and the last completed valid stage to `tts`.
+
+Final audio assembly runs only from the complete rendered prefix. It rechecks each exact ordered WAV with FFprobe and full decode, concatenates and encodes through bounded FFmpeg processes, validates the final mono 48 kHz MP3 against the summed segment duration, and atomically promotes `episode.mp3`. Only then are its hash and full validation metadata recorded and state advanced to `publication`. Failure records recovery guidance at `audio`, removes any publishable final reference, and preserves every rendered segment. An unchanged rerun at `publication` fully revalidates the MP3 and returns without rewriting it.
 
 ## Lease and failure recovery
 

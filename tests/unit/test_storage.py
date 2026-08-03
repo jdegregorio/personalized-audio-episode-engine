@@ -7,6 +7,7 @@ import pytest
 
 from audio_engine.storage import (
     StorageError,
+    atomic_replace_file,
     atomic_write_bytes,
     atomic_write_json,
     sha256_bytes,
@@ -57,3 +58,35 @@ def test_hashes_use_contract_prefix_and_file_bytes(tmp_path: Path) -> None:
 def test_atomic_write_requires_existing_parent(tmp_path: Path) -> None:
     with pytest.raises(StorageError, match="parent"):
         atomic_write_bytes(tmp_path / "missing" / "artifact.json", b"data")
+
+
+def test_atomic_file_promotion_replaces_destination(tmp_path: Path) -> None:
+    source = tmp_path / ".episode.tmp"
+    destination = tmp_path / "episode.mp3"
+    source.write_bytes(b"validated audio")
+    destination.write_bytes(b"old audio")
+
+    atomic_replace_file(source, destination)
+
+    assert destination.read_bytes() == b"validated audio"
+    assert not source.exists()
+
+
+def test_atomic_file_promotion_rejects_missing_source_and_replace_failure(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    destination = tmp_path / "episode.mp3"
+    with pytest.raises(StorageError, match="unavailable"):
+        atomic_replace_file(tmp_path / "missing.tmp", destination)
+
+    source = tmp_path / ".episode.tmp"
+    source.write_bytes(b"validated audio")
+
+    def fail_replace(source_path: Path, destination_path: Path) -> None:
+        del source_path, destination_path
+        raise OSError("synthetic promotion failure")
+
+    monkeypatch.setattr(os, "replace", fail_replace)
+    with pytest.raises(StorageError, match="promoted atomically"):
+        atomic_replace_file(source, destination)

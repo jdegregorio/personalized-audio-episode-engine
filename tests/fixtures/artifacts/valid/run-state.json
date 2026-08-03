@@ -192,6 +192,11 @@
       "path": "tts/manifest.json",
       "sha256": "sha256:5555555555555555555555555555555555555555555555555555555555555555"
     },
+    "final_audio": {
+      "artifact_type": "audio",
+      "path": "episode.mp3",
+      "sha256": "sha256:1111111111111111111111111111111111111111111111111111111111111111"
+    },
     "published_episode": {
       "artifact_type": "published-episode",
       "path": "published-episode.json",
@@ -205,7 +210,13 @@
       "path": "episode.mp3",
       "sha256": "sha256:1111111111111111111111111111111111111111111111111111111111111111"
     },
+    "media_type": "audio/mpeg",
+    "codec": "mp3",
     "duration_seconds": 300,
+    "sample_rate_hz": 48000,
+    "channels": 1,
+    "bytes": 3600000,
+    "decode_status": "passed",
     "message": "Synthetic fixture audio passed structural validation."
   },
   "publication": {

@@ -1134,6 +1134,108 @@ def record_tts_render_failure(
     return updated
 
 
+def record_final_audio(
+    workspace: RunWorkspace,
+    manager: LeaseManager,
+    run_id: str,
+    *,
+    validation: FinalAudioValidation,
+) -> RunState:
+    """Record one validated canonical MP3 and advance to publication."""
+    if validation.status != "valid" or validation.artifact is None:
+        raise LifecycleError("final audio recording requires a valid result")
+    try:
+        with manager.mutation(workspace.episode_key, run_id):
+            state = load_run_state(workspace.state_path)
+            if state.run_id != run_id or state.status != "running":
+                raise LifecycleError("final audio recording requires the active run owner")
+            if state.current_stage == "publication":
+                if state.final_audio_validation == validation:
+                    return state
+                raise LifecycleError("publication already references different final audio")
+            if state.current_stage != "audio":
+                raise LifecycleError("final audio can only be recorded during the audio stage")
+            if state.tts_rendering is None or state.tts_rendering.status != "complete":
+                raise LifecycleError("final audio requires complete TTS rendering")
+            final_path = resolve_within_roots(
+                workspace.run_directory / validation.artifact.path,
+                [workspace.run_directory],
+                must_exist=True,
+            )
+            if (
+                final_path != workspace.run_directory / "episode.mp3"
+                or final_path.stat().st_size != validation.bytes
+                or sha256_file(final_path) != validation.artifact.sha256
+            ):
+                raise LifecycleError("final audio failed durable verification")
+            updated = _validated_state_update(
+                state,
+                {
+                    "artifacts": {**state.artifacts, "final_audio": validation.artifact},
+                    "current_stage": "publication",
+                    "last_completed_valid_stage": "audio",
+                    "final_audio_validation": validation,
+                },
+            )
+            _write_run_state(workspace, updated)
+            _write_summary(workspace, updated)
+    except (OSError, SafetyError, StorageError, ValidationError) as error:
+        raise LifecycleError("final audio state could not be persisted") from error
+    except LeaseError as error:
+        raise LifecycleError(str(error)) from None
+    return updated
+
+
+def record_final_audio_failure(
+    workspace: RunWorkspace,
+    manager: LeaseManager,
+    run_id: str,
+    *,
+    message: str,
+    sensitive_values: Sequence[str] = (),
+) -> RunState:
+    """Record resumable audio-stage recovery guidance without losing segments."""
+    safe_message = redact_text(message, sensitive_values=sensitive_values)
+    try:
+        with manager.mutation(workspace.episode_key, run_id):
+            state = load_run_state(workspace.state_path)
+            if (
+                state.run_id != run_id
+                or state.status != "running"
+                or state.current_stage not in {"audio", "publication"}
+            ):
+                raise LifecycleError("audio failure recording requires the active audio run")
+            artifacts = dict(state.artifacts)
+            for key in ("final_audio", "show_notes", "published_episode"):
+                artifacts.pop(key, None)
+            updated = _validated_state_update(
+                state,
+                {
+                    "artifacts": artifacts,
+                    "current_stage": "audio",
+                    "last_completed_valid_stage": "tts",
+                    "final_audio_validation": FinalAudioValidation(
+                        status="invalid",
+                        artifact=None,
+                        duration_seconds=None,
+                        message=safe_message,
+                    ),
+                    "publication": PublicationState(
+                        status="not_started",
+                        redacted_locations=[],
+                        message=None,
+                    ),
+                },
+            )
+            _write_run_state(workspace, updated)
+            _write_summary(workspace, updated)
+    except (OSError, StorageError, ValidationError) as error:
+        raise LifecycleError("audio failure state could not be persisted") from error
+    except LeaseError as error:
+        raise LifecycleError(str(error)) from None
+    return updated
+
+
 def _require_persisted_tts_manifest(
     workspace: RunWorkspace,
     state: RunState,
@@ -1468,7 +1570,7 @@ def render_summary(workspace: RunWorkspace, state: RunState) -> str:
     publication_succeeded = state.publication.status == "published"
     locations = ", ".join(state.publication.redacted_locations) or "not published"
     warnings: list[str] = []
-    if state.final_audio_validation.message:
+    if state.final_audio_validation.status == "invalid" and state.final_audio_validation.message:
         warnings.append(state.final_audio_validation.message)
     if state.publication.message:
         warnings.append(state.publication.message)
@@ -1499,6 +1601,14 @@ def render_summary(workspace: RunWorkspace, state: RunState) -> str:
     warning_text = "; ".join(warnings) if warnings else "none"
     prepared_segments = state.tts_preparation.segment_count if state.tts_preparation else 0
     rendered_segments = len(state.tts_rendering.completed_segments) if state.tts_rendering else 0
+    final_audio = state.final_audio_validation
+    audio_details = "not validated"
+    if final_audio.status == "valid":
+        audio_details = (
+            f"episode.mp3 ({final_audio.codec}, {final_audio.sample_rate_hz} Hz, "
+            f"{final_audio.channels} channel, {final_audio.duration_seconds:.2f} seconds, "
+            f"{final_audio.bytes} bytes)"
+        )
     if state.tts_rendering and state.tts_rendering.status == "failed":
         warnings.append(state.tts_rendering.message or "TTS rendering failed")
         warning_text = "; ".join(warnings)
@@ -1512,6 +1622,7 @@ def render_summary(workspace: RunWorkspace, state: RunState) -> str:
         f"- Current stage: {state.current_stage}",
         f"- Last completed valid stage: {state.last_completed_valid_stage or 'none'}",
         f"- Valid audio created: {'yes' if audio_valid else 'no'}",
+        f"- Final audio: {audio_details}",
         f"- TTS segments prepared: {prepared_segments}",
         f"- TTS segments rendered: {rendered_segments}",
         f"- Publication succeeded: {'yes' if publication_succeeded else 'no'}",

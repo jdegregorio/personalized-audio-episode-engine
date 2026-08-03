@@ -26,6 +26,7 @@ def test_skill_package_is_concise_linked_and_command_complete() -> None:
         "scriptwriting.md",
         "tts-preparation.md",
         "tts-rendering.md",
+        "audio-assembly.md",
         "run-state.md",
     }
     references = SKILL_ROOT / "references"
@@ -46,6 +47,7 @@ def test_skill_package_is_concise_linked_and_command_complete() -> None:
         "scripts/record_script.py",
         "scripts/prepare_tts.py",
         "scripts/render_audio.py",
+        "scripts/assemble_audio.py",
         "scripts/select_collection_method.py",
     }
     repository_root = SKILL_ROOT.parents[2]
@@ -111,3 +113,13 @@ def test_tts_rendering_reference_preserves_resume_and_stage_boundary() -> None:
     assert "failed_segment_id" in instructions
     assert "never remove completed segments" in instructions
     assert "Do not concatenate, encode, publish" in instructions
+
+
+def test_audio_assembly_reference_preserves_validation_and_creative_boundary() -> None:
+    instructions = (SKILL_ROOT / "references" / "audio-assembly.md").read_text(encoding="utf-8")
+
+    assert "manifest-ordered WAV" in instructions
+    assert "no creative processing" in instructions
+    assert "full-decode checks" in instructions
+    assert "already_assembled" in instructions
+    assert "do not call Gemini again" in instructions

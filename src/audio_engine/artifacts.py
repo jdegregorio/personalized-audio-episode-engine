@@ -664,8 +664,41 @@ class RunFailure(_ContractModel):
 class FinalAudioValidation(_ContractModel):
     status: Literal["pending", "valid", "invalid"]
     artifact: ArtifactReference | None
-    duration_seconds: Annotated[int, Field(ge=1, le=60 * 60 * 3)] | None
+    media_type: Literal["audio/mpeg"] | None = None
+    codec: Literal["mp3"] | None = None
+    duration_seconds: Annotated[float, Field(gt=0, le=60 * 60 * 3)] | None
+    sample_rate_hz: Annotated[int, Field(ge=8_000, le=384_000)] | None = None
+    channels: Annotated[int, Field(ge=1, le=8)] | None = None
+    bytes: Annotated[int, Field(ge=1)] | None = None
+    decode_status: Literal["passed"] | None = None
     message: ShortText | None
+
+    @model_validator(mode="after")
+    def consistent_validation(self) -> Self:
+        details = (
+            self.artifact,
+            self.media_type,
+            self.codec,
+            self.duration_seconds,
+            self.sample_rate_hz,
+            self.channels,
+            self.bytes,
+            self.decode_status,
+        )
+        if self.status == "valid":
+            if any(value is None for value in details):
+                raise ValueError("valid final audio requires complete validation metadata")
+            if self.artifact is None or self.artifact.artifact_type != "audio":
+                raise ValueError("valid final audio requires an audio artifact")
+            if self.artifact.path != "episode.mp3":
+                raise ValueError("final audio must use the canonical episode.mp3 path")
+            if self.sample_rate_hz not in {44_100, 48_000} or self.channels != 1:
+                raise ValueError("final audio must be mono at 44.1 or 48 kHz")
+        elif any(value is not None for value in details):
+            raise ValueError("only valid final audio may contain artifact validation metadata")
+        if self.status == "invalid" and self.message is None:
+            raise ValueError("invalid final audio requires recovery guidance")
+        return self
 
 
 class PublicationState(_ContractModel):
@@ -874,6 +907,14 @@ class RunState(_ContractModel):
             raise ValueError("terminal run state requires completed_at")
         if self.completed_at is not None and self.completed_at < self.started_at:
             raise ValueError("completed_at must not precede started_at")
+        final_reference = self.artifacts.get("final_audio")
+        if self.final_audio_validation.status == "valid":
+            if final_reference != self.final_audio_validation.artifact:
+                raise ValueError("valid final audio must match the recorded artifact")
+            if self.current_stage not in {"publication", "finalized"}:
+                raise ValueError("valid final audio requires the publication stage or later")
+        elif final_reference is not None:
+            raise ValueError("unvalidated final audio cannot be recorded as an artifact")
         return self
 
 

@@ -48,6 +48,10 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      - name: Install FFmpeg
+        run: |
+          sudo apt-get update
+          sudo apt-get install --yes --no-install-recommends ffmpeg
       - uses: astral-sh/setup-uv@v6
         with:
           enable-cache: true
@@ -85,6 +89,14 @@ jobs:
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v4
+      - name: Install FFmpeg (Ubuntu)
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install --yes --no-install-recommends ffmpeg
+      - name: Install FFmpeg (macOS)
+        if: runner.os == 'macOS'
+        run: brew install ffmpeg
       - uses: astral-sh/setup-uv@v6
         with:
           enable-cache: true
@@ -93,6 +105,8 @@ jobs:
       - run: uv lock --check
       - name: Verify lease portability
         run: uv run pytest -q tests/unit/test_leases.py tests/integration/test_run_concurrency.py
+      - name: Verify audio portability
+        run: uv run pytest -q tests/integration/test_audio_assembly.py
       - run: uv build
       - name: Import the built wheel
         shell: bash

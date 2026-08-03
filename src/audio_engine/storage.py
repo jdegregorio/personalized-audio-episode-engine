@@ -66,6 +66,17 @@ def atomic_write_text(path: Path, text: str, *, mode: int = 0o600) -> None:
     atomic_write_bytes(path, text.encode("utf-8"), mode=mode)
 
 
+def atomic_replace_file(source: Path, destination: Path) -> None:
+    """Atomically promote a completed sibling-filesystem artifact."""
+    if not source.is_file() or not destination.parent.is_dir():
+        raise StorageError("completed artifact is unavailable for atomic promotion")
+    try:
+        os.replace(source, destination)
+        sync_directory(destination.parent)
+    except OSError as error:
+        raise StorageError("completed artifact could not be promoted atomically") from error
+
+
 def json_bytes(value: object) -> bytes:
     """Return the canonical on-disk JSON representation used by atomic writes."""
     return (json.dumps(value, indent=2, sort_keys=True, ensure_ascii=False) + "\n").encode("utf-8")

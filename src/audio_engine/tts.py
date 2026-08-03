@@ -182,8 +182,10 @@ def open_tts_run(
     state = load_run_state(script_context.workspace.state_path)
     if state.script_validation is None or state.script_validation.status != "valid":
         raise TtsPreparationError("TTS preparation requires a valid script outcome")
-    if state.current_stage not in {"tts", "audio"}:
-        raise TtsPreparationError("TTS preparation can only run during the TTS or audio stage")
+    if state.current_stage not in {"tts", "audio", "publication"}:
+        raise TtsPreparationError(
+            "TTS preparation can only run during the TTS, audio, or publication stage"
+        )
     result = record_script_attempt(
         script_context.workspace,
         script_context.manager,

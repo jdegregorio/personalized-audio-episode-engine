@@ -112,6 +112,16 @@ uv run python scripts/render_audio.py --run <run-directory>
 
 The renderer makes bounded Gemini calls with exactly two configured voices and project-owned retries near 2, 5, and 12 seconds. It preserves raw 24 kHz PCM before packaging each decodable WAV, then records that segment immediately. Exhaustion leaves the run at `tts` with completed segments intact and segment-specific resume guidance; completion advances to `audio`. An unchanged rerun validates hashes and audio before returning `already_rendered` without contacting Gemini.
 
+## Final audio assembly
+
+At `audio`, follow the skill's [`audio-assembly.md`](.agents/skills/produce-audio-episode/references/audio-assembly.md) reference and assemble the rendered segments:
+
+```bash
+uv run python scripts/assemble_audio.py --run <run-directory>
+```
+
+The command revalidates each ordered PCM WAV, uses bounded FFmpeg/FFprobe processes to concatenate and encode a 48 kHz mono MP3, performs a full decode check, and atomically promotes `episode.mp3` only after codec, media type, duration, sample rate, channels, and size pass. Success advances to `publication`; a failed conversion leaves all rendered segments reusable at `audio` with recovery guidance. An unchanged rerun revalidates the recorded MP3 and returns `already_assembled` without rewriting it.
+
 ## Security boundary
 
 The MVP feed contains public-news content but uses an unguessable URL. That URL is access material, not authentication. Never commit or paste credentials, tokenized object keys, runtime data, or complete feed URLs. Profiles containing personal or otherwise sensitive information are outside the MVP and require a separate authenticated or encrypted publication design.
