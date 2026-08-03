@@ -526,7 +526,14 @@ def record_collection_validation(
                     data=dossier.model_dump(mode="json"),
                     allowed_input_roots=allowed_input_roots,
                 )
-                if state.current_stage != "editorial" or "evidence_dossier" not in state.artifacts:
+                if (
+                    state.current_stage
+                    not in {
+                        "collection",
+                        "editorial",
+                    }
+                    or "evidence_dossier" not in state.artifacts
+                ):
                     raise LifecycleError("valid collection outcome requires a persisted dossier")
 
             artifacts = {**state.artifacts, "evidence_validation": outcome.report}
@@ -534,6 +541,9 @@ def record_collection_validation(
                 "artifacts": artifacts,
                 "collection_validation": outcome,
             }
+            if outcome.status == "valid":
+                update["current_stage"] = "editorial"
+                update["last_completed_valid_stage"] = "collection"
             if outcome.status == "invalid" and not outcome.repair_allowed:
                 update.update(
                     {
@@ -724,6 +734,7 @@ def invalidate_for_artifact_change(
     existing = state.artifacts.get(artifact_key)
     if existing is not None and existing.sha256 == reference.sha256:
         return state
+    replaces_evidence = artifact_key == "evidence_dossier" and existing is not None
     if artifact_key == "profile":
         if profile_version is None:
             raise LifecycleError("profile invalidation requires the new profile version")
@@ -760,6 +771,12 @@ def invalidate_for_artifact_change(
         update["collection_method"] = None
         update["failed_collection_capabilities"] = []
         update["collection_validation"] = None
+    elif replaces_evidence:
+        # The dossier schema and lineage are valid, but request-specific evidence
+        # validation belongs to the collection recorder and must run again.
+        update["collection_validation"] = None
+        update["current_stage"] = "collection"
+        update["last_completed_valid_stage"] = "initialized"
     if downstream & _FINAL_OUTPUT_KEYS:
         update["final_audio_validation"] = FinalAudioValidation(
             status="pending",

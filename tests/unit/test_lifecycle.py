@@ -487,8 +487,8 @@ def test_non_owner_cannot_write_stage_artifact(
         (
             "evidence_dossier",
             {"profile", "collection_request", "evidence_dossier"},
-            "editorial",
             "collection",
+            "initialized",
         ),
         (
             "editorial_plan",

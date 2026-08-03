@@ -23,6 +23,7 @@ from audio_engine.lifecycle import (
     RunWorkspace,
     initialize_run,
     load_run_state,
+    persist_stage_artifact,
     record_collection_method,
 )
 from audio_engine.storage import StorageError, sha256_file
@@ -180,6 +181,75 @@ def test_one_invalid_dossier_can_be_repaired_once(
     assert updated.collection_validation.attempt == 2
     assert (workspace.run_directory / "evidence-validation-attempt-1.json").is_file()
     assert (workspace.run_directory / "evidence-validation-attempt-2.json").is_file()
+
+
+def test_replaced_valid_dossier_must_pass_collection_validation_again(
+    synthetic_collection_profile_path: Path,
+    settings_values: dict[str, str],
+) -> None:
+    workspace, manager, state = _initialized(synthetic_collection_profile_path, settings_values)
+    record_collection_method(
+        workspace,
+        manager,
+        state.run_id,
+        method=CollectionMethod(
+            type="native_research", name="Codex native web research", version=None
+        ),
+        prompt_version="1.0.0",
+    )
+    dossier_path = workspace.run_directory / "evidence-dossier.json"
+    dossier_path.write_text(json.dumps(_json("evidence-dossier.json")), encoding="utf-8")
+    accepted = record_collection_attempt(
+        workspace,
+        manager,
+        state.run_id,
+        candidate_path=dossier_path,
+        now=FIXED_NOW + timedelta(minutes=5),
+    )
+    assert accepted.status == "accepted"
+
+    replacement = json.loads(dossier_path.read_text(encoding="utf-8"))
+    replacement["candidates"][0]["classification"]["section"] = "not-requested"
+    replaced = persist_stage_artifact(
+        workspace,
+        manager,
+        state.run_id,
+        artifact_key="evidence_dossier",
+        data=replacement,
+    )
+
+    assert replaced.current_stage == "collection"
+    assert replaced.last_completed_valid_stage == "initialized"
+    assert replaced.collection_validation is None
+    assert "evidence_validation" not in replaced.artifacts
+    assert "evidence_dossier" in replaced.artifacts
+
+    invalid = record_collection_attempt(
+        workspace,
+        manager,
+        state.run_id,
+        candidate_path=dossier_path,
+        now=FIXED_NOW + timedelta(minutes=6),
+    )
+    assert invalid.status == "repair_required"
+
+    dossier_path.write_text(json.dumps(_json("evidence-dossier.json")), encoding="utf-8")
+    repaired = record_collection_attempt(
+        workspace,
+        manager,
+        state.run_id,
+        candidate_path=dossier_path,
+        now=FIXED_NOW + timedelta(minutes=7),
+    )
+    final = load_run_state(workspace.state_path)
+
+    assert repaired.status == "accepted"
+    assert repaired.attempt == 2
+    assert final.current_stage == "editorial"
+    assert final.last_completed_valid_stage == "collection"
+    assert final.collection_validation is not None
+    assert final.collection_validation.status == "valid"
+    assert final.collection_validation.attempt == 2
 
 
 def test_second_invalid_dossier_terminalizes_and_releases_owner(
