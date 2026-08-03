@@ -65,6 +65,31 @@ def _json(name: str) -> dict[str, Any]:
     return cast(dict[str, Any], value)
 
 
+def _evidence_for(state: RunState) -> dict[str, Any]:
+    data = _json("evidence-dossier.json")
+    data["collection_request"] = state.artifacts["collection_request"].model_dump(mode="json")
+    return data
+
+
+def _plan_for(state: RunState) -> dict[str, Any]:
+    data = _json("editorial-plan.json")
+    data["run_id"] = state.run_id
+    data["profile_id"] = state.profile_id
+    data["episode_date"] = state.episode_date.isoformat() if state.episode_date else "2026-01-15"
+    data["evidence_dossier"] = state.artifacts["evidence_dossier"].model_dump(mode="json")
+    return data
+
+
+def _script_for(state: RunState) -> dict[str, Any]:
+    data = _json("episode-script.json")
+    data["run_id"] = state.run_id
+    data["profile_id"] = state.profile_id
+    data["episode_date"] = state.episode_date.isoformat() if state.episode_date else "2026-01-15"
+    data["evidence_dossier"] = state.artifacts["evidence_dossier"].model_dump(mode="json")
+    data["editorial_plan"] = state.artifacts["editorial_plan"].model_dump(mode="json")
+    return data
+
+
 def _reference(artifact_type: str, path: str, character: str) -> ArtifactReference:
     return ArtifactReference(
         artifact_type=artifact_type,
@@ -212,7 +237,7 @@ def test_persisted_stage_artifact_advances_only_after_validation_and_hashing(
         manager,
         run_id,
         artifact_key="evidence_dossier",
-        data=_json("evidence-dossier.json"),
+        data=_evidence_for(load_run_state(workspace.state_path)),
     )
 
     evidence_path = workspace.run_directory / "evidence-dossier.json"
@@ -247,6 +272,77 @@ def test_rewriting_identical_validated_artifact_is_idempotent(
     assert request_path.stat().st_mtime_ns == modified_at
 
 
+def test_stage_artifacts_must_bind_identity_and_upstream_hashes(
+    synthetic_profile_path: Path,
+    settings_values: dict[str, str],
+) -> None:
+    settings, workspace, state = _initialize(synthetic_profile_path, settings_values)
+    manager = LeaseManager(
+        settings.runtime_root,
+        maximum_age=timedelta(hours=6),
+        clock=lambda: FIXED_NOW + timedelta(minutes=1),
+    )
+
+    with pytest.raises(LifecycleError, match="inputs do not match"):
+        persist_stage_artifact(
+            workspace,
+            manager,
+            state.run_id,
+            artifact_key="evidence_dossier",
+            data=_json("evidence-dossier.json"),
+        )
+    state = persist_stage_artifact(
+        workspace,
+        manager,
+        state.run_id,
+        artifact_key="evidence_dossier",
+        data=_evidence_for(state),
+    )
+
+    mismatched_plan = _plan_for(state)
+    mismatched_plan["evidence_dossier"] = _reference(
+        "evidence", "evidence-dossier.json", "0"
+    ).model_dump(mode="json")
+    with pytest.raises(LifecycleError, match="inputs do not match"):
+        persist_stage_artifact(
+            workspace,
+            manager,
+            state.run_id,
+            artifact_key="editorial_plan",
+            data=mismatched_plan,
+        )
+    state = persist_stage_artifact(
+        workspace,
+        manager,
+        state.run_id,
+        artifact_key="editorial_plan",
+        data=_plan_for(state),
+    )
+
+    mismatched_script = _script_for(state)
+    mismatched_script["editorial_plan"] = _reference("plan", "editorial-plan.json", "0").model_dump(
+        mode="json"
+    )
+    with pytest.raises(LifecycleError, match="inputs do not match"):
+        persist_stage_artifact(
+            workspace,
+            manager,
+            state.run_id,
+            artifact_key="episode_script",
+            data=mismatched_script,
+        )
+    final = persist_stage_artifact(
+        workspace,
+        manager,
+        state.run_id,
+        artifact_key="episode_script",
+        data=_script_for(state),
+    )
+
+    assert final.current_stage == "tts"
+    assert final.last_completed_valid_stage == "script"
+
+
 def test_artifact_write_failure_does_not_advance_state(
     synthetic_profile_path: Path,
     settings_values: dict[str, str],
@@ -271,7 +367,7 @@ def test_artifact_write_failure_does_not_advance_state(
             manager,
             before.run_id,
             artifact_key="evidence_dossier",
-            data=_json("evidence-dossier.json"),
+            data=_evidence_for(before),
         )
 
     after = load_run_state(workspace.state_path)
@@ -289,7 +385,7 @@ def test_invalid_stage_artifact_does_not_write_or_advance_state(
         maximum_age=timedelta(hours=6),
         clock=lambda: FIXED_NOW + timedelta(minutes=1),
     )
-    invalid_evidence = _json("evidence-dossier.json")
+    invalid_evidence = _evidence_for(before)
     invalid_evidence["candidates"][0]["claim_ids"] = ["claim-does-not-exist"]
 
     with pytest.raises(LifecycleError, match="failed validation"):

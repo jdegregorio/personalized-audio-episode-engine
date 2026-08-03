@@ -47,6 +47,6 @@ Workflow mutation, research, speech, audio processing, publication behavior, and
 
 - Canonical episode keys and unique run IDs with the date/profile/run filesystem layout, private atomic writes, SHA-256 references, and additive run provenance.
 - An owner-checked initialization command that creates a validated collection request, durable state, and one-screen summary only after exclusive episode ownership.
-- Heartbeat leases with live-owner no-op behavior, owner-only refresh/release, terminal and stale recovery, fail-closed corruption handling, and atomic stale quarantine.
-- Validated stage transitions and exact hash-based downstream invalidation for profile, request, dossier, plan, and script changes.
+- Heartbeat leases with live-owner no-op behavior, mutation-wide owner fencing, owner-only refresh/release, terminal and stale recovery, fail-closed corruption handling, and atomic stale quarantine.
+- Validated stage transitions, current-state identity/upstream-reference binding, and exact hash-based downstream invalidation for profile, request, dossier, plan, and script changes.
 - Process concurrency, stale-race, mutation-safety, recovery, secret-redaction, and public-command smoke coverage using temporary local roots.

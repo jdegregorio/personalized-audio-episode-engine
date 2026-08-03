@@ -6,8 +6,8 @@ import fcntl
 import hashlib
 import os
 import uuid
-from collections.abc import Callable
-from contextlib import suppress
+from collections.abc import Callable, Generator
+from contextlib import contextmanager, suppress
 from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
@@ -125,18 +125,40 @@ class LeaseManager:
         try:
             record = self._read_descriptor(descriptor)
             self._require_owner(record, episode_key, run_id)
-            now = self._now()
-            if now < record.last_heartbeat_at:
-                raise LeaseError("current time precedes the recorded lease heartbeat")
-            updated = LeaseRecord(
-                contract_version=LEASE_CONTRACT_VERSION,
-                run_id=record.run_id,
-                episode_key=record.episode_key,
-                created_at=record.created_at,
-                last_heartbeat_at=now,
-            )
+            updated = self._heartbeat(record)
             atomic_write_json(path, updated.model_dump(mode="json"))
             return updated
+        finally:
+            os.close(descriptor)
+
+    @contextmanager
+    def mutation(self, episode_key: str, run_id: str) -> Generator[LeaseRecord]:
+        """Fence one complete state mutation against recovery or another mutator."""
+        self.refresh(episode_key, run_id)
+        path = self.lease_path(episode_key)
+        descriptor = self._open_current_locked(path)
+        if descriptor is None:  # pragma: no cover - missing_ok is false
+            raise LeaseError("episode lease does not exist")
+        operation_error: BaseException | None = None
+        try:
+            record = self._read_descriptor(descriptor)
+            self._require_owner(record, episode_key, run_id)
+            try:
+                yield record
+            except BaseException as error:
+                operation_error = error
+                raise
+            finally:
+                try:
+                    current = self._read_descriptor(descriptor)
+                    self._require_owner(current, episode_key, run_id)
+                    updated = self._heartbeat(current)
+                    atomic_write_json(path, updated.model_dump(mode="json"))
+                except (LeaseError, OSError) as error:
+                    if operation_error is None:
+                        raise LeaseError(
+                            "episode lease could not be refreshed after mutation"
+                        ) from error
         finally:
             os.close(descriptor)
 
@@ -247,6 +269,18 @@ class LeaseManager:
         while written < len(payload):
             written += os.write(descriptor, payload[written:])
         os.fsync(descriptor)
+
+    def _heartbeat(self, record: LeaseRecord) -> LeaseRecord:
+        now = self._now()
+        if now < record.last_heartbeat_at:
+            raise LeaseError("current time precedes the recorded lease heartbeat")
+        return LeaseRecord(
+            contract_version=LEASE_CONTRACT_VERSION,
+            run_id=record.run_id,
+            episode_key=record.episode_key,
+            created_at=record.created_at,
+            last_heartbeat_at=now,
+        )
 
     @staticmethod
     def _require_owner(record: LeaseRecord, episode_key: str, run_id: str) -> None:

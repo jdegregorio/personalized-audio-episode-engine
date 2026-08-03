@@ -15,11 +15,15 @@ from pydantic import ValidationError
 
 from audio_engine import __version__
 from audio_engine.artifacts import (
+    Artifact,
     ArtifactReference,
     CollectionAudience,
     CollectionEditorialPriorities,
     CollectionRequest,
     CollectionTargets,
+    EditorialPlan,
+    EpisodeScript,
+    EvidenceDossier,
     FinalAudioValidation,
     PublicationState,
     RequestScope,
@@ -206,61 +210,69 @@ def initialize_run(
     workspace: RunWorkspace | None = None
     state: RunState | None = None
     try:
-        run_directory = _create_run_directory(
-            settings.runtime_root,
-            episode_date,
-            profile.id,
-            run_id,
-        )
-        title = profile.identity.title_template.replace("{date}", episode_date.isoformat())
-        workspace = RunWorkspace(run_directory, title, episode_key)
-        state = _initial_state(
-            profile,
-            resolved_profile_path,
-            episode_key=episode_key,
-            episode_date=episode_date,
-            run_id=run_id,
-            now=now,
-            repo_root=repo_root,
-            codex_model=codex_model,
-        )
-        _write_run_state(workspace, state)
-        _write_summary(workspace, state)
-        request = build_collection_request(
-            profile,
-            run_id=run_id,
-            episode_date=episode_date,
-            now=now,
-            run_directory=run_directory,
-        )
-        state = persist_stage_artifact(
-            workspace,
-            manager,
-            run_id,
-            artifact_key="collection_request",
-            data=request.model_dump(mode="json"),
-        )
+        with manager.mutation(episode_key, run_id):
+            run_directory = _create_run_directory(
+                settings.runtime_root,
+                episode_date,
+                profile.id,
+                run_id,
+            )
+            title = profile.identity.title_template.replace("{date}", episode_date.isoformat())
+            workspace = RunWorkspace(run_directory, title, episode_key)
+            state = _initial_state(
+                profile,
+                resolved_profile_path,
+                episode_key=episode_key,
+                episode_date=episode_date,
+                run_id=run_id,
+                now=now,
+                repo_root=repo_root,
+                codex_model=codex_model,
+            )
+            _write_run_state(workspace, state)
+            _write_summary(workspace, state)
+            request = build_collection_request(
+                profile,
+                run_id=run_id,
+                episode_date=episode_date,
+                now=now,
+                run_directory=run_directory,
+            )
+            state = _persist_stage_artifact_owned(
+                workspace,
+                run_id,
+                artifact_key="collection_request",
+                rule=_ARTIFACT_RULES["collection_request"],
+                data=request.model_dump(mode="json"),
+                allowed_input_roots=(),
+            )
     except (LifecycleError, LeaseError, StorageError, OSError, ValidationError):
         terminal_persisted = False
         if workspace is not None and state is not None:
             try:
-                failed_state = _failed_state(
-                    state,
-                    RunFailure(
-                        stage="initialized",
-                        code="initialization_failed",
-                        message="Run initialization did not complete.",
-                        recovery_guidance=(
-                            "Inspect state and summary, correct local storage or input, then retry "
-                            "after the lease is released or stale."
+                with manager.mutation(episode_key, run_id):
+                    failed_base = (
+                        load_run_state(workspace.state_path)
+                        if workspace.state_path.is_file()
+                        else state
+                    )
+                    failed_state = _failed_state(
+                        failed_base,
+                        RunFailure(
+                            stage=failed_base.current_stage,
+                            code="initialization_failed",
+                            message="Run initialization did not complete.",
+                            recovery_guidance=(
+                                "Inspect state and summary, correct local storage or input, then "
+                                "retry after the lease is released or stale."
+                            ),
                         ),
-                    ),
-                    now,
-                )
-                _write_run_state(workspace, failed_state)
-                _write_summary(workspace, failed_state)
+                        now,
+                    )
+                    _write_run_state(workspace, failed_state)
+                    _write_summary(workspace, failed_state)
                 terminal_persisted = True
-            except (LifecycleError, StorageError, OSError, ValidationError):
+            except (LifecycleError, LeaseError, StorageError, OSError, ValidationError):
                 terminal_persisted = False
         if terminal_persisted:
             with suppress(LeaseError):
@@ -358,9 +370,28 @@ def persist_stage_artifact(
     if rule is None:
         raise LifecycleError("artifact key does not own a lifecycle stage")
     try:
-        manager.refresh(workspace.episode_key, run_id)
+        with manager.mutation(workspace.episode_key, run_id):
+            return _persist_stage_artifact_owned(
+                workspace,
+                run_id,
+                artifact_key=artifact_key,
+                rule=rule,
+                data=data,
+                allowed_input_roots=allowed_input_roots,
+            )
     except LeaseError as error:
         raise LifecycleError(str(error)) from None
+
+
+def _persist_stage_artifact_owned(
+    workspace: RunWorkspace,
+    run_id: str,
+    *,
+    artifact_key: str,
+    rule: _ArtifactStageRule,
+    data: object,
+    allowed_input_roots: Sequence[Path],
+) -> RunState:
     state = load_run_state(workspace.state_path)
     if state.run_id != run_id or state.status != "running":
         raise LifecycleError("only the active run owner may mutate running state")
@@ -376,6 +407,7 @@ def persist_stage_artifact(
     )
     if not preflight.valid or artifact is None:
         raise LifecycleError("stage artifact failed validation before persistence")
+    _require_current_lineage(workspace, state, artifact_key, artifact)
     artifact_path = resolve_within_roots(
         workspace.run_directory / rule.filename,
         [workspace.run_directory],
@@ -409,6 +441,48 @@ def persist_stage_artifact(
     _write_run_state(workspace, updated)
     _write_summary(workspace, updated)
     return updated
+
+
+def _require_current_lineage(
+    workspace: RunWorkspace,
+    state: RunState,
+    artifact_key: str,
+    artifact: Artifact,
+) -> None:
+    """Reject a valid standalone artifact whose declared inputs are not this run's."""
+    expected_date = state.episode_date or date.fromisoformat(state.episode_key.rsplit(":", 1)[1])
+    if isinstance(artifact, CollectionRequest):
+        if (
+            artifact.run_id != state.run_id
+            or artifact.profile_id != state.profile_id
+            or artifact.episode_date != expected_date
+            or Path(artifact.output_path) != workspace.run_directory / "evidence-dossier.json"
+        ):
+            raise LifecycleError("collection request identity does not match the active run")
+        return
+
+    identity = (
+        (artifact.run_id, artifact.profile_id, artifact.episode_date)
+        if isinstance(artifact, (EditorialPlan, EpisodeScript))
+        else None
+    )
+    if identity is not None and identity != (state.run_id, state.profile_id, expected_date):
+        raise LifecycleError("stage artifact identity does not match the active run")
+
+    required: tuple[tuple[str, ArtifactReference], ...]
+    if isinstance(artifact, EvidenceDossier):
+        required = (("collection_request", artifact.collection_request),)
+    elif isinstance(artifact, EditorialPlan):
+        required = (("evidence_dossier", artifact.evidence_dossier),)
+    elif isinstance(artifact, EpisodeScript):
+        required = (
+            ("evidence_dossier", artifact.evidence_dossier),
+            ("editorial_plan", artifact.editorial_plan),
+        )
+    else:  # pragma: no cover - stage rules constrain the artifact union
+        raise LifecycleError(f"artifact {artifact_key} has no lifecycle lineage rule")
+    if any(state.artifacts.get(key) != reference for key, reference in required):
+        raise LifecycleError("stage artifact inputs do not match current run state")
 
 
 def invalidate_for_artifact_change(
@@ -485,31 +559,31 @@ def mark_run_failed(
 ) -> RunState:
     """Persist terminal failure and its summary before releasing ownership."""
     try:
-        manager.refresh(workspace.episode_key, run_id)
+        with manager.mutation(workspace.episode_key, run_id):
+            state = load_run_state(workspace.state_path)
+            if state.run_id != run_id or state.status != "running":
+                raise LifecycleError("only the active run owner may fail running state")
+            if failure.stage != state.current_stage:
+                raise LifecycleError("failure stage must match the active stage")
+            safe_failure = RunFailure(
+                stage=failure.stage,
+                code=failure.code,
+                message=redact_text(
+                    failure.message,
+                    sensitive_values=sensitive_values,
+                    feed_token=feed_token,
+                ),
+                recovery_guidance=redact_text(
+                    failure.recovery_guidance,
+                    sensitive_values=sensitive_values,
+                    feed_token=feed_token,
+                ),
+            )
+            failed = _failed_state(state, safe_failure, _aware_utc(now))
+            _write_run_state(workspace, failed)
+            _write_summary(workspace, failed)
     except LeaseError as error:
         raise LifecycleError(str(error)) from None
-    state = load_run_state(workspace.state_path)
-    if state.run_id != run_id or state.status != "running":
-        raise LifecycleError("only the active run owner may fail running state")
-    if failure.stage != state.current_stage:
-        raise LifecycleError("failure stage must match the active stage")
-    safe_failure = RunFailure(
-        stage=failure.stage,
-        code=failure.code,
-        message=redact_text(
-            failure.message,
-            sensitive_values=sensitive_values,
-            feed_token=feed_token,
-        ),
-        recovery_guidance=redact_text(
-            failure.recovery_guidance,
-            sensitive_values=sensitive_values,
-            feed_token=feed_token,
-        ),
-    )
-    failed = _failed_state(state, safe_failure, _aware_utc(now))
-    _write_run_state(workspace, failed)
-    _write_summary(workspace, failed)
     try:
         manager.release(state.episode_key, run_id)
     except LeaseError as error:

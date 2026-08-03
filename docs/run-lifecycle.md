@@ -31,7 +31,7 @@ An initialized owner creates:
 
 The canonical episode key is `<profile-id>:<local-date>`. State records the profile/local date, profile/engine/skill/prompt versions, engine Git commit, observable models and collection method, timestamps, current and last valid stages, artifact paths/hashes, failure details, final-audio validity, and redacted publication locations. Prompt and collection provenance starts empty until its owning phase selects them.
 
-Files are written to a private temporary sibling, synchronized, and atomically renamed. A stage advances only after its artifact validates on both sides of the write and its SHA-256 hash is recorded. State is authoritative if a machine failure leaves an unreferenced file between the artifact and state renames.
+Files are written to a private temporary sibling, synchronized, and atomically renamed. A stage advances only after its artifact validates on both sides of the write, its declared run identity and upstream references match current state, and its SHA-256 hash is recorded. State is authoritative if a machine failure leaves an unreferenced file between the artifact and state renames.
 
 ## Stages and invalidation
 
@@ -51,6 +51,7 @@ Replacing an artifact with identical validated bytes preserves state. A changed 
 - A current nonterminal owner causes a successful no-op. No run directory is selected, created, or mutated.
 - A lease is recoverable when its validated owner state is terminal or its heartbeat is strictly older than the configured maximum age. Exact expiry remains live.
 - Recovery atomically renames the old record to a unique `.stale-...json` quarantine file, then retries exclusive creation. Do not manually delete quarantine evidence.
+- A mutating helper holds the current lease's advisory lock from state read through artifact/state/summary persistence. Recovery waits for that critical section, then rechecks the replaced lease inode and refreshed heartbeat before deciding whether takeover is safe.
 - Corrupt, oversized, mismatched, or unsafe lease records fail closed. Inspect the record and runtime filesystem; do not bypass ownership checks.
 - Handled failures write redacted failure/recovery details to state and summary before releasing the lease. Unexpected crashes rely on stale recovery.
 - Only the recorded run ID may refresh or release a lease. A non-owner must not edit state or remove a lock.
@@ -66,6 +67,8 @@ uv run pytest -q -m "smoke and not live" tests/smoke/test_init_run.py
 ```
 
 These use temporary roots, controlled clocks, synthetic profiles, and real processes/filesystem operations. They prove refusal before expiry, atomic quarantine after expiry, one owner/one artifact-free no-op for a shared episode key, one winner in a stale-recovery race, and independent owners for different keys.
+
+PR 12 owns complete cross-invocation resume. Until then, a handled failure preserves its workspace and releases ownership, but a later initialization creates a new run rather than selecting that prior workspace. The explicit PR 12 acceptance test will require post-ownership selection of the prior run without changing valid upstream hashes or timestamps.
 
 ## Rollback
 

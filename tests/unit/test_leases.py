@@ -1,12 +1,15 @@
 from __future__ import annotations
 
 import json
+from concurrent.futures import ThreadPoolExecutor
+from concurrent.futures import TimeoutError as FutureTimeoutError
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
+from threading import Event
 
 import pytest
 
-from audio_engine.leases import LeaseError, LeaseManager, LeaseRecord
+from audio_engine.leases import LeaseAcquisition, LeaseError, LeaseManager, LeaseRecord
 from audio_engine.storage import atomic_write_json
 
 FIXTURE_ROOT = Path(__file__).parents[1] / "fixtures" / "artifacts" / "valid"
@@ -160,3 +163,47 @@ def test_refresh_rejects_clock_rollback_without_changing_heartbeat(tmp_path: Pat
 
     persisted = LeaseRecord.model_validate_json(manager.lease_path(episode_key).read_bytes())
     assert persisted.last_heartbeat_at == acquired.lease.last_heartbeat_at
+
+
+def test_mutation_fences_stale_takeover_until_write_finishes(tmp_path: Path) -> None:
+    runtime = tmp_path / "runtime"
+    runtime.mkdir()
+    current = [datetime(2026, 1, 15, 15, 0, tzinfo=UTC)]
+    manager = LeaseManager(
+        runtime,
+        maximum_age=timedelta(minutes=1),
+        clock=lambda: _clock(current),
+    )
+    episode_key = "synthetic-lifecycle:2026-01-15"
+    manager.acquire(episode_key, "run_owner")
+    mutation_started = Event()
+    allow_finish = Event()
+    contender_started = Event()
+
+    def hold_mutation() -> None:
+        with manager.mutation(episode_key, "run_owner"):
+            current[0] += timedelta(minutes=2)
+            mutation_started.set()
+            assert allow_finish.wait(timeout=5)
+
+    def contend() -> LeaseAcquisition:
+        contender_started.set()
+        return manager.acquire(episode_key, "run_contender")
+
+    with ThreadPoolExecutor(max_workers=2) as executor:
+        owner = executor.submit(hold_mutation)
+        assert mutation_started.wait(timeout=5)
+        contender = executor.submit(contend)
+        assert contender_started.wait(timeout=5)
+        try:
+            with pytest.raises(FutureTimeoutError):
+                contender.result(timeout=0.2)
+        finally:
+            allow_finish.set()
+        owner.result(timeout=5)
+        result = contender.result(timeout=5)
+
+    assert not result.acquired
+    assert result.lease.run_id == "run_owner"
+    persisted = LeaseRecord.model_validate_json(manager.lease_path(episode_key).read_bytes())
+    assert persisted.last_heartbeat_at == current[0]
