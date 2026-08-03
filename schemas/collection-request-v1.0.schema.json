@@ -1,0 +1,326 @@
+{
+  "$defs": {
+    "CollectionAudience": {
+      "additionalProperties": false,
+      "properties": {
+        "knowledge_level": {
+          "maxLength": 80,
+          "pattern": "^[a-z][a-z0-9_-]*$",
+          "title": "Knowledge Level",
+          "type": "string"
+        },
+        "locale": {
+          "maxLength": 500,
+          "minLength": 1,
+          "title": "Locale",
+          "type": "string"
+        },
+        "preferences": {
+          "items": {
+            "maxLength": 10000,
+            "minLength": 1,
+            "type": "string"
+          },
+          "maxItems": 100,
+          "title": "Preferences",
+          "type": "array"
+        }
+      },
+      "required": [
+        "locale",
+        "knowledge_level",
+        "preferences"
+      ],
+      "title": "CollectionAudience",
+      "type": "object"
+    },
+    "CollectionEditorialPriorities": {
+      "additionalProperties": false,
+      "properties": {
+        "exclusions": {
+          "items": {
+            "maxLength": 10000,
+            "minLength": 1,
+            "type": "string"
+          },
+          "maxItems": 100,
+          "title": "Exclusions",
+          "type": "array"
+        },
+        "policy": {
+          "patternProperties": {
+            "^[a-z][a-z0-9_-]*$": {
+              "$ref": "#/$defs/JsonValue"
+            }
+          },
+          "propertyNames": {
+            "maxLength": 80
+          },
+          "title": "Policy",
+          "type": "object"
+        }
+      },
+      "required": [
+        "exclusions"
+      ],
+      "title": "CollectionEditorialPriorities",
+      "type": "object"
+    },
+    "CollectionTargets": {
+      "additionalProperties": false,
+      "properties": {
+        "by_section": {
+          "patternProperties": {
+            "^[a-z][a-z0-9_-]*$": {
+              "maximum": 1000,
+              "minimum": 0,
+              "type": "integer"
+            }
+          },
+          "propertyNames": {
+            "maxLength": 80
+          },
+          "title": "By Section",
+          "type": "object"
+        },
+        "maximum_candidates": {
+          "maximum": 5000,
+          "minimum": 1,
+          "title": "Maximum Candidates",
+          "type": "integer"
+        },
+        "maximum_sources": {
+          "maximum": 10000,
+          "minimum": 1,
+          "title": "Maximum Sources",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "by_section",
+        "maximum_candidates",
+        "maximum_sources"
+      ],
+      "title": "CollectionTargets",
+      "type": "object"
+    },
+    "JsonValue": {},
+    "RequestScope": {
+      "additionalProperties": false,
+      "properties": {
+        "notes": {
+          "maxLength": 500,
+          "minLength": 1,
+          "title": "Notes",
+          "type": "string"
+        },
+        "sections": {
+          "items": {
+            "maxLength": 80,
+            "pattern": "^[a-z][a-z0-9_-]*$",
+            "type": "string"
+          },
+          "maxItems": 100,
+          "minItems": 1,
+          "title": "Sections",
+          "type": "array"
+        }
+      },
+      "required": [
+        "sections",
+        "notes"
+      ],
+      "title": "RequestScope",
+      "type": "object"
+    },
+    "RequestTimeWindow": {
+      "additionalProperties": false,
+      "properties": {
+        "hours": {
+          "maximum": 336,
+          "minimum": 1,
+          "title": "Hours",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "hours"
+      ],
+      "title": "RequestTimeWindow",
+      "type": "object"
+    },
+    "SourcePolicy": {
+      "additionalProperties": false,
+      "properties": {
+        "multiple_sources_for_consequential_claims": {
+          "title": "Multiple Sources For Consequential Claims",
+          "type": "boolean"
+        },
+        "policy": {
+          "patternProperties": {
+            "^[a-z][a-z0-9_-]*$": {
+              "$ref": "#/$defs/JsonValue"
+            }
+          },
+          "propertyNames": {
+            "maxLength": 80
+          },
+          "title": "Policy",
+          "type": "object"
+        },
+        "prefer_primary": {
+          "title": "Prefer Primary",
+          "type": "boolean"
+        },
+        "preferred_publishers": {
+          "items": {
+            "maxLength": 500,
+            "minLength": 1,
+            "type": "string"
+          },
+          "maxItems": 100,
+          "title": "Preferred Publishers",
+          "type": "array"
+        }
+      },
+      "required": [
+        "prefer_primary",
+        "preferred_publishers",
+        "multiple_sources_for_consequential_claims"
+      ],
+      "title": "SourcePolicy",
+      "type": "object"
+    }
+  },
+  "$id": "urn:personalized-audio-episode-engine:schema:collection-request:1.0",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "properties": {
+    "allow_native_research_fallback": {
+      "title": "Allow Native Research Fallback",
+      "type": "boolean"
+    },
+    "audience": {
+      "$ref": "#/$defs/CollectionAudience"
+    },
+    "contract_version": {
+      "const": "1.0",
+      "title": "Contract Version",
+      "type": "string"
+    },
+    "created_at": {
+      "format": "date-time",
+      "title": "Created At",
+      "type": "string"
+    },
+    "editorial_priorities": {
+      "$ref": "#/$defs/CollectionEditorialPriorities"
+    },
+    "episode_date": {
+      "format": "date",
+      "title": "Episode Date",
+      "type": "string"
+    },
+    "evidence_contract_version": {
+      "const": "1.0",
+      "title": "Evidence Contract Version",
+      "type": "string"
+    },
+    "output_path": {
+      "title": "Output Path",
+      "type": "string"
+    },
+    "profile_id": {
+      "maxLength": 80,
+      "pattern": "^[a-z][a-z0-9_-]*$",
+      "title": "Profile Id",
+      "type": "string"
+    },
+    "prompt_version": {
+      "anyOf": [
+        {
+          "maxLength": 40,
+          "pattern": "^\\d+\\.\\d+(?:\\.\\d+)?$",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "title": "Prompt Version"
+    },
+    "run_id": {
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,199}$",
+      "title": "Run Id",
+      "type": "string"
+    },
+    "scope": {
+      "$ref": "#/$defs/RequestScope"
+    },
+    "source_policy": {
+      "$ref": "#/$defs/SourcePolicy"
+    },
+    "source_types": {
+      "items": {
+        "maxLength": 80,
+        "pattern": "^[a-z][a-z0-9_-]*$",
+        "type": "string"
+      },
+      "maxItems": 50,
+      "minItems": 1,
+      "title": "Source Types",
+      "type": "array"
+    },
+    "suggested_capabilities": {
+      "items": {
+        "maxLength": 80,
+        "pattern": "^[a-z][a-z0-9_-]*$",
+        "type": "string"
+      },
+      "maxItems": 50,
+      "title": "Suggested Capabilities",
+      "type": "array"
+    },
+    "targets": {
+      "$ref": "#/$defs/CollectionTargets"
+    },
+    "time_window": {
+      "$ref": "#/$defs/RequestTimeWindow"
+    },
+    "timezone": {
+      "maxLength": 500,
+      "minLength": 1,
+      "title": "Timezone",
+      "type": "string"
+    },
+    "topic": {
+      "maxLength": 10000,
+      "minLength": 1,
+      "title": "Topic",
+      "type": "string"
+    }
+  },
+  "required": [
+    "contract_version",
+    "prompt_version",
+    "created_at",
+    "run_id",
+    "profile_id",
+    "episode_date",
+    "timezone",
+    "topic",
+    "scope",
+    "audience",
+    "editorial_priorities",
+    "time_window",
+    "source_types",
+    "suggested_capabilities",
+    "allow_native_research_fallback",
+    "evidence_contract_version",
+    "source_policy",
+    "targets",
+    "output_path"
+  ],
+  "title": "CollectionRequest",
+  "type": "object"
+}

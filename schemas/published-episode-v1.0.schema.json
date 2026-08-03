@@ -1,0 +1,206 @@
+{
+  "$defs": {
+    "ArtifactReference": {
+      "additionalProperties": false,
+      "properties": {
+        "artifact_type": {
+          "maxLength": 80,
+          "pattern": "^[a-z][a-z0-9_-]*$",
+          "title": "Artifact Type",
+          "type": "string"
+        },
+        "path": {
+          "title": "Path",
+          "type": "string"
+        },
+        "sha256": {
+          "pattern": "^sha256:[0-9a-f]{64}$",
+          "title": "Sha256",
+          "type": "string"
+        }
+      },
+      "required": [
+        "artifact_type",
+        "path",
+        "sha256"
+      ],
+      "title": "ArtifactReference",
+      "type": "object"
+    },
+    "PublishedAsset": {
+      "additionalProperties": false,
+      "properties": {
+        "bytes": {
+          "minimum": 1,
+          "title": "Bytes",
+          "type": "integer"
+        },
+        "kind": {
+          "enum": [
+            "audio",
+            "transcript",
+            "show_notes",
+            "episode_metadata"
+          ],
+          "title": "Kind",
+          "type": "string"
+        },
+        "media_type": {
+          "maxLength": 500,
+          "minLength": 1,
+          "title": "Media Type",
+          "type": "string"
+        },
+        "object_key": {
+          "title": "Object Key",
+          "type": "string"
+        },
+        "public_url": {
+          "format": "uri",
+          "maxLength": 2083,
+          "minLength": 1,
+          "title": "Public Url",
+          "type": "string"
+        },
+        "sha256": {
+          "pattern": "^sha256:[0-9a-f]{64}$",
+          "title": "Sha256",
+          "type": "string"
+        }
+      },
+      "required": [
+        "kind",
+        "object_key",
+        "public_url",
+        "media_type",
+        "bytes",
+        "sha256"
+      ],
+      "title": "PublishedAsset",
+      "type": "object"
+    }
+  },
+  "$id": "urn:personalized-audio-episode-engine:schema:published-episode:1.0",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "properties": {
+    "assets": {
+      "items": {
+        "$ref": "#/$defs/PublishedAsset"
+      },
+      "maxItems": 4,
+      "minItems": 4,
+      "title": "Assets",
+      "type": "array"
+    },
+    "audio": {
+      "$ref": "#/$defs/ArtifactReference"
+    },
+    "contract_version": {
+      "const": "1.0",
+      "title": "Contract Version",
+      "type": "string"
+    },
+    "description": {
+      "maxLength": 10000,
+      "minLength": 1,
+      "title": "Description",
+      "type": "string"
+    },
+    "duration_seconds": {
+      "maximum": 10800,
+      "minimum": 1,
+      "title": "Duration Seconds",
+      "type": "integer"
+    },
+    "enclosure_bytes": {
+      "minimum": 1,
+      "title": "Enclosure Bytes",
+      "type": "integer"
+    },
+    "enclosure_media_type": {
+      "const": "audio/mpeg",
+      "title": "Enclosure Media Type",
+      "type": "string"
+    },
+    "episode_date": {
+      "format": "date",
+      "title": "Episode Date",
+      "type": "string"
+    },
+    "episode_key": {
+      "pattern": "^[a-z][a-z0-9_-]*:\\d{4}-\\d{2}-\\d{2}$",
+      "title": "Episode Key",
+      "type": "string"
+    },
+    "episode_script": {
+      "$ref": "#/$defs/ArtifactReference"
+    },
+    "guid": {
+      "maxLength": 500,
+      "minLength": 1,
+      "title": "Guid",
+      "type": "string"
+    },
+    "profile_id": {
+      "maxLength": 80,
+      "pattern": "^[a-z][a-z0-9_-]*$",
+      "title": "Profile Id",
+      "type": "string"
+    },
+    "prompt_version": {
+      "title": "Prompt Version",
+      "type": "null"
+    },
+    "published_at": {
+      "format": "date-time",
+      "title": "Published At",
+      "type": "string"
+    },
+    "run_id": {
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,199}$",
+      "title": "Run Id",
+      "type": "string"
+    },
+    "show_notes": {
+      "$ref": "#/$defs/ArtifactReference"
+    },
+    "status": {
+      "const": "published",
+      "title": "Status",
+      "type": "string"
+    },
+    "title": {
+      "maxLength": 500,
+      "minLength": 1,
+      "title": "Title",
+      "type": "string"
+    },
+    "transcript": {
+      "$ref": "#/$defs/ArtifactReference"
+    }
+  },
+  "required": [
+    "contract_version",
+    "prompt_version",
+    "run_id",
+    "episode_key",
+    "profile_id",
+    "episode_date",
+    "guid",
+    "title",
+    "description",
+    "published_at",
+    "status",
+    "episode_script",
+    "audio",
+    "transcript",
+    "show_notes",
+    "duration_seconds",
+    "enclosure_bytes",
+    "enclosure_media_type",
+    "assets"
+  ],
+  "title": "PublishedEpisode",
+  "type": "object"
+}

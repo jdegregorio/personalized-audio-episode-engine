@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<rss version="2.0">
+  <channel>
+    <title>Synthetic Marine Brief</title>
+    <link>https://podcast.example.invalid/</link>
+    <description>Copyright-safe synthetic podcast fixture.</description>
+    <language>en-US</language>
+    <item>
+      <title>Synthetic Marine Brief — 2026-01-15</title>
+      <guid isPermaLink="false">marine-feed:marine-brief:2026-01-15</guid>
+      <pubDate>Thu, 15 Jan 2026 15:20:00 GMT</pubDate>
+      <description>A fixture episode containing no real reporting.</description>
+      <enclosure url="https://podcast.example.invalid/episodes/synthetic/episode.mp3" length="4800000" type="audio/mpeg" />
+    </item>
+  </channel>
+</rss>

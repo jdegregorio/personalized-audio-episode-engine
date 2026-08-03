@@ -18,10 +18,11 @@ uv pip install --python "${artifact_venv}/bin/python" dist/*.whl
 "${artifact_venv}/bin/python" -c "import audio_engine; print(audio_engine.__version__)"
 ```
 
-Run the complete PR 01 local gate:
+Run the complete local gate:
 
 ```bash
 uv run python scripts/check_repository.py
+uv run python scripts/check_artifacts.py
 uv run ruff format --check .
 uv run ruff check .
 uv run pyright
@@ -38,6 +39,14 @@ uv run python scripts/doctor.py --profile examples/profiles/world-us-seattle-new
 ```
 
 Episode profiles are strict, versioned YAML data. See [`docs/profile-authoring.md`](docs/profile-authoring.md) and the committed [`schemas/episode-profile-v1.0.schema.json`](schemas/episode-profile-v1.0.schema.json).
+
+Validate a persisted pipeline artifact without modifying it:
+
+```bash
+uv run python scripts/validate_artifact.py --type evidence --input tests/fixtures/artifacts/valid/evidence-dossier.json
+```
+
+The supported artifact types, versioning policy, evidence lineage, safe locators, and optional full-report output are documented in [`docs/artifact-contracts.md`](docs/artifact-contracts.md).
 
 ## Security boundary
 

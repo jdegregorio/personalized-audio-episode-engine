@@ -5,8 +5,8 @@ The approved scope and sequence live in [`plan.md`](../plan.md). This page recor
 | PR | Capability | Status |
 | --- | --- | --- |
 | 01 | Repository foundation and delivery guardrails | Implemented on `main` |
-| 02 | Configuration, profile loading, path safety, and doctor | Implemented on `feature/pr-02-config-profile`; pending review and merge |
-| 03 | Artifact contracts, validators, and fixtures | Not started |
+| 02 | Configuration, profile loading, path safety, and doctor | Implemented on `main` |
+| 03 | Artifact contracts, validators, and fixtures | Implemented on `feature/pr-03-artifact-contracts`; pending review and merge |
 | 04 | Run lifecycle, state, leases, and invalidation | Not started |
 | 05 | Capability-aware collection skill | Not started |
 | 06 | Editorial planning | Not started |
@@ -26,7 +26,7 @@ The approved scope and sequence live in [`plan.md`](../plan.md). This page recor
 - Worktree-safe setup, Cloudflare bootstrap, CI, operations, and security-boundary documentation.
 - Pull-request evidence template and the canonical one-or-two-round Codex review/disposition gate.
 
-Artifact schemas other than the episode profile, workflow state, research, speech, audio processing, publication, and scheduling remain deliberately unavailable until their ordered implementation PRs.
+Workflow mutation, research, speech, audio processing, publication behavior, and scheduling remain deliberately unavailable until their ordered implementation PRs.
 
 ## PR 02 delivered surface
 
@@ -34,3 +34,11 @@ Artifact schemas other than the episode profile, workflow state, research, speec
 - Topic-specific world/U.S./Seattle example data plus contract coverage for an unrelated topic and arbitrary section identifiers.
 - Typed environment settings, timezone-aware episode dates, root/symlink safety, fixed R2 key construction, and secret/location redaction helpers.
 - Non-networking `doctor.py` checks for the local toolchain, locked dependencies, settings, writable roots, profile validity, publication references, and detectable required capabilities.
+
+## PR 03 delivered surface
+
+- Strict contract version `1.0` Pydantic models and matching JSON Schemas for collection request, evidence dossier, editorial plan, episode script, published episode, and run state.
+- Topic-generic evidence candidates, claims, supports, public-web/connector/filesystem locator policy, provenance timestamps, independence groups, prompt versions, and artifact references.
+- Deterministic evidence referential validation plus baseline plan/script lineage hooks; phase-specific editorial and prose policy remains in PRs 06–07.
+- Public read-only artifact validation with concise JSON errors, exact JSON-pointer paths, optional full reports, and no input mutation.
+- Synthetic valid, invalid, prompt-injection, and RSS golden fixtures enforced by permanent repository-integrity CI.

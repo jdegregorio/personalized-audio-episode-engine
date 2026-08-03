@@ -1,0 +1,300 @@
+{
+  "$defs": {
+    "ArtifactReference": {
+      "additionalProperties": false,
+      "properties": {
+        "artifact_type": {
+          "maxLength": 80,
+          "pattern": "^[a-z][a-z0-9_-]*$",
+          "title": "Artifact Type",
+          "type": "string"
+        },
+        "path": {
+          "title": "Path",
+          "type": "string"
+        },
+        "sha256": {
+          "pattern": "^sha256:[0-9a-f]{64}$",
+          "title": "Sha256",
+          "type": "string"
+        }
+      },
+      "required": [
+        "artifact_type",
+        "path",
+        "sha256"
+      ],
+      "title": "ArtifactReference",
+      "type": "object"
+    },
+    "ScriptSegment": {
+      "additionalProperties": false,
+      "properties": {
+        "estimated_input_tokens": {
+          "maximum": 100000,
+          "minimum": 1,
+          "title": "Estimated Input Tokens",
+          "type": "integer"
+        },
+        "order": {
+          "maximum": 1000,
+          "minimum": 1,
+          "title": "Order",
+          "type": "integer"
+        },
+        "planned_segment_ids": {
+          "items": {
+            "pattern": "^segment_[A-Za-z0-9][A-Za-z0-9_-]*$",
+            "type": "string"
+          },
+          "maxItems": 100,
+          "title": "Planned Segment Ids",
+          "type": "array"
+        },
+        "segment_id": {
+          "pattern": "^tts_[A-Za-z0-9][A-Za-z0-9_-]*$",
+          "title": "Segment Id",
+          "type": "string"
+        },
+        "turn_ids": {
+          "items": {
+            "pattern": "^turn_[A-Za-z0-9][A-Za-z0-9_-]*$",
+            "type": "string"
+          },
+          "maxItems": 5000,
+          "minItems": 1,
+          "title": "Turn Ids",
+          "type": "array"
+        }
+      },
+      "required": [
+        "segment_id",
+        "order",
+        "planned_segment_ids",
+        "turn_ids",
+        "estimated_input_tokens"
+      ],
+      "title": "ScriptSegment",
+      "type": "object"
+    },
+    "ScriptSpeaker": {
+      "additionalProperties": false,
+      "properties": {
+        "name": {
+          "maxLength": 500,
+          "minLength": 1,
+          "title": "Name",
+          "type": "string"
+        },
+        "voice": {
+          "maxLength": 500,
+          "minLength": 1,
+          "title": "Voice",
+          "type": "string"
+        }
+      },
+      "required": [
+        "name",
+        "voice"
+      ],
+      "title": "ScriptSpeaker",
+      "type": "object"
+    },
+    "ScriptTurn": {
+      "additionalProperties": false,
+      "properties": {
+        "candidate_id": {
+          "anyOf": [
+            {
+              "pattern": "^item_[A-Za-z0-9][A-Za-z0-9_-]*$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Candidate Id"
+        },
+        "claim_ids": {
+          "items": {
+            "pattern": "^claim_[A-Za-z0-9][A-Za-z0-9_-]*$",
+            "type": "string"
+          },
+          "maxItems": 1000,
+          "title": "Claim Ids",
+          "type": "array"
+        },
+        "performance_cue": {
+          "anyOf": [
+            {
+              "maxLength": 500,
+              "minLength": 1,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Performance Cue"
+        },
+        "planned_segment_id": {
+          "anyOf": [
+            {
+              "pattern": "^segment_[A-Za-z0-9][A-Za-z0-9_-]*$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Planned Segment Id"
+        },
+        "speaker": {
+          "maxLength": 500,
+          "minLength": 1,
+          "title": "Speaker",
+          "type": "string"
+        },
+        "text": {
+          "maxLength": 10000,
+          "minLength": 1,
+          "title": "Text",
+          "type": "string"
+        },
+        "turn_id": {
+          "pattern": "^turn_[A-Za-z0-9][A-Za-z0-9_-]*$",
+          "title": "Turn Id",
+          "type": "string"
+        },
+        "turn_type": {
+          "enum": [
+            "fact",
+            "analysis",
+            "question",
+            "reaction",
+            "transition",
+            "intro",
+            "outro"
+          ],
+          "title": "Turn Type",
+          "type": "string"
+        }
+      },
+      "required": [
+        "turn_id",
+        "speaker",
+        "text",
+        "turn_type",
+        "claim_ids",
+        "candidate_id",
+        "planned_segment_id",
+        "performance_cue"
+      ],
+      "title": "ScriptTurn",
+      "type": "object"
+    }
+  },
+  "$id": "urn:personalized-audio-episode-engine:schema:episode-script:1.0",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "properties": {
+    "contract_version": {
+      "const": "1.0",
+      "title": "Contract Version",
+      "type": "string"
+    },
+    "created_at": {
+      "format": "date-time",
+      "title": "Created At",
+      "type": "string"
+    },
+    "editorial_plan": {
+      "$ref": "#/$defs/ArtifactReference"
+    },
+    "episode_date": {
+      "format": "date",
+      "title": "Episode Date",
+      "type": "string"
+    },
+    "estimated_duration_seconds": {
+      "maximum": 10800,
+      "minimum": 1,
+      "title": "Estimated Duration Seconds",
+      "type": "integer"
+    },
+    "evidence_dossier": {
+      "$ref": "#/$defs/ArtifactReference"
+    },
+    "profile_id": {
+      "maxLength": 80,
+      "pattern": "^[a-z][a-z0-9_-]*$",
+      "title": "Profile Id",
+      "type": "string"
+    },
+    "prompt_version": {
+      "maxLength": 40,
+      "pattern": "^\\d+\\.\\d+(?:\\.\\d+)?$",
+      "title": "Prompt Version",
+      "type": "string"
+    },
+    "run_id": {
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,199}$",
+      "title": "Run Id",
+      "type": "string"
+    },
+    "safe_input_tokens": {
+      "maximum": 100000,
+      "minimum": 1,
+      "title": "Safe Input Tokens",
+      "type": "integer"
+    },
+    "segments": {
+      "items": {
+        "$ref": "#/$defs/ScriptSegment"
+      },
+      "maxItems": 1000,
+      "minItems": 1,
+      "title": "Segments",
+      "type": "array"
+    },
+    "speakers": {
+      "items": {
+        "$ref": "#/$defs/ScriptSpeaker"
+      },
+      "maxItems": 2,
+      "minItems": 2,
+      "title": "Speakers",
+      "type": "array"
+    },
+    "transcript": {
+      "$ref": "#/$defs/ArtifactReference"
+    },
+    "turns": {
+      "items": {
+        "$ref": "#/$defs/ScriptTurn"
+      },
+      "maxItems": 10000,
+      "minItems": 1,
+      "title": "Turns",
+      "type": "array"
+    }
+  },
+  "required": [
+    "contract_version",
+    "prompt_version",
+    "created_at",
+    "run_id",
+    "profile_id",
+    "episode_date",
+    "evidence_dossier",
+    "editorial_plan",
+    "transcript",
+    "speakers",
+    "safe_input_tokens",
+    "estimated_duration_seconds",
+    "turns",
+    "segments"
+  ],
+  "title": "EpisodeScript",
+  "type": "object"
+}

@@ -1,0 +1,131 @@
+{
+  "contract_version": "1.0",
+  "prompt_version": "1.0.0",
+  "created_at": "2026-01-15T15:10:00Z",
+  "run_id": "marine-brief_2026-01-15_synthetic",
+  "profile_id": "marine-brief",
+  "episode_date": "2026-01-15",
+  "evidence_dossier": {
+    "artifact_type": "evidence",
+    "path": "evidence-dossier.json",
+    "sha256": "sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"
+  },
+  "editorial_plan": {
+    "artifact_type": "plan",
+    "path": "editorial-plan.json",
+    "sha256": "sha256:dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd"
+  },
+  "transcript": {
+    "artifact_type": "transcript",
+    "path": "transcript.txt",
+    "sha256": "sha256:eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee"
+  },
+  "speakers": [
+    {
+      "name": "Maya",
+      "voice": "synthetic-female-voice"
+    },
+    {
+      "name": "Daniel",
+      "voice": "synthetic-male-voice"
+    }
+  ],
+  "safe_input_tokens": 7000,
+  "estimated_duration_seconds": 300,
+  "turns": [
+    {
+      "turn_id": "turn_intro",
+      "speaker": "Maya",
+      "text": "Today, two fictional coastal examples show why observations and methods belong in the same conversation.",
+      "turn_type": "intro",
+      "claim_ids": [],
+      "candidate_id": null,
+      "planned_segment_id": null,
+      "performance_cue": "calm"
+    },
+    {
+      "turn_id": "turn_reef_fact",
+      "speaker": "Maya",
+      "text": "In our synthetic test plot, monitors recorded twelve new habitat clusters during one interval.",
+      "turn_type": "fact",
+      "claim_ids": [
+        "claim_reef_growth"
+      ],
+      "candidate_id": "item_reef_plot",
+      "planned_segment_id": "segment_reef",
+      "performance_cue": null
+    },
+    {
+      "turn_id": "turn_reef_analysis",
+      "speaker": "Daniel",
+      "text": "That is encouraging, but the record covers one fictional plot and one interval, so the conclusion stays narrow.",
+      "turn_type": "analysis",
+      "claim_ids": [
+        "claim_reef_growth"
+      ],
+      "candidate_id": "item_reef_plot",
+      "planned_segment_id": "segment_reef",
+      "performance_cue": "thoughtful"
+    },
+    {
+      "turn_id": "turn_transition",
+      "speaker": "Maya",
+      "text": "And confidence in any comparison also depends on the instruments behind it.",
+      "turn_type": "transition",
+      "claim_ids": [],
+      "candidate_id": null,
+      "planned_segment_id": null,
+      "performance_cue": null
+    },
+    {
+      "turn_id": "turn_sensor_fact",
+      "speaker": "Daniel",
+      "text": "According to the synthetic laboratory record, its calibration interval changes from thirty days to fourteen.",
+      "turn_type": "fact",
+      "claim_ids": [
+        "claim_sensor_interval"
+      ],
+      "candidate_id": "item_sensor_method",
+      "planned_segment_id": "segment_sensor",
+      "performance_cue": null
+    },
+    {
+      "turn_id": "turn_outro",
+      "speaker": "Maya",
+      "text": "The useful habit is simple: preserve what was observed, how it was measured, and what remains uncertain.",
+      "turn_type": "outro",
+      "claim_ids": [],
+      "candidate_id": null,
+      "planned_segment_id": null,
+      "performance_cue": "warm"
+    }
+  ],
+  "segments": [
+    {
+      "segment_id": "tts_opening",
+      "order": 1,
+      "planned_segment_ids": [
+        "segment_reef"
+      ],
+      "turn_ids": [
+        "turn_intro",
+        "turn_reef_fact",
+        "turn_reef_analysis"
+      ],
+      "estimated_input_tokens": 160
+    },
+    {
+      "segment_id": "tts_closing",
+      "order": 2,
+      "planned_segment_ids": [
+        "segment_sensor"
+      ],
+      "turn_ids": [
+        "turn_transition",
+        "turn_sensor_fact",
+        "turn_outro"
+      ],
+      "estimated_input_tokens": 150
+    }
+  ]
+}

@@ -1,0 +1,736 @@
+{
+  "$defs": {
+    "ArtifactReference": {
+      "additionalProperties": false,
+      "properties": {
+        "artifact_type": {
+          "maxLength": 80,
+          "pattern": "^[a-z][a-z0-9_-]*$",
+          "title": "Artifact Type",
+          "type": "string"
+        },
+        "path": {
+          "title": "Path",
+          "type": "string"
+        },
+        "sha256": {
+          "pattern": "^sha256:[0-9a-f]{64}$",
+          "title": "Sha256",
+          "type": "string"
+        }
+      },
+      "required": [
+        "artifact_type",
+        "path",
+        "sha256"
+      ],
+      "title": "ArtifactReference",
+      "type": "object"
+    },
+    "Candidate": {
+      "additionalProperties": false,
+      "properties": {
+        "candidate_id": {
+          "pattern": "^item_[A-Za-z0-9][A-Za-z0-9_-]*$",
+          "title": "Candidate Id",
+          "type": "string"
+        },
+        "claim_ids": {
+          "items": {
+            "pattern": "^claim_[A-Za-z0-9][A-Za-z0-9_-]*$",
+            "type": "string"
+          },
+          "maxItems": 1000,
+          "title": "Claim Ids",
+          "type": "array"
+        },
+        "classification": {
+          "patternProperties": {
+            "^[a-z][a-z0-9_-]*$": {
+              "$ref": "#/$defs/JsonValue"
+            }
+          },
+          "propertyNames": {
+            "maxLength": 80
+          },
+          "title": "Classification",
+          "type": "object"
+        },
+        "context": {
+          "maxLength": 10000,
+          "minLength": 1,
+          "title": "Context",
+          "type": "string"
+        },
+        "relevant_times": {
+          "patternProperties": {
+            "^[a-z][a-z0-9_-]*$": {
+              "anyOf": [
+                {
+                  "format": "date-time",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            }
+          },
+          "propertyNames": {
+            "maxLength": 80
+          },
+          "title": "Relevant Times",
+          "type": "object"
+        },
+        "source_differences": {
+          "$ref": "#/$defs/SourceDifferences"
+        },
+        "source_ids": {
+          "items": {
+            "pattern": "^source_[A-Za-z0-9][A-Za-z0-9_-]*$",
+            "type": "string"
+          },
+          "maxItems": 1000,
+          "title": "Source Ids",
+          "type": "array"
+        },
+        "summary": {
+          "maxLength": 10000,
+          "minLength": 1,
+          "title": "Summary",
+          "type": "string"
+        },
+        "title": {
+          "maxLength": 500,
+          "minLength": 1,
+          "title": "Title",
+          "type": "string"
+        },
+        "uncertainties": {
+          "items": {
+            "maxLength": 10000,
+            "minLength": 1,
+            "type": "string"
+          },
+          "maxItems": 100,
+          "title": "Uncertainties",
+          "type": "array"
+        },
+        "why_it_matters": {
+          "maxLength": 10000,
+          "minLength": 1,
+          "title": "Why It Matters",
+          "type": "string"
+        }
+      },
+      "required": [
+        "candidate_id",
+        "title",
+        "summary",
+        "context",
+        "why_it_matters",
+        "uncertainties",
+        "source_differences",
+        "claim_ids",
+        "source_ids"
+      ],
+      "title": "Candidate",
+      "type": "object"
+    },
+    "Claim": {
+      "additionalProperties": false,
+      "properties": {
+        "candidate_id": {
+          "pattern": "^item_[A-Za-z0-9][A-Za-z0-9_-]*$",
+          "title": "Candidate Id",
+          "type": "string"
+        },
+        "claim_id": {
+          "pattern": "^claim_[A-Za-z0-9][A-Za-z0-9_-]*$",
+          "title": "Claim Id",
+          "type": "string"
+        },
+        "confidence": {
+          "enum": [
+            "high",
+            "medium",
+            "low"
+          ],
+          "title": "Confidence",
+          "type": "string"
+        },
+        "qualifications": {
+          "items": {
+            "maxLength": 10000,
+            "minLength": 1,
+            "type": "string"
+          },
+          "maxItems": 100,
+          "title": "Qualifications",
+          "type": "array"
+        },
+        "required_attribution": {
+          "anyOf": [
+            {
+              "maxLength": 500,
+              "minLength": 1,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Required Attribution"
+        },
+        "status": {
+          "enum": [
+            "confirmed",
+            "reported",
+            "alleged",
+            "inferred",
+            "disputed",
+            "uncertain"
+          ],
+          "title": "Status",
+          "type": "string"
+        },
+        "support_ids": {
+          "items": {
+            "pattern": "^support_[A-Za-z0-9][A-Za-z0-9_-]*$",
+            "type": "string"
+          },
+          "maxItems": 1000,
+          "title": "Support Ids",
+          "type": "array"
+        },
+        "text": {
+          "maxLength": 10000,
+          "minLength": 1,
+          "title": "Text",
+          "type": "string"
+        }
+      },
+      "required": [
+        "claim_id",
+        "candidate_id",
+        "text",
+        "status",
+        "confidence",
+        "support_ids",
+        "required_attribution",
+        "qualifications"
+      ],
+      "title": "Claim",
+      "type": "object"
+    },
+    "ClaimSupport": {
+      "additionalProperties": false,
+      "properties": {
+        "claim_id": {
+          "pattern": "^claim_[A-Za-z0-9][A-Za-z0-9_-]*$",
+          "title": "Claim Id",
+          "type": "string"
+        },
+        "evidence": {
+          "$ref": "#/$defs/SupportEvidence"
+        },
+        "qualifications": {
+          "items": {
+            "maxLength": 10000,
+            "minLength": 1,
+            "type": "string"
+          },
+          "maxItems": 100,
+          "title": "Qualifications",
+          "type": "array"
+        },
+        "required_attribution": {
+          "anyOf": [
+            {
+              "maxLength": 500,
+              "minLength": 1,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Required Attribution"
+        },
+        "source_id": {
+          "pattern": "^source_[A-Za-z0-9][A-Za-z0-9_-]*$",
+          "title": "Source Id",
+          "type": "string"
+        },
+        "source_relationship": {
+          "$ref": "#/$defs/SourceRelationship"
+        },
+        "support_id": {
+          "pattern": "^support_[A-Za-z0-9][A-Za-z0-9_-]*$",
+          "title": "Support Id",
+          "type": "string"
+        },
+        "support_type": {
+          "enum": [
+            "direct",
+            "attributed",
+            "inferred",
+            "disputed"
+          ],
+          "title": "Support Type",
+          "type": "string"
+        }
+      },
+      "required": [
+        "support_id",
+        "claim_id",
+        "source_id",
+        "support_type",
+        "evidence",
+        "required_attribution",
+        "qualifications",
+        "source_relationship"
+      ],
+      "title": "ClaimSupport",
+      "type": "object"
+    },
+    "CollectionMethod": {
+      "additionalProperties": false,
+      "properties": {
+        "name": {
+          "maxLength": 500,
+          "minLength": 1,
+          "title": "Name",
+          "type": "string"
+        },
+        "type": {
+          "maxLength": 80,
+          "pattern": "^[a-z][a-z0-9_-]*$",
+          "title": "Type",
+          "type": "string"
+        },
+        "version": {
+          "anyOf": [
+            {
+              "maxLength": 40,
+              "pattern": "^\\d+\\.\\d+(?:\\.\\d+)?$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Version"
+        }
+      },
+      "required": [
+        "type",
+        "name",
+        "version"
+      ],
+      "title": "CollectionMethod",
+      "type": "object"
+    },
+    "DossierLimits": {
+      "additionalProperties": false,
+      "properties": {
+        "maximum_candidates": {
+          "default": 40,
+          "maximum": 5000,
+          "minimum": 1,
+          "title": "Maximum Candidates",
+          "type": "integer"
+        },
+        "maximum_estimated_tokens": {
+          "default": 100000,
+          "maximum": 2000000,
+          "minimum": 1,
+          "title": "Maximum Estimated Tokens",
+          "type": "integer"
+        },
+        "maximum_sources": {
+          "default": 100,
+          "maximum": 10000,
+          "minimum": 1,
+          "title": "Maximum Sources",
+          "type": "integer"
+        },
+        "warning_estimated_tokens": {
+          "default": 50000,
+          "maximum": 1000000,
+          "minimum": 1,
+          "title": "Warning Estimated Tokens",
+          "type": "integer"
+        }
+      },
+      "title": "DossierLimits",
+      "type": "object"
+    },
+    "EvidenceSource": {
+      "additionalProperties": false,
+      "properties": {
+        "access_status": {
+          "enum": [
+            "retrieved",
+            "partial",
+            "unavailable",
+            "access_denied"
+          ],
+          "title": "Access Status",
+          "type": "string"
+        },
+        "canonical_locator": {
+          "maxLength": 2000,
+          "minLength": 1,
+          "title": "Canonical Locator",
+          "type": "string"
+        },
+        "content_hash": {
+          "anyOf": [
+            {
+              "pattern": "^sha256:[0-9a-f]{64}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Content Hash"
+        },
+        "created_at": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Created At"
+        },
+        "creator_or_publisher": {
+          "maxLength": 500,
+          "minLength": 1,
+          "title": "Creator Or Publisher",
+          "type": "string"
+        },
+        "is_primary": {
+          "title": "Is Primary",
+          "type": "boolean"
+        },
+        "notes": {
+          "anyOf": [
+            {
+              "maxLength": 2000,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Notes"
+        },
+        "originality": {
+          "$ref": "#/$defs/SourceOriginality"
+        },
+        "published_at": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Published At"
+        },
+        "retrieved_at": {
+          "format": "date-time",
+          "title": "Retrieved At",
+          "type": "string"
+        },
+        "source_id": {
+          "pattern": "^source_[A-Za-z0-9][A-Za-z0-9_-]*$",
+          "title": "Source Id",
+          "type": "string"
+        },
+        "source_type": {
+          "maxLength": 80,
+          "pattern": "^[a-z][a-z0-9_-]*$",
+          "title": "Source Type",
+          "type": "string"
+        },
+        "title": {
+          "maxLength": 500,
+          "minLength": 1,
+          "title": "Title",
+          "type": "string"
+        },
+        "updated_at": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Updated At"
+        }
+      },
+      "required": [
+        "source_id",
+        "source_type",
+        "creator_or_publisher",
+        "title",
+        "canonical_locator",
+        "access_status",
+        "retrieved_at",
+        "created_at",
+        "published_at",
+        "updated_at",
+        "content_hash",
+        "is_primary",
+        "originality",
+        "notes"
+      ],
+      "title": "EvidenceSource",
+      "type": "object"
+    },
+    "JsonValue": {},
+    "SourceDifferences": {
+      "additionalProperties": false,
+      "properties": {
+        "baseline_consensus": {
+          "maxLength": 10000,
+          "minLength": 1,
+          "title": "Baseline Consensus",
+          "type": "string"
+        },
+        "meaningful_differences": {
+          "items": {
+            "maxLength": 10000,
+            "minLength": 1,
+            "type": "string"
+          },
+          "maxItems": 100,
+          "title": "Meaningful Differences",
+          "type": "array"
+        }
+      },
+      "required": [
+        "baseline_consensus",
+        "meaningful_differences"
+      ],
+      "title": "SourceDifferences",
+      "type": "object"
+    },
+    "SourceOriginality": {
+      "additionalProperties": false,
+      "properties": {
+        "independence_group": {
+          "maxLength": 80,
+          "pattern": "^[a-z][a-z0-9_-]*$",
+          "title": "Independence Group",
+          "type": "string"
+        },
+        "kind": {
+          "enum": [
+            "original_reporting",
+            "syndicated",
+            "aggregation",
+            "primary_source",
+            "unknown"
+          ],
+          "title": "Kind",
+          "type": "string"
+        }
+      },
+      "required": [
+        "kind",
+        "independence_group"
+      ],
+      "title": "SourceOriginality",
+      "type": "object"
+    },
+    "SourceRelationship": {
+      "additionalProperties": false,
+      "properties": {
+        "independence_group": {
+          "maxLength": 80,
+          "pattern": "^[a-z][a-z0-9_-]*$",
+          "title": "Independence Group",
+          "type": "string"
+        },
+        "originality": {
+          "enum": [
+            "original_reporting",
+            "syndicated",
+            "aggregation",
+            "primary_source",
+            "unknown"
+          ],
+          "title": "Originality",
+          "type": "string"
+        }
+      },
+      "required": [
+        "originality",
+        "independence_group"
+      ],
+      "title": "SourceRelationship",
+      "type": "object"
+    },
+    "SupportEvidence": {
+      "additionalProperties": false,
+      "properties": {
+        "excerpt": {
+          "anyOf": [
+            {
+              "maxLength": 1000,
+              "minLength": 1,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Excerpt"
+        },
+        "locator": {
+          "anyOf": [
+            {
+              "maxLength": 500,
+              "minLength": 1,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Locator"
+        }
+      },
+      "required": [
+        "excerpt",
+        "locator"
+      ],
+      "title": "SupportEvidence",
+      "type": "object"
+    }
+  },
+  "$id": "urn:personalized-audio-episode-engine:schema:evidence-dossier:1.0",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "properties": {
+    "candidates": {
+      "items": {
+        "$ref": "#/$defs/Candidate"
+      },
+      "maxItems": 5000,
+      "title": "Candidates",
+      "type": "array"
+    },
+    "claim_supports": {
+      "items": {
+        "$ref": "#/$defs/ClaimSupport"
+      },
+      "maxItems": 20000,
+      "title": "Claim Supports",
+      "type": "array"
+    },
+    "claims": {
+      "items": {
+        "$ref": "#/$defs/Claim"
+      },
+      "maxItems": 10000,
+      "title": "Claims",
+      "type": "array"
+    },
+    "collection_completed_at": {
+      "format": "date-time",
+      "title": "Collection Completed At",
+      "type": "string"
+    },
+    "collection_method": {
+      "$ref": "#/$defs/CollectionMethod"
+    },
+    "collection_notes": {
+      "items": {
+        "maxLength": 10000,
+        "minLength": 1,
+        "type": "string"
+      },
+      "maxItems": 500,
+      "title": "Collection Notes",
+      "type": "array"
+    },
+    "collection_request": {
+      "$ref": "#/$defs/ArtifactReference"
+    },
+    "collection_started_at": {
+      "format": "date-time",
+      "title": "Collection Started At",
+      "type": "string"
+    },
+    "contract_version": {
+      "const": "1.0",
+      "title": "Contract Version",
+      "type": "string"
+    },
+    "estimated_tokens": {
+      "maximum": 2000000,
+      "minimum": 0,
+      "title": "Estimated Tokens",
+      "type": "integer"
+    },
+    "limits": {
+      "$ref": "#/$defs/DossierLimits"
+    },
+    "prompt_version": {
+      "maxLength": 40,
+      "pattern": "^\\d+\\.\\d+(?:\\.\\d+)?$",
+      "title": "Prompt Version",
+      "type": "string"
+    },
+    "sources": {
+      "items": {
+        "$ref": "#/$defs/EvidenceSource"
+      },
+      "maxItems": 10000,
+      "title": "Sources",
+      "type": "array"
+    },
+    "warnings": {
+      "items": {
+        "maxLength": 10000,
+        "minLength": 1,
+        "type": "string"
+      },
+      "maxItems": 500,
+      "title": "Warnings",
+      "type": "array"
+    }
+  },
+  "required": [
+    "contract_version",
+    "prompt_version",
+    "collection_request",
+    "collection_method",
+    "collection_started_at",
+    "collection_completed_at",
+    "estimated_tokens",
+    "limits",
+    "candidates",
+    "claims",
+    "claim_supports",
+    "sources",
+    "collection_notes",
+    "warnings"
+  ],
+  "title": "EvidenceDossier",
+  "type": "object"
+}
