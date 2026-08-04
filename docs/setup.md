@@ -163,3 +163,5 @@ After publication this records terminal success. If a stage cannot complete, it 
 - If a credential is exposed, revoke or rotate it immediately and remove it from all logs and evidence. Feed-token rotation also changes the secret feed URL and requires republishing.
 - If collection method selection or dossier validation fails, follow [`troubleshooting.md`](troubleshooting.md); never install a tool, edit state, or weaken the contract inside the run.
 - To disable live operation, remove or disable the scheduled task, revoke the bucket token, and disable R2 public access. Offline development remains usable.
+
+After one manual end-to-end workflow succeeds, configure and qualify the Codex desktop task using [`scheduled-task.md`](scheduled-task.md). Keep the owner environment external, use local execution against the selected stable checkout, and do not enable the daily recurrence until the fresh-context manual invocation passes.

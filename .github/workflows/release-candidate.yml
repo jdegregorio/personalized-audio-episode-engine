@@ -1,0 +1,76 @@
+name: Release candidate
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: release-candidate-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  offline-release-candidate:
+    name: Offline release candidate
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install FFmpeg
+        run: |
+          sudo apt-get update
+          sudo apt-get install --yes --no-install-recommends ffmpeg
+      - uses: astral-sh/setup-uv@v6
+        with:
+          enable-cache: true
+          python-version: "3.12"
+      - name: Prepare report directory
+        run: mkdir -p validation-reports
+      - name: Sync and verify lock
+        run: |
+          uv sync --locked --all-extras --dev
+          uv lock --check
+      - name: Repository and artifact integrity
+        shell: bash
+        run: |
+          set -o pipefail
+          uv run python scripts/check_repository.py | tee validation-reports/repository.txt
+          uv run python scripts/check_artifacts.py | tee validation-reports/artifacts.txt
+      - name: Formatting, lint, and types
+        run: |
+          uv run ruff format --check .
+          uv run ruff check .
+          uv run pyright
+      - name: Deterministic tests
+        run: >-
+          uv run pytest -m "not live and not smoke"
+          --cov=audio_engine --cov=scripts
+          --cov-report=term-missing --cov-report=xml:validation-reports/coverage.xml
+          --cov-fail-under=85 --junitxml=validation-reports/deterministic-tests.xml
+      - name: Functional smoke
+        run: >-
+          uv run pytest -m "smoke and not live"
+          --junitxml=validation-reports/functional-smoke.xml
+      - name: Build and isolated Python 3.12 import
+        shell: bash
+        run: |
+          set -o pipefail
+          uv build
+          artifact_venv="${RUNNER_TEMP}/release-artifact-venv"
+          uv venv --python 3.12 "${artifact_venv}"
+          uv pip install --python "${artifact_venv}/bin/python" dist/*.whl
+          "${artifact_venv}/bin/python" -c "import audio_engine; print(audio_engine.__version__)" | tee validation-reports/wheel-import.txt
+      - name: Record safe build identity
+        shell: bash
+        run: |
+          printf 'workflow=%s\ncommit=%s\nref=%s\n' \
+            'Release candidate' "${GITHUB_SHA}" "${GITHUB_REF_NAME}" \
+            > validation-reports/build-identity.txt
+      - name: Upload secret-free validation report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-candidate-${{ github.sha }}
+          path: validation-reports/
+          if-no-files-found: warn
+          retention-days: 7

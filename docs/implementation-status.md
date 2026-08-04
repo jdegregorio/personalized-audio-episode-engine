@@ -15,8 +15,8 @@ The approved scope and sequence live in [`plan.md`](../plan.md). This page recor
 | 09 | Gemini rendering and voice selection | Implemented on `main` |
 | 10 | Audio assembly | Implemented on `main` |
 | 11 | Cloudflare R2 publication | Implemented on `main` |
-| 12 | Complete offline vertical slice | Implemented in PR 12 |
-| 13 | Scheduled execution and release qualification | Not started |
+| 12 | Complete offline vertical slice | Implemented on `main` |
+| 13 | Scheduled execution and release qualification | Implemented in PR 13 |
 
 ## PR 01 delivered surface
 
@@ -115,3 +115,10 @@ Later workflow capabilities remain deliberately unavailable until their ordered 
 - Progressive-disclosure skill routing through collection, editorial, script, TTS, audio, publication, and finalization without an all-in-one CLI, background service, queue, or orchestration framework.
 - Deterministic resume coverage at collection, editorial, script, unprepared/prepared/partially rendered TTS, audio, and pre-publication boundaries with unchanged artifact hashes/timestamps and no replacement workspace.
 - Complete synthetic offline smoke from profile initialization through golden agent-authored evidence/plan/script, fake speech, real FFmpeg MP3 assembly, fake R2 feed publication, publication-only recovery, final state, and redacted summary.
+
+## PR 13 delivered surface
+
+- One canonical standalone Codex task prompt with local execution, network/workspace permissions, configurable GPT-5.6 model guidance, central environment loading, independent daily contexts, production mutation restrictions, resume/finalization behavior, and stable-checkout promotion.
+- A release checklist and redacted evidence template covering three consecutive scheduled runs, human playback, AntennaPod delivery, public media types/cache behavior, idempotency, failed-segment/publication recovery, concurrency, security, rollback, and AC-001 through AC-020.
+- A manually dispatched, secret-free release-candidate workflow that reruns the complete offline gate and retains only JUnit, coverage, integrity/import, and build-identity reports for seven days.
+- Contract coverage for the durable task prompt/workflow and a clean-checkout integration test that runs the complete offline fixture publication from a copied checkout and proves tracked production surfaces are unchanged.
