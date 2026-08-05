@@ -790,7 +790,177 @@ If any release-gate item fails, the MVP is not accepted. Add the smallest regres
 
 ## 6. Post-MVP follow-up backlog
 
-### AntennaPod plain-text transcript discoverability
+### Closed-PR Codex review audit and priority policy
+
+On August 5, 2026, all 16 merged pull requests were audited for top-level Codex
+reviews and inline feedback, including comments submitted after merge. The audit
+found 40 inline findings. Current `main` already addresses or supersedes 30 of
+them. Ten findings remain applicable; the two publication-revision findings have
+the same root cause and are consolidated below, leaving nine review-derived
+backlog items. Eleven findings arrived after their PR had merged; the late
+feed-token rotation finding from PR #1 is the only one of those already addressed,
+because the implemented rotation guide now deletes the old feed, optionally
+removes exposed episode objects immediately, and verifies the compromised URL
+returns `404`. PRs #2, #9, #13, and #16 had no Codex inline findings.
+
+Backlog priority reflects current operational risk, not the badge assigned by the
+original reviewer:
+
+- **P0:** A live-publication integrity risk to address before relying on mutable
+  same-day reruns.
+- **P1:** Security, factual-integrity, feed-validity, or durable-recovery defects
+  that can produce an unsafe or misleading result.
+- **P2:** Bounded reliability, cost, or contract-compatibility defects outside the
+  ordinary successful path.
+- **P3:** User-experience improvements that do not compromise the audio-first
+  workflow.
+
+Before implementation, reproduce each item against then-current `main` and use the
+smallest maintainable fix that satisfies its acceptance evidence. Do not add a
+service, database, queue, cache-purge framework, or generalized transaction layer
+when immutable object revisions, an existing lock/precondition, or a focused
+validation can solve the owning problem.
+
+### P0 — Atomic, cache-safe publication revisions for same-day reruns
+
+- **Sources:** [PR #1 cache-safety review](https://github.com/jdegregorio/personalized-audio-episode-engine/pull/1#discussion_r3701099600) and [PR #14 publication-atomicity review](https://github.com/jdegregorio/personalized-audio-episode-engine/pull/14#discussion_r3708076725).
+- **Risk:** The publisher currently overwrites deterministic, one-day-cacheable
+  episode assets before acquiring the feed lock and committing the conditional RSS
+  revision. A failed upload, lock timeout, exhausted ETag conflict, or intermediary
+  cache can therefore leave the visible feed pointing to a mixture of old and new
+  bytes or metadata that does not match the enclosure.
+- **Expected behavior:** Upload and publicly verify one immutable episode-asset
+  revision before conditionally switching the stable GUID's feed item to that
+  complete revision. Until the feed commit succeeds, the previous feed must keep
+  referencing its complete previous revision. Use a cache policy consistent with
+  key mutability. Let the existing `episodes/` lifecycle remove abandoned or
+  superseded revisions unless a smaller bounded cleanup is demonstrably safe.
+- **Acceptance evidence:** Deterministic tests inject failure at every asset,
+  feed-lock timeout, and all remote ETag attempts; the previously published feed
+  and every referenced hash/size remain self-consistent. A successful same-day
+  rerun exposes only the new complete revision, retains one stable GUID, returns
+  the intended cache headers through the public endpoint, and leaves abandoned
+  revisions unreferenced and eligible for the existing lifecycle policy.
+
+### P1 — Scope the Gemini live-smoke credential to its render step
+
+- **Source:** [PR #12 credential-scope review](https://github.com/jdegregorio/personalized-audio-episode-engine/pull/12#discussion_r3706806817).
+- **Risk:** `GEMINI_API_KEY` is currently a job-level environment value, so
+  checkout, third-party setup, dependency installation, rendering, and artifact
+  upload all receive it even though only the render command needs it.
+- **Expected behavior:** Expose the key only to the named render-and-validate step;
+  all actions and other shell steps run without the credential.
+- **Acceptance evidence:** A workflow contract test rejects job-level or unrelated
+  step exposure, repository checks remain secret-free, and a protected manual
+  dispatch on `main` still renders and uploads the short-lived synthetic sample.
+
+### P1 — Reject materially truncated Gemini segment audio
+
+- **Source:** [PR #12 duration-validation review](https://github.com/jdegregorio/personalized-audio-episode-engine/pull/12#discussion_r3706806810).
+- **Risk:** The current duration floor accepts as little as 12–15 seconds for a
+  segment estimated at two to four minutes, so valid PCM that is severely
+  truncated can be marked complete and published in the assembled episode.
+- **Expected behavior:** Compare returned duration with a conservative range
+  derived from the segment's validated spoken content or estimate. Materially
+  short audio must enter the existing segment retry path and must not advance the
+  run to audio assembly; ordinary provider timing variation must remain valid.
+- **Acceptance evidence:** Boundary tests reject representative 12–15-second
+  responses for two-to-four-minute segments, accept reasonable fast and slow
+  speech, preserve the failed raw response for diagnosis, exercise retry
+  exhaustion, and prove no incomplete segment enters final assembly.
+
+### P1 — Enforce support-level spoken attribution and qualifications
+
+- **Source:** [PR #10 grounding review](https://github.com/jdegregorio/personalized-audio-episode-engine/pull/10#discussion_r3706371223).
+- **Risk:** Script validation checks claim-level wording but can ignore
+  `ClaimSupport.required_attribution` and support-level qualifications. A script
+  can therefore advance to speech after omitting a required source attribution or
+  caveat from the evidence contract.
+- **Expected behavior:** For every support reached by a spoken claim, require its
+  non-empty attribution and qualification wording in the claim's spoken treatment,
+  without requiring the evidence author to duplicate those fields onto the claim.
+- **Acceptance evidence:** Contract/integration cases with support-only
+  attribution, support-only qualifications, multiple supports, and disputed
+  support fail with stable machine-readable codes when wording is absent and pass
+  when the required treatment is spoken.
+
+### P1 — Revalidate completed runs and repair their summary idempotently
+
+- **Source:** [PR #15 terminal-validation review](https://github.com/jdegregorio/personalized-audio-episode-engine/pull/15#discussion_r3708280621).
+- **Risk:** Finalization returns `already_completed` before revalidating referenced
+  artifacts or regenerating `summary.md`. Later corruption/deletion can be reported
+  as success, and a crash between terminal state persistence and summary writing
+  leaves the documented retry unable to repair the human-readable result.
+- **Expected behavior:** A completed-run retry validates terminal state and its
+  full recorded artifact graph, then regenerates the summary as an idempotent
+  cleanup. Missing, corrupt, or lineage-inconsistent artifacts must produce a
+  concise non-success result and recovery guidance without republishing.
+- **Acceptance evidence:** Tests delete and corrupt each terminal reference, remove
+  or stale the summary after terminal state is written, and retry finalization.
+  Valid runs return `already_completed` with a repaired summary; invalid runs never
+  report success and identify the owning recovery boundary.
+
+### P1 — Use one aware time basis for feed retention
+
+- **Source:** [PR #14 retention-boundary review](https://github.com/jdegregorio/personalized-audio-episode-engine/pull/14#discussion_r3708076731).
+- **Risk:** Feed pruning compares an old item's UTC-derived `pubDate.date()` with a
+  new episode's local calendar date. Around UTC midnight this can retain an item a
+  day beyond its object-retention boundary and leave a broken enclosure in RSS.
+- **Expected behavior:** Compare compatible timezone-aware publication instants, or
+  deliberately convert both sides to the profile timezone, so feed removal occurs
+  no later than the corresponding object lifecycle boundary.
+- **Acceptance evidence:** Unit/integration cases cover publications on opposite
+  UTC/local dates, exact retention equality, both sides of the boundary, and a DST
+  transition. Every retained item still has live assets under the documented
+  lifecycle policy.
+
+### P2 — Replace the prose token heuristic with a proven safe bound
+
+- **Source:** [PR #11 token-bound review](https://github.com/jdegregorio/personalized-audio-episode-engine/pull/11#discussion_r3706577871).
+- **Risk:** `ceil(utf8_bytes / 3)` is not an upper bound for low-compressibility
+  ASCII, identifiers, or punctuation and can approve input that exceeds Gemini's
+  absolute token limit.
+- **Expected behavior:** Use a stable provider tokenizer when one is available, or
+  the simplest documented estimator that is a proven conservative upper bound.
+  Keep the configured safety margin and natural turn/segment boundaries; do not add
+  a tokenizer dependency solely for a tighter estimate unless it materially
+  reduces unnecessary segmentation.
+- **Acceptance evidence:** Adversarial ASCII, punctuation, Unicode, and ordinary
+  prose fixtures never exceed the provider limit when the preflight passes.
+  Oversized natural units split deterministically, normal scripts remain naturally
+  bounded, and the provider is never called for a rejected prompt.
+
+### P2 — Adopt fully validated orphaned TTS segment files after a state-write failure
+
+- **Source:** [PR #12 rendered-segment recovery review](https://github.com/jdegregorio/personalized-audio-episode-engine/pull/12#discussion_r3706806814).
+- **Risk:** A failure after PCM/WAV persistence but before the state update leaves
+  valid paid output unrecorded. The next invocation ignores those files and makes
+  the same Gemini request again.
+- **Expected behavior:** Persist enough fenced recovery metadata to adopt the exact
+  expected segment, or validate an orphan against its manifest order, prompt hash,
+  paths, media parameters, and decoded WAV before recording it. Ambiguous or
+  modified files must never be adopted.
+- **Acceptance evidence:** Fault injection between file persistence and state
+  persistence proves the next invocation records the validated segment with zero
+  provider calls. Hash, prompt, order, or WAV tampering is rejected and follows the
+  existing safe retry behavior; already-recorded segments remain unchanged.
+
+### P2 — Align valid host-profile length across profile and TTS contracts
+
+- **Source:** [PR #11 host-contract review](https://github.com/jdegregorio/personalized-audio-episode-engine/pull/11#discussion_r3706577880).
+- **Risk:** A profile host description of 501–2,000 characters is valid at profile
+  load but fails when converted to `TtsHost.description`, whose `ShortText` limit is
+  500 characters. The run can therefore fail only after reaching TTS preparation.
+- **Expected behavior:** Use one explicit supported limit at profile validation,
+  Python contract, generated JSON Schema, and prompt construction. Prefer retaining
+  valid profile input unless the longer text would violate the corrected token
+  bound.
+- **Acceptance evidence:** Boundary contract tests cover 500, 501, 2,000, and 2,001
+  characters; every profile accepted by the profile schema either prepares TTS
+  successfully or fails earlier with an actionable profile error, and generated
+  schemas remain in sync.
+
+### P3 — AntennaPod plain-text transcript discoverability
 
 - **Observed:** August 3, 2026 physical-device UAT confirmed feed subscription, refresh, streaming, download/playback, episode metadata, and the in-app description. AntennaPod's web/globe action opened the full HTML show notes with their transcript link, and the RSS-advertised `transcript.txt` returned HTTP `200` with `text/plain`. AntennaPod did not expose a separate native transcript view.
 - **MVP disposition:** Transcript and show-notes reachability pass through the web/globe action, so the missing native transcript view does not block the audio-first MVP. Keep publishing and verifying the required plain-text transcript and its stable RSS URL, but do not add speculative VTT, SRT, JSON, timing generation, or client-specific feed variants during PR 11–13.
