@@ -32,8 +32,11 @@ Streak decision: `<pass/fail; failures restart at run 1>`
 
 ## Device and public-delivery UAT
 
+- Automated playback attempts: `none; owner initiated listening only after task completion`
 - AntennaPod refresh/discovery/stream/download/playback: `<pass/fail>`
-- Two distinguishable contributing speakers: `<human-confirmed pass/fail>`
+- Voice stability across segment boundaries: `<human-confirmed pass/fail>`
+- Distinct host register/personality: `<human-confirmed pass/fail>`
+- Inquiry-driven follow-ups and earned handoffs: `<human-confirmed pass/fail>`
 - In-app description: `<pass/fail>`
 - Web/globe HTML notes and transcript link: `<pass/fail>`
 - Independent transcript response: `<status and media type only>`
@@ -58,6 +61,9 @@ Streak decision: `<pass/fail; failures restart at run 1>`
 | AC-015–018 | R2/AntennaPod, idempotency, summary, reproducible setup | `<pass/fail>` |
 | AC-019 | Three consecutive scheduled runs | `<pass/fail>` |
 | AC-020 | Initialization and publication concurrency | `<pass/fail>` |
+| AC-021–023 | Stable/distinct hosts and inquiry-driven conversation | `<pass/fail>` |
+| AC-024 | Silent automation and owner-initiated listening only | `<pass/fail>` |
+| AC-025–026 | Personal sources, minimization, and local-only finalization | `<pass/fail>` |
 
 Overall MVP decision: `<approve/reject>`
 

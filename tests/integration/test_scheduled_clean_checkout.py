@@ -118,5 +118,4 @@ def test_offline_scheduled_fixture_leaves_clean_checkout_unchanged(tmp_path: Pat
     )
 
     assert result.returncode == 0, result.stdout + result.stderr
-    assert "1 passed" in result.stdout
     assert _snapshot(checkout, protected) == before

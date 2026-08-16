@@ -426,11 +426,18 @@ def _select_existing_run(
                 and state.failure.code in _NON_RESUMABLE_FAILURE_CODES
             ):
                 continue
+            publication_complete = (
+                profile.publishing.provider == "cloudflare_r2"
+                and state.publication.status == "published"
+            ) or (
+                profile.publishing.provider == "local_private"
+                and state.publication.status == "not_required"
+            )
             if state.status in {"completed", "no_op"} and (
                 state.current_stage != "finalized"
                 or state.last_completed_valid_stage != "finalized"
                 or state.final_audio_validation.status != "valid"
-                or state.publication.status != "published"
+                or not publication_complete
             ):
                 raise LifecycleError("completed run state is not safely finalized")
             if state.status == "running" and state.current_stage == "finalized":
@@ -1972,8 +1979,9 @@ def finalize_run(
         )
     except (LifecycleError, OSError, SafetyError, StorageError, ValueError):
         valid_artifacts = False
-    ready = (
+    remote_ready = (
         valid_artifacts
+        and profile.publishing.provider == "cloudflare_r2"
         and state.current_stage == "publication"
         and state.last_completed_valid_stage == "publication"
         and state.final_audio_validation.status == "valid"
@@ -1981,6 +1989,17 @@ def finalize_run(
         and "show_notes" in state.artifacts
         and "published_episode" in state.artifacts
     )
+    local_ready = (
+        valid_artifacts
+        and profile.publishing.provider == "local_private"
+        and state.current_stage == "publication"
+        and state.last_completed_valid_stage == "audio"
+        and state.final_audio_validation.status == "valid"
+        and state.publication.status in {"not_started", "not_required"}
+        and "show_notes" not in state.artifacts
+        and "published_episode" not in state.artifacts
+    )
+    ready = remote_ready or local_ready
     if not ready:
         failure = _finalization_failure(state, valid_artifacts=valid_artifacts)
         failed = mark_run_failed(
@@ -2001,20 +2020,37 @@ def finalize_run(
     try:
         with manager.mutation(workspace.episode_key, state.run_id):
             current = load_run_state(workspace.state_path)
+            current_remote_ready = (
+                profile.publishing.provider == "cloudflare_r2"
+                and current.last_completed_valid_stage == "publication"
+                and current.publication.status == "published"
+            )
+            current_local_ready = (
+                profile.publishing.provider == "local_private"
+                and current.last_completed_valid_stage == "audio"
+                and current.publication.status in {"not_started", "not_required"}
+            )
             if (
                 current.status != "running"
                 or current.current_stage != "publication"
-                or current.last_completed_valid_stage != "publication"
                 or current.final_audio_validation.status != "valid"
-                or current.publication.status != "published"
+                or not (current_remote_ready or current_local_ready)
             ):
                 raise LifecycleError("run changed before finalization")
+            publication = current.publication
+            if current_local_ready:
+                publication = PublicationState(
+                    status="not_required",
+                    redacted_locations=["private local run workspace"],
+                    message=None,
+                )
             completed = _validated_state_update(
                 current,
                 {
                     "completed_at": now,
                     "current_stage": "finalized",
                     "last_completed_valid_stage": "finalized",
+                    "publication": publication,
                     "status": "completed",
                 },
             )
@@ -2111,7 +2147,13 @@ def render_summary(workspace: RunWorkspace, state: RunState) -> str:
     """Render the one-screen human recovery surface from authoritative state."""
     audio_valid = state.final_audio_validation.status == "valid"
     publication_succeeded = state.publication.status == "published"
+    publication_result = "yes" if publication_succeeded else "no"
+    if state.publication.status == "not_required":
+        publication_result = "not required (private local output)"
     locations = ", ".join(state.publication.redacted_locations) or "not published"
+    locations_label = (
+        "Output locations" if state.publication.status == "not_required" else "Published locations"
+    )
     warnings: list[str] = []
     if state.final_audio_validation.status == "invalid" and state.final_audio_validation.message:
         warnings.append(state.final_audio_validation.message)
@@ -2168,9 +2210,9 @@ def render_summary(workspace: RunWorkspace, state: RunState) -> str:
         f"- Final audio: {audio_details}",
         f"- TTS segments prepared: {prepared_segments}",
         f"- TTS segments rendered: {rendered_segments}",
-        f"- Publication succeeded: {'yes' if publication_succeeded else 'no'}",
+        f"- Publication succeeded: {publication_result}",
         f"- Output directory: {workspace.run_directory}",
-        f"- Published locations: {locations}",
+        f"- {locations_label}: {locations}",
         f"- Warnings: {warning_text}",
     ]
     if state.failure:

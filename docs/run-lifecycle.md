@@ -43,8 +43,8 @@ An initialized owner creates:
     │   ├── audio/segment-001.wav               # validated intermediate audio
     │   └── ...
     ├── episode.mp3                            # validated final audio after assembly
-    ├── show-notes.html                        # after successful publication
-    ├── published-episode.json                 # after successful publication
+    ├── show-notes.html                        # after successful R2 publication only
+    ├── published-episode.json                 # after successful R2 publication only
     ├── state.json
     └── summary.md
 ```
@@ -80,9 +80,9 @@ TTS rendering also remains at `tts` until every manifest segment is complete. Fo
 
 Final audio assembly runs only from the complete rendered prefix. It rechecks each exact ordered WAV with FFprobe and full decode, concatenates and encodes through bounded FFmpeg processes, validates the final mono 48 kHz MP3 against the summed segment duration, and atomically promotes `episode.mp3`. Only then are its hash and full validation metadata recorded and state advanced to `publication`. Failure records recovery guidance at `audio`, removes any publishable final reference, and preserves every rendered segment. An unchanged rerun at `publication` fully revalidates the MP3 and returns without rewriting it.
 
-Publication revalidates that complete lineage and MP3 before any network mutation. It uploads and verifies all four episode assets before taking the feed lock and re-reading the current feed. The episode lease is always owned first; code never acquires an episode lease while holding the feed lock. Existing feeds use their latest ETag with `If-Match`, initial feeds use `If-None-Match: *`, and three conflicts cause resumable deferral rather than overwrite. Feed-lock timeout follows the same rule. Success leaves `current_stage` and `last_completed_valid_stage` at `publication` and records only local artifact hashes plus redacted remote locations.
+For `cloudflare_r2`, publication revalidates that complete lineage and MP3 before any network mutation. It uploads and verifies all four episode assets before taking the feed lock and re-reading the current feed. The episode lease is always owned first; code never acquires an episode lease while holding the feed lock. Existing feeds use their latest ETag with `If-Match`, initial feeds use `If-None-Match: *`, and three conflicts cause resumable deferral rather than overwrite. Feed-lock timeout follows the same rule. Success leaves `current_stage` and `last_completed_valid_stage` at `publication` and records only local artifact hashes plus redacted remote locations. A `local_private` profile never calls the publisher and remains at `publication` with `audio` as its last valid stage until finalization.
 
-Finalization revalidates every recorded local reference. Published work atomically persists `status: completed`, `completed_at`, and the `finalized` stage plus a regenerated one-screen summary before releasing the lease. If an owning invocation stops earlier, finalization records a stage-specific failure/recovery action before release. A later initializer can then restore the last valid stage without rewriting artifacts; publication-only recovery preserves the exact validated MP3.
+Finalization revalidates every recorded local reference. Published work, or a validated `local_private` MP3, atomically persists `status: completed`, `completed_at`, and the `finalized` stage plus a regenerated one-screen summary before releasing the lease. Local-private completion changes publication from `not_started` to `not_required` and creates no remote metadata artifacts. If an owning invocation stops earlier, finalization records a stage-specific failure/recovery action before release. A later initializer can then restore the last valid stage without rewriting artifacts; publication-only recovery preserves the exact validated MP3.
 
 ## Lease and failure recovery
 

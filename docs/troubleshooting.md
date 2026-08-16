@@ -38,7 +38,7 @@ On the next invocation, run `init_run.py` with the same profile. `resumed` means
 - `missing_required_attribution` or `missing_qualification`: preserve the dossier wording in one or more turns that reference that claim. Do not weaken the dossier to fit drafted prose.
 - `missing_disagreement_treatment`: explicitly preserve the documented conflict or uncertainty in a turn belonging to that planned segment.
 - `spoken_url`, `spoken_citation`, or `fake_personal_experience`: rewrite the host sentence naturally without reading links, citation markers, or invented firsthand activity aloud.
-- Balance, reaction, performance-tag, stock-phrase, takeaway, or preferred-duration warnings are visible quality signals. Repair them when useful; they block acceptance only when the active profile lists that code in `performance.fatal_warning_codes`.
+- Balance, reaction, performance-tag, stock-phrase, takeaway, preferred-duration, missing-followup, abrupt-transition, and mechanical-turn-taking warnings are visible quality signals. Repair them when useful; they block acceptance only when the active profile lists that code in `performance.fatal_warning_codes`.
 - `failed` after script attempt 2: the run is terminal and its lease is released. Preserve the workspace, use the latest report to correct the source/profile/instructions in a normal change, and start a new owning run.
 - `already_valid`: every profile/dossier/plan/script/transcript/report hash and current semantic relationship revalidated. Do not rewrite dialogue.
 
@@ -52,7 +52,7 @@ On the next invocation, run `init_run.py` with the same profile. `resumed` means
 
 ## Gemini rendering
 
-- `Gemini hosts require two distinct supported prebuilt voices`: use two different documented Gemini voice IDs in the profile; do not substitute display descriptions or arbitrary labels.
+- `configured Gemini female host requires a documented female prebuilt voice` or its male equivalent: use an ID from the corresponding documented Gemini voice category. The production pair is Maya/`Laomedeia` and Daniel/`Achird`.
 - `speech provider returned text instead of audio`, empty audio, an unsupported media type/rate, incomplete PCM, implausibly short output, or undecodable WAV is retryable for the current segment. After exhaustion, preserve the workspace and rerun `render_audio.py`; completed segments are not requested again.
 - `Gemini speech request failed` covers bounded timeout, rate-limit, and provider failures without echoing response details that could contain credentials. Confirm key/model/quota/billing/region access, then rerun the same segment.
 - A completed raw/WAV hash or decode mismatch fails closed. Preserve the workspace for diagnosis; never hand-edit a segment or its state reference.
@@ -65,8 +65,11 @@ On the next invocation, run `init_run.py` with the same profile. `resumed` means
 - A missing, empty, corrupt, hash-mismatched, or wrongly formatted segment fails closed before final promotion. Preserve the workspace for diagnosis and restore/recreate only through the owning rendering command.
 - A final codec, media type, duration, sample-rate, channel, size, or decode mismatch never advances to `publication`. The canonical `episode.mp3` is authoritative only when `final_audio_validation.status` is `valid` and its artifact matches `artifacts.final_audio`.
 - `already_assembled` means the MP3 hash and all technical validation fields were rechecked without changing the file.
+- Never diagnose assembly by invoking an audio player or opening the MP3 automatically. Metadata, hashes, duration, and full decode are the automated validation boundary; listening is a separate owner-initiated UAT step.
 
 ## R2 publication
+
+- `local-private profiles must skip publish_episode.py`: this is the intended privacy boundary. Run `finalize_run.py`; it will complete a validated local-private episode without R2, RSS, show notes, or published metadata.
 
 - Run `smoke_r2.py` first when S3 authentication, bucket access, public access, or media types are uncertain. Its successful output reports only redacted status and cleanup; it never prints an object key.
 - `episode assets could not be verified` means an upload, HEAD, public GET, media type, byte count, or SHA-256 check failed before the feed write. Confirm bucket-scoped Object Read & Write permission and public bucket/domain access, then rerun `publish_episode.py`. Do not rerender or reassemble valid audio.

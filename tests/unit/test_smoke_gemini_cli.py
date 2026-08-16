@@ -42,9 +42,9 @@ def test_live_smoke_cli_writes_redacted_audio_metadata(
             "--output",
             str(output),
             "--female-voice",
-            "Kore",
+            "Laomedeia",
             "--male-voice",
-            "Charon",
+            "Achird",
         ]
     )
     result = json.loads(capsys.readouterr().out)
@@ -56,7 +56,8 @@ def test_live_smoke_cli_writes_redacted_audio_metadata(
     assert output.is_file()
     assert output.with_suffix(".pcm").is_file()
     assert metadata["status"] == "passed"
-    assert metadata["female_voice"] == "Kore"
+    assert metadata["female_voice"] == "Laomedeia"
+    assert metadata["male_voice"] == "Achird"
     assert "private-test-key" not in json.dumps(metadata)
 
 

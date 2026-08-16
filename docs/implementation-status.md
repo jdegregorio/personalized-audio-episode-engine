@@ -17,6 +17,7 @@ The approved scope and sequence live in [`plan.md`](../plan.md). This page recor
 | 11 | Cloudflare R2 publication | Implemented on `main` |
 | 12 | Complete offline vertical slice | Implemented on `main` |
 | 13 | Scheduled execution and release qualification | Implemented in PR 13 |
+| 14 | Stable hosts, inquiry-driven dialogue, and private personal briefing | Implemented on feature branch; UAT pending |
 
 ## PR 01 delivered surface
 
@@ -83,12 +84,12 @@ Later workflow capabilities remain deliberately unavailable until their ordered 
 
 ## PR 09 delivered surface
 
-- A narrow `google-genai` adapter for the configured Gemini preview model with one bounded SDK request, SDK retries disabled, exact two-speaker configuration, supported distinct voice validation, response-part extraction, and provider prompt version `1.1.0` with explicit synthesis/transcript delimiters.
+- A narrow `google-genai` adapter for the configured Gemini preview model with one bounded SDK request, SDK retries disabled, exact two-speaker configuration, supported distinct voice validation, response-part extraction, and provider prompt version `1.2.0` with explicit immutable Audio Profiles and transcript delimiters.
 - Project-owned initial request plus up to three jittered retries near 2, 5, and 12 seconds, with deterministic clock/random/delay injection for tests.
 - Raw 24 kHz mono PCM preservation before standard-library WAV packaging, followed by non-empty, media-type, sample-rate, frame, duration, hash, and decode validation.
 - Per-segment durable rendering state, fail-closed tamper detection, segment-specific exhaustion guidance, completed-segment resume without rewrites, and final advancement to `audio` only after all segments validate.
 - A synthetic offline renderer smoke plus a protected, manually dispatched Gemini live smoke that receives only the Gemini key and retains its sample for one day.
-- The initial selected pairing is Maya/Kore and Daniel/Charon, chosen for a firm/informative contrast and retained as profile configuration rather than engine policy.
+- The selected production pairing is Maya/Laomedeia and Daniel/Achird, validated against the provider's documented female/male categories and retained as profile configuration rather than engine policy.
 
 ## PR 10 delivered surface
 
@@ -122,3 +123,13 @@ Later workflow capabilities remain deliberately unavailable until their ordered 
 - A release checklist and redacted evidence template covering three consecutive scheduled runs, human playback, AntennaPod delivery, public media types/cache behavior, idempotency, failed-segment/publication recovery, concurrency, security, rollback, and AC-001 through AC-020.
 - A manually dispatched, secret-free release-candidate workflow that reruns the complete offline gate and retains only JUnit, coverage, integrity/import, and build-identity reports for seven days.
 - Contract coverage for the durable task prompt/workflow and a clean-checkout integration test that runs the complete offline fixture publication from a copied checkout and proves tracked production surfaces are unchanged.
+
+## PR 14 delivered surface
+
+- TTS prompt version `1.2.0` with the same immutable voice/register/timbre/cadence/energy/personality profile repeated for each host in every segment, plus provider-category validation for the female and male Gemini voice assignments.
+- Original conversational Maya/Laomedeia and Daniel/Achird profiles with a brighter, livelier female performance and lower, friendly, lightly wry male performance; no identifiable host imitation or voice cloning.
+- Inquiry-driven editorial/script instructions and deterministic warnings for missing grounded non-lead follow-ups, abrupt announcer resets, and mechanical near-perfect alternation.
+- Explicit no-autoplay production rules, repository checks for common player commands, and silent FFprobe/hash/duration/full-decode validation; subjective listening is separate owner-initiated UAT.
+- A discriminated `local_private` output mode that finalizes validated audio without R2/RSS/show-notes/metadata and fails closed at the remote publisher.
+- Generic required-capability and local-private contracts used by an independently maintained personal daily briefing clone; the owner-specific profile and source policy are not bundled in this reusable engine.
+- Contract/unit/offline smoke evidence for all of the above. Live voice/personality and personal-connector UAT remain explicit owner-approved gates before scheduling.

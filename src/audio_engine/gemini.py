@@ -9,6 +9,7 @@ from google.genai import types
 
 from audio_engine.artifacts import TtsSegmentPrompt
 from audio_engine.tts import (
+    GEMINI_SUPPORTED_VOICES,
     SpeechRendererCapabilities,
     SpeechRendererConfigurationError,
     SpeechRendererError,
@@ -20,40 +21,6 @@ from audio_engine.tts import (
 
 DEFAULT_REQUEST_TIMEOUT_SECONDS = 180
 _VOICE_NAME = re.compile(r"^[A-Za-z][A-Za-z0-9_-]{0,63}$")
-_SUPPORTED_VOICES = frozenset(
-    {
-        "Achernar",
-        "Achird",
-        "Algenib",
-        "Algieba",
-        "Alnilam",
-        "Aoede",
-        "Autonoe",
-        "Callirrhoe",
-        "Charon",
-        "Despina",
-        "Enceladus",
-        "Erinome",
-        "Fenrir",
-        "Gacrux",
-        "Iapetus",
-        "Kore",
-        "Laomedeia",
-        "Leda",
-        "Orus",
-        "Puck",
-        "Pulcherrima",
-        "Rasalgethi",
-        "Sadachbia",
-        "Sadaltager",
-        "Schedar",
-        "Sulafat",
-        "Umbriel",
-        "Vindemiatrix",
-        "Zephyr",
-        "Zubenelgenubi",
-    }
-)
 
 
 class GeminiSpeechRenderer:
@@ -98,7 +65,8 @@ class GeminiSpeechRenderer:
             raise SpeechRendererConfigurationError("Gemini TTS requires exactly two hosts")
         voices = [host.voice for host in request.hosts]
         if len(set(voices)) != 2 or any(
-            not _VOICE_NAME.fullmatch(voice) or voice not in _SUPPORTED_VOICES for voice in voices
+            not _VOICE_NAME.fullmatch(voice) or voice not in GEMINI_SUPPORTED_VOICES
+            for voice in voices
         ):
             raise SpeechRendererConfigurationError(
                 "Gemini hosts require two distinct supported prebuilt voices"

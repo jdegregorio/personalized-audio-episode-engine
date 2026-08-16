@@ -6,6 +6,7 @@ from datetime import timedelta
 from pathlib import Path
 
 import pytest
+import yaml
 
 import scripts.render_audio as render_audio_script
 from audio_engine.audio import FfmpegTools
@@ -99,6 +100,68 @@ class _ExternalRaceStore(MemoryObjectStore):
             )
             raise PreconditionFailed("synthetic external revision")
         return super().put(key, *args, **kwargs)  # type: ignore[arg-type]
+
+
+@pytest.mark.smoke
+def test_local_private_episode_finalizes_without_publication_or_playback(
+    synthetic_collection_profile_path: Path,
+    settings_values: dict[str, str],
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    profile_data = yaml.safe_load(synthetic_collection_profile_path.read_text(encoding="utf-8"))
+    assert isinstance(profile_data, dict)
+    profile_data["publishing"] = {
+        "feed_title": "Private synthetic briefing",
+        "language": "en-US",
+        "provider": "local_private",
+    }
+    synthetic_collection_profile_path.write_text(
+        yaml.safe_dump(profile_data, sort_keys=False), encoding="utf-8"
+    )
+    configure_environment(monkeypatch, settings_values)
+    run_directory = ready_tts_run(synthetic_collection_profile_path, settings_values)
+    capsys.readouterr()
+    monkeypatch.setattr(render_audio_script, "GeminiSpeechRenderer", _OfflineRenderer)
+
+    assert render_audio_main(["--run", str(run_directory)]) == 0
+    capsys.readouterr()
+    assert assemble_audio_main(["--run", str(run_directory)]) == 0
+    capsys.readouterr()
+
+    settings = EngineSettings.from_mapping(settings_values)
+    store = MemoryObjectStore()
+    with pytest.raises(PublicationError, match="must skip publish_episode"):
+        publish_episode(
+            run_directory,
+            settings=settings,
+            repo_root=Path(__file__).parents[2],
+            store=store,
+        )
+    assert store.objects == {}
+    assert load_run_state(run_directory / "state.json").publication.status == "not_started"
+
+    assert finalize_run_main(["--run", str(run_directory)]) == 0
+    finalized = json.loads(capsys.readouterr().out)
+    final_state = load_run_state(run_directory / "state.json")
+    summary = (run_directory / "summary.md").read_text(encoding="utf-8")
+
+    assert finalized["status"] == "completed"
+    assert finalized["redacted_locations"] == ["private local run workspace"]
+    assert final_state.status == "completed"
+    assert final_state.publication.status == "not_required"
+    assert set(final_state.artifacts).isdisjoint({"show_notes", "published_episode"})
+    assert (run_directory / "episode.mp3").is_file()
+    assert "Publication succeeded: not required (private local output)" in summary
+
+    no_op = initialize_run(
+        synthetic_collection_profile_path,
+        settings=settings,
+        repo_root=Path(__file__).parents[2],
+        clock=lambda: FIXED_NOW + timedelta(hours=1),
+        run_id_factory=lambda profile_id, day, now: f"{profile_id}_{day}_after_local",
+    )
+    assert no_op.result == "no_op"
 
 
 @pytest.mark.parametrize(

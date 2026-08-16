@@ -550,7 +550,7 @@ Each PR's listed acceptance criteria are cumulative with the definition of done 
 
 **Functional smoke and UAT**
 
-- Smoke: run the documented live command locally before merge with a short synthetic transcript; download/play the artifact and inspect the validation metadata. Immediately after merge, dispatch the new protected workflow on `main` and require it to pass before PR 10 starts.
+- Smoke: run the documented live command locally before merge with a short synthetic transcript and inspect the validation metadata. The command must not play audio; after it stops, the owner explicitly initiates any listening UAT. Immediately after merge, dispatch the new protected workflow on `main` and require it to pass before PR 10 starts.
 - UAT: listen to several 60–90-second voice-pair samples for distinction, stability, pacing, instruction leakage, and conversational fit; record the selected voice IDs and qualitative decision without implementing a scoring system.
 - Resume UAT: force one middle segment to fail, rerun after removing the fault, and confirm completed segments retain hashes/timestamps and are not rerendered.
 
@@ -591,7 +591,7 @@ Each PR's listed acceptance criteria are cumulative with the definition of done 
 **Functional smoke and UAT**
 
 - Smoke: assemble deterministic fixture segments, inspect with `ffprobe`, decode the full file, and compare metadata to expected values.
-- UAT: assemble and play the live PR 09 sample end to end, checking order, boundary continuity, both voices, and absence of unexpected post-processing.
+- UAT: assemble the live PR 09 sample without playback; after automation stops, the owner explicitly initiates end-to-end listening to check order, boundary continuity, both voices, and absence of unexpected post-processing.
 
 **Acceptance criteria**
 
@@ -744,9 +744,43 @@ Each PR's listed acceptance criteria are cumulative with the definition of done 
 
 **PRD traceability:** NFR-010–011, NFR-065, NFR-080; AC-004, AC-015–020; sections 23, 24, 28.6–28.7, 29, 31, and 32 phase 6.
 
+### PR 14 — Stable host identities, inquiry-driven dialogue, and private personal briefing
+
+**Purpose:** Address observed production-quality feedback after the MVP by stabilizing recurring host performances, replacing rigid handoffs with listener-proxy inquiry, preventing surprise playback, and enabling an independent private multi-source personal briefing project.
+
+**Branch/worktree:** `feature/pr-14-personal-briefing` in sibling worktree `paee-pr-14-personal-briefing`.
+
+**Scope**
+
+- Replace minimal per-segment direction with versioned immutable Audio Profiles that repeat each host's exact voice ID, register, timbre, cadence, energy, articulation, conversational role, and personality on every Gemini request.
+- Validate Gemini female and male host assignments against the provider's documented voice categories; update the production pair to Maya/`Laomedeia` and Daniel/`Achird` with clearly differentiated original, lively conversational profiles.
+- Add `performance.conversation_mode: inquiry_driven` plus warnings for missing grounded non-lead follow-up questions, abrupt announcer resets, and nearly perfect mechanical alternation. Promote missing follow-ups and abrupt transitions in the included production profiles.
+- Update editorial/script skill guidance from rigid speaker exchange to flexible inquiry arcs that progress from what to how/why/consequence/uncertainty/tradeoff/what-next and earn transitions from the preceding thought.
+- Forbid automated player commands or speaker output in production code and workflow/UAT instructions. Keep technical validation to hashes, probes, duration/format checks, and full decode to a null sink; require any subjective listening to be explicit and owner initiated after the task stops.
+- Add a `local_private` publishing variant that finalizes a validated MP3 without R2, RSS, show notes, or published metadata and fails closed if passed to the remote publisher.
+- Support an independently maintained downstream personal profile through generic required-capability and `local_private` contracts. Keep the concrete profile, owner policy, connector configuration, and schedule in the standalone personal project rather than this engine repository.
+- Update schemas, skill references, setup/operations/security/authoring/troubleshooting/release documentation, research rationale, and implementation status in the same PR.
+
+**Not in scope**
+
+- Imitating an identifiable NPR host, cloning a real person's voice, or using NPR branding.
+- A new TTS provider, voice model, SSML layer, audio post-processing, or automatic subjective audio judge.
+- Authenticated/encrypted remote delivery of personal content, a mobile player, or adding the personal profile to the existing schedule automatically.
+- A bundled owner-specific profile or new in-repository Gmail, Calendar, or Keep clients; the concrete profile lives in an independent clone and connected capabilities remain independently configured adapters into the generic evidence contract.
+
+**Tests and acceptance evidence**
+
+- Contract tests for the publishing union, required capabilities, inquiry mode, warning codes, and regenerated schemas; the independent personal project owns its profile-specific contract tests.
+- Unit tests for immutable provider prompts, gender-inverted/unsupported voice rejection, follow-up recognition, abrupt/mechanical handoff warnings, local-private doctor behavior, and repository rejection of common playback commands.
+- Offline smoke from profile through fake Gemini, real FFmpeg silent decode, local-private finalization, publisher refusal, retained MP3, and same-day `no_op` without external writes or speaker output.
+- Full local gate, correctness review, simplification review, and required GitHub checks.
+- Live Gemini UAT writes a temporary sample without autoplay. Only the owner initiates listening after the command stops and confirms voice stability, separation, personality, and inquiry cadence; personal connector UAT separately confirms data minimization and zero R2 objects before any scheduled activation.
+
+**Acceptance criteria:** AC-021 through AC-026 in `prd.md`.
+
 ## 4. Cross-PR acceptance map
 
-| MVP acceptance criterion | Implemented primarily in | Proven finally in |
+| Acceptance criterion | Implemented primarily in | Proven finally in |
 | --- | --- | --- |
 | AC-001 Generic profile execution | PR 02, PR 03 | PR 12 |
 | AC-002 Flexible collection/native fallback | PR 05 | PR 12–13 |
@@ -768,6 +802,12 @@ Each PR's listed acceptance criteria are cumulative with the definition of done 
 | AC-018 Reproducible setup | PR 01–02, PR 12 | PR 13 clean checkout |
 | AC-019 Three-run reliability | PR 12 foundation | PR 13 three-run UAT |
 | AC-020 Safe concurrency | PR 04, PR 11 | PR 13 |
+| AC-021 Stable host identity | PR 14 | PR 14 owner-initiated live UAT |
+| AC-022 Distinct original hosts | PR 14 | PR 14 owner-initiated live UAT |
+| AC-023 Inquiry-driven depth | PR 14 | PR 14 validation and UAT |
+| AC-024 No surprise playback | PR 14 | PR 14 repository/offline/live checks |
+| AC-025 Personal briefing coverage | PR 14 | PR 14 connector UAT |
+| AC-026 Personal-data boundary | PR 14 | PR 14 offline vertical slice |
 
 ## 5. Final MVP release gate
 
@@ -778,7 +818,7 @@ The MVP is complete only when PR 13 is merged and all of the following are true:
 3. The native research fallback creates a current, valid, high-recall dossier.
 4. Separate valid editorial-plan and script artifacts exist, and every factual turn has auditable lineage.
 5. Gemini renders all naturally bounded segments with the selected two voices; transient retry and resume are demonstrated.
-6. FFprobe validates the final MP3 and a human confirms it plays with correct order and both speakers.
+6. FFprobe silently validates the final MP3; after automation stops, a human explicitly initiates playback and confirms correct order and both speakers.
 7. R2 publication exposes valid audio, transcript, show notes, metadata, and RSS through the tokenized public endpoint, with expected media/cache metadata and assets published before the conditional feed update.
 8. AntennaPod discovers, refreshes, and plays the feed; a same-day rerun creates no duplicate.
 9. Same-episode, shared-feed, and external-ETag concurrency acceptance tests pass without a lost feed revision.

@@ -18,12 +18,15 @@ Use this checklist for PR 13 and the final `main` release. Evidence belongs in t
 - [ ] Scheduled run 1 produces and validates a playable MP3 without intervention.
 - [ ] Scheduled run 2 does the same on the next scheduled date without an intervening change.
 - [ ] Scheduled run 3 does the same on the next scheduled date without an intervening change.
+- [ ] No scheduled or automated command starts a player, opens generated audio, or emits speaker output; technical validation remains silent.
 - [ ] Each run ends in a terminal state and its `summary.md` alone communicates result, stage, audio/publication status, warnings, redacted locations, and recovery when applicable.
 - [ ] The checkout remains byte-for-byte unchanged for tracked source, dependencies, schemas, profiles, and documentation throughout the streak.
 
 ## User-visible and recovery acceptance
 
-- [ ] The latest episode has two stable, distinguishable speakers and both contribute materially.
+- [ ] After the automated task has stopped, the owner explicitly initiates listening UAT; unattended generation never starts playback.
+- [ ] The latest episode has two stable, distinguishable voices across segment boundaries, with a clearly brighter/livelier female host and lower/friendly/wry male host; both personalities contribute materially without caricature.
+- [ ] Story handoffs use meaningful listener-proxy follow-ups that deepen how, why, consequence, uncertainty, or what comes next; speaker order is not a rigid back-and-forth.
 - [ ] AntennaPod refreshes the private RSS address, discovers the latest item, streams it, downloads it, and plays it.
 - [ ] The in-app description is present; the episode web/globe action opens the full HTML notes and their transcript link.
 - [ ] The plain-text transcript resolves independently. A separate native AntennaPod transcript pane is tracked post-MVP and is not a release gate.

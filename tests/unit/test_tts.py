@@ -150,9 +150,23 @@ def test_provider_instructions_do_not_leak_into_exact_transcript() -> None:
         if prompt.continuity_context:
             assert prompt.continuity_context not in prompt.transcript
         provider_prompt = renderer_input(prompt)
-        assert provider_prompt.startswith("Synthesize speech")
+        assert provider_prompt.startswith("Speak only the exact <TRANSCRIPT>")
+        assert "# AUDIO PROFILES" in provider_prompt
+        assert "immutable voice" in provider_prompt
+        assert "never blend the hosts" in provider_prompt
         assert f"<TRANSCRIPT>\n{prompt.transcript}</TRANSCRIPT>" in provider_prompt
         assert "sha256" not in provider_prompt
+
+
+def test_preparation_rejects_gender_inverted_gemini_voices() -> None:
+    script, plan, profile, reference = _inputs()
+    profile_data = profile.model_dump(mode="json")
+    profile_data["hosts"]["female"]["voice"] = "Charon"
+    profile_data["hosts"]["male"]["voice"] = "Laomedeia"
+    inverted = EpisodeProfile.model_validate(profile_data)
+
+    with pytest.raises(TtsPreparationError, match="documented female prebuilt voice"):
+        _build(script, plan, inverted, reference)
 
 
 def test_prompt_rejects_a_transcript_speaker_name_mismatch() -> None:
