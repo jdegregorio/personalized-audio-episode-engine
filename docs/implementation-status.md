@@ -131,5 +131,5 @@ Later workflow capabilities remain deliberately unavailable until their ordered 
 - Inquiry-driven editorial/script instructions and deterministic warnings for missing grounded non-lead follow-ups, abrupt announcer resets, and mechanical near-perfect alternation.
 - Explicit no-autoplay production rules, repository checks for common player commands, and silent FFprobe/hash/duration/full-decode validation; subjective listening is separate owner-initiated UAT.
 - A discriminated `local_private` output mode that finalizes validated audio without R2/RSS/show-notes/metadata and fails closed at the remote publisher.
-- An enabled personal daily briefing profile requiring Google Calendar, Gmail, and Google Keep, with selective public context, private-data minimization, and local-only output.
+- Generic required-capability and local-private contracts used by an independently maintained personal daily briefing clone; the owner-specific profile and source policy are not bundled in this reusable engine.
 - Contract/unit/offline smoke evidence for all of the above. Live voice/personality and personal-connector UAT remain explicit owner-approved gates before scheduling.

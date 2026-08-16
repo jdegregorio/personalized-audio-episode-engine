@@ -3,6 +3,8 @@ from __future__ import annotations
 import os
 from pathlib import Path
 
+import yaml
+
 from audio_engine.doctor import (
     CheckResult,
     DoctorReport,
@@ -114,11 +116,18 @@ def test_format_report_is_concise() -> None:
 
 
 def test_local_private_profile_needs_no_publication_endpoint(
+    tmp_path: Path,
+    example_profile_data: dict[str, object],
     settings_values: dict[str, str],
 ) -> None:
-    profile_path = (
-        Path(__file__).parents[2] / "examples" / "profiles" / "personal-daily-briefing.yaml"
-    )
+    profile_path = tmp_path / "private-profile.yaml"
+    example_profile_data["publishing"] = {
+        "provider": "local_private",
+        "feed_title": "Private briefing",
+        "language": "en-US",
+    }
+    profile_path.write_text(yaml.safe_dump(example_profile_data), encoding="utf-8")
+    settings_values["AUDIO_ENGINE_INPUT_ROOTS"] = str(tmp_path)
     report = run_doctor(
         profile_path,
         repo_root=Path(__file__).parents[2],

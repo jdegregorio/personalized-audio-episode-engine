@@ -1,6 +1,6 @@
 # Personalized Audio Episode Engine
 
-This repository contains a profile-driven workflow that turns source-grounded research or authorized personal context into a two-host audio episode. Public-news profiles can publish to a private-by-secret-link podcast feed; sensitive personal profiles finalize to a private local workspace and never enter that feed. Codex supplies editorial judgment, while small Python scripts provide deterministic validation, state, audio, publication, and finalization operations.
+This repository contains a topic-generic, profile-driven workflow that turns source-grounded research into a two-host audio episode. Public profiles can publish to a private-by-secret-link podcast feed; independently maintained sensitive profiles can finalize to a private local workspace and never enter that feed. Codex supplies editorial judgment, while small Python scripts provide deterministic validation, state, audio, publication, and finalization operations.
 
 Implementation follows the ordered pull requests in [`plan.md`](plan.md). The current delivery status is recorded in [`docs/implementation-status.md`](docs/implementation-status.md).
 
@@ -38,7 +38,7 @@ Validate the prepared host without contacting Gemini or R2:
 uv run python scripts/doctor.py --profile examples/profiles/world-us-seattle-news.yaml
 ```
 
-Episode profiles are strict, versioned YAML data. See [`docs/profile-authoring.md`](docs/profile-authoring.md), the [voice and conversation design](docs/voice-and-conversation-design.md), the [personal daily briefing guide](docs/personal-daily-briefing.md), and the committed [`schemas/episode-profile-v1.0.schema.json`](schemas/episode-profile-v1.0.schema.json).
+Episode profiles are strict, versioned YAML data. See [`docs/profile-authoring.md`](docs/profile-authoring.md), the [voice and conversation design](docs/voice-and-conversation-design.md), and the committed [`schemas/episode-profile-v1.0.schema.json`](schemas/episode-profile-v1.0.schema.json). Keep owner-specific profiles and source policy in an independently maintained project rather than this reusable engine.
 
 For offline collection verification, [`examples/profiles/synthetic-marine-brief.yaml`](examples/profiles/synthetic-marine-brief.yaml) is grounded in the committed synthetic corpus under `tests/fixtures/sources/marine-brief/`; it is test data, not a production feed.
 

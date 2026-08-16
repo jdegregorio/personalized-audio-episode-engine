@@ -746,7 +746,7 @@ Each PR's listed acceptance criteria are cumulative with the definition of done 
 
 ### PR 14 — Stable host identities, inquiry-driven dialogue, and private personal briefing
 
-**Purpose:** Address observed production-quality feedback after the MVP by stabilizing recurring host performances, replacing rigid handoffs with listener-proxy inquiry, preventing surprise playback, and adding the first private multi-source personal briefing profile.
+**Purpose:** Address observed production-quality feedback after the MVP by stabilizing recurring host performances, replacing rigid handoffs with listener-proxy inquiry, preventing surprise playback, and enabling an independent private multi-source personal briefing project.
 
 **Branch/worktree:** `feature/pr-14-personal-briefing` in sibling worktree `paee-pr-14-personal-briefing`.
 
@@ -758,7 +758,7 @@ Each PR's listed acceptance criteria are cumulative with the definition of done 
 - Update editorial/script skill guidance from rigid speaker exchange to flexible inquiry arcs that progress from what to how/why/consequence/uncertainty/tradeoff/what-next and earn transitions from the preceding thought.
 - Forbid automated player commands or speaker output in production code and workflow/UAT instructions. Keep technical validation to hashes, probes, duration/format checks, and full decode to a null sink; require any subjective listening to be explicit and owner initiated after the task stops.
 - Add a `local_private` publishing variant that finalizes a validated MP3 without R2, RSS, show notes, or published metadata and fails closed if passed to the remote publisher.
-- Add `personal-daily-briefing.yaml`, requiring `google_calendar`, `gmail`, and `google_keep`, allowing native web only for selective public context, minimizing private data, and retaining output only in the private run workspace.
+- Support an independently maintained downstream personal profile through generic required-capability and `local_private` contracts. Keep the concrete profile, owner policy, connector configuration, and schedule in the standalone personal project rather than this engine repository.
 - Update schemas, skill references, setup/operations/security/authoring/troubleshooting/release documentation, research rationale, and implementation status in the same PR.
 
 **Not in scope**
@@ -766,11 +766,11 @@ Each PR's listed acceptance criteria are cumulative with the definition of done 
 - Imitating an identifiable NPR host, cloning a real person's voice, or using NPR branding.
 - A new TTS provider, voice model, SSML layer, audio post-processing, or automatic subjective audio judge.
 - Authenticated/encrypted remote delivery of personal content, a mobile player, or adding the personal profile to the existing schedule automatically.
-- New in-repository Gmail, Calendar, or Keep clients; connected capabilities remain independently configured adapters into the generic evidence contract.
+- A bundled owner-specific profile or new in-repository Gmail, Calendar, or Keep clients; the concrete profile lives in an independent clone and connected capabilities remain independently configured adapters into the generic evidence contract.
 
 **Tests and acceptance evidence**
 
-- Contract tests for the publishing union, personal profile, required capabilities, inquiry mode, warning codes, and regenerated schemas.
+- Contract tests for the publishing union, required capabilities, inquiry mode, warning codes, and regenerated schemas; the independent personal project owns its profile-specific contract tests.
 - Unit tests for immutable provider prompts, gender-inverted/unsupported voice rejection, follow-up recognition, abrupt/mechanical handoff warnings, local-private doctor behavior, and repository rejection of common playback commands.
 - Offline smoke from profile through fake Gemini, real FFmpeg silent decode, local-private finalization, publisher refusal, retained MP3, and same-day `no_op` without external writes or speaker output.
 - Full local gate, correctness review, simplification review, and required GitHub checks.

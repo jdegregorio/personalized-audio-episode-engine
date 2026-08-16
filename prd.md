@@ -3075,16 +3075,16 @@ No automated, scheduled, smoke, validation, or production command may start an a
 
 Because voice identity and personality are subjective, human listening remains required for release UAT, but it must be a separate, explicit, owner-initiated action after the generating task has stopped.
 
-## 36.4 Personal daily briefing profile
+## 36.4 Independent personal daily briefing project
 
-The engine shall include one enabled personal daily briefing profile that combines:
+The generic engine shall support, but this reusable repository shall not bundle, an independently maintained personal daily briefing profile that combines:
 
 1. today's Calendar schedule, conflicts, preparation needs, and buffers;
 2. Gmail messages requiring a decision, response, preparation, or awareness;
 3. active Google Keep reminders, notes, and commitments relevant today; and
 4. selective public context such as weather, transit, local disruptions, or major developments that materially change today's decisions.
 
-Calendar, Gmail, and Keep are required independently configured capabilities. Native web research may supplement public context but may not replace a missing private source. The collected dossier must minimize private data and exclude full message bodies, meeting/access links, tokens, unrelated attendee details, and private source dumps.
+Calendar, Gmail, and Keep are required independently configured capabilities in that downstream project. Native web research may supplement public context but may not replace a missing private source. The collected dossier must minimize private data and exclude full message bodies, meeting/access links, tokens, unrelated attendee details, and private source dumps. Its concrete profile, local Codex configuration, and schedule remain outside the reusable engine repository.
 
 ## 36.5 Private local output
 
@@ -3112,7 +3112,7 @@ Repository checks reject common automatic player commands, workflow instructions
 
 ### AC-025: Personal briefing coverage
 
-The profile requires Calendar, Gmail, and Keep, uses native research only for permitted public context, and plans an action-oriented day-ahead episode under the generic evidence/editorial/script contracts.
+The independently maintained profile requires Calendar, Gmail, and Keep, uses native research only for permitted public context, and plans an action-oriented day-ahead episode under the generic evidence/editorial/script contracts.
 
 ### AC-026: Personal-data publication boundary
 
