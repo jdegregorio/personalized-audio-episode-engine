@@ -3,7 +3,12 @@ from __future__ import annotations
 import os
 from pathlib import Path
 
-from audio_engine.doctor import CheckResult, DoctorReport, format_report, run_doctor
+from audio_engine.doctor import (
+    CheckResult,
+    DoctorReport,
+    format_report,
+    run_doctor,
+)
 
 
 def test_doctor_reports_missing_settings_without_values(
@@ -106,3 +111,20 @@ def test_format_report_is_concise() -> None:
     report = DoctorReport((CheckResult("one", True, "ok"),))
 
     assert format_report(report) == "PASS one: ok\ndoctor: ready"
+
+
+def test_local_private_profile_needs_no_publication_endpoint(
+    settings_values: dict[str, str],
+) -> None:
+    profile_path = (
+        Path(__file__).parents[2] / "examples" / "profiles" / "personal-daily-briefing.yaml"
+    )
+    report = run_doctor(
+        profile_path,
+        repo_root=Path(__file__).parents[2],
+        environment=settings_values,
+    )
+    check = next(check for check in report.checks if check.name == "profile environment")
+
+    assert check.passed
+    assert check.message == "local-private output requires no publication endpoint"

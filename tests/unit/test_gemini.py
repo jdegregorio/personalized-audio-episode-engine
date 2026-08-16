@@ -11,6 +11,7 @@ from audio_engine.gemini import GeminiSpeechRenderer
 from audio_engine.tts import (
     SpeechRendererConfigurationError,
     SpeechRendererError,
+    TtsPreparationError,
     renderer_input,
 )
 from scripts.smoke_gemini import build_live_prompt
@@ -91,16 +92,11 @@ def test_gemini_renderer_surfaces_text_for_generic_rejection() -> None:
     ("female", "male"),
     [("unknown", "Charon"), ("Kore", "Kore"), ("Kore!", "Charon")],
 )
-def test_gemini_renderer_rejects_invalid_voice_configuration(female: str, male: str) -> None:
+def test_live_prompt_rejects_invalid_gendered_voice_configuration(female: str, male: str) -> None:
     client = _FakeClient(_response())
-    renderer = GeminiSpeechRenderer(
-        api_key="fake-key",
-        model="gemini-3.1-flash-tts-preview",
-        client=cast(genai.Client, client),
-    )
 
-    with pytest.raises(SpeechRendererConfigurationError, match="distinct supported"):
-        renderer.render(build_live_prompt(female, male))
+    with pytest.raises(TtsPreparationError, match="documented (female|male) prebuilt voice"):
+        build_live_prompt(female, male)
 
     assert not client.models.calls
 

@@ -446,6 +446,86 @@ def test_fatal_profile_warning_is_promoted_to_error(
     assert "host_word_share" not in {warning.code for warning in warnings}
 
 
+def test_inquiry_driven_script_requires_listener_proxy_followups(
+    synthetic_collection_profile_path: Path,
+) -> None:
+    profile_data = load_profile(
+        synthetic_collection_profile_path,
+        allowed_roots=[synthetic_collection_profile_path.parent],
+    ).model_dump(mode="json")
+    profile_data["performance"]["conversation_mode"] = "inquiry_driven"
+    profile = EpisodeProfile.model_validate(profile_data)
+    script = EpisodeScript.model_validate(_json(ARTIFACT_ROOT / "episode-script.json"))
+    plan = EditorialPlan.model_validate(_json(ARTIFACT_ROOT / "editorial-plan.json"))
+
+    _, warnings = validate_script_against_profile(script, plan, profile)
+
+    assert "missing_followup_question" in {warning.code for warning in warnings}
+
+
+def test_inquiry_driven_followups_are_recognized_per_segment(
+    synthetic_collection_profile_path: Path,
+) -> None:
+    profile_data = load_profile(
+        synthetic_collection_profile_path,
+        allowed_roots=[synthetic_collection_profile_path.parent],
+    ).model_dump(mode="json")
+    profile_data["performance"]["conversation_mode"] = "inquiry_driven"
+    profile = EpisodeProfile.model_validate(profile_data)
+    script_data = _json(ARTIFACT_ROOT / "episode-script.json")
+    script_data["turns"][2]["turn_type"] = "question"
+    script_data["turns"][2]["text"] = (
+        "Why does one interval make that conclusion narrower than it first sounds?"
+    )
+    script_data["turns"][5]["turn_type"] = "question"
+    script_data["turns"][5]["text"] = (
+        "How should that shorter calibration interval change what we trust next?"
+    )
+    script = EpisodeScript.model_validate(script_data)
+    plan = EditorialPlan.model_validate(_json(ARTIFACT_ROOT / "editorial-plan.json"))
+
+    _, warnings = validate_script_against_profile(script, plan, profile)
+
+    assert "missing_followup_question" not in {warning.code for warning in warnings}
+
+
+def test_inquiry_driven_script_flags_abrupt_and_mechanical_handoffs(
+    synthetic_collection_profile_path: Path,
+) -> None:
+    profile_data = load_profile(
+        synthetic_collection_profile_path,
+        allowed_roots=[synthetic_collection_profile_path.parent],
+    ).model_dump(mode="json")
+    profile_data["performance"]["conversation_mode"] = "inquiry_driven"
+    profile = EpisodeProfile.model_validate(profile_data)
+    script_data = _json(ARTIFACT_ROOT / "episode-script.json")
+    script_data["turns"][3]["text"] = "Moving on, the calibration method also changed."
+    for index, turn in enumerate(script_data["turns"]):
+        turn["speaker"] = "Maya" if index % 2 == 0 else "Daniel"
+    for index in range(2):
+        script_data["turns"].append(
+            {
+                "turn_id": f"turn_extra_{index}",
+                "speaker": "Maya" if (len(script_data["turns"]) % 2 == 0) else "Daniel",
+                "text": "A brief conversational response keeps the explanation moving.",
+                "turn_type": "reaction",
+                "claim_ids": [],
+                "candidate_id": None,
+                "planned_segment_id": "segment_sensor",
+                "performance_cue": None,
+            }
+        )
+        script_data["segments"][1]["turn_ids"].append(f"turn_extra_{index}")
+    script = EpisodeScript.model_validate(script_data)
+    plan = EditorialPlan.model_validate(_json(ARTIFACT_ROOT / "editorial-plan.json"))
+
+    _, warnings = validate_script_against_profile(script, plan, profile)
+    warning_codes = {warning.code for warning in warnings}
+
+    assert "abrupt_transition" in warning_codes
+    assert "mechanical_turn_taking" in warning_codes
+
+
 @pytest.mark.parametrize(
     ("case", "expected_code"),
     [

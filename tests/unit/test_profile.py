@@ -85,6 +85,18 @@ def test_profile_requires_distinct_host_names(example_profile_data: dict[str, An
         validate_profile_data(example_profile_data)
 
 
+def test_profile_accepts_local_private_output(example_profile_data: dict[str, Any]) -> None:
+    example_profile_data["publishing"] = {
+        "feed_title": "Private daily briefing",
+        "language": "en-US",
+        "provider": "local_private",
+    }
+
+    profile = validate_profile_data(example_profile_data)
+
+    assert profile.publishing.provider == "local_private"
+
+
 def test_profile_limits_tts_retries_to_three(example_profile_data: dict[str, Any]) -> None:
     example_profile_data["tts"]["maximum_retries"] = 4
 
@@ -126,7 +138,7 @@ def test_profile_requires_publication_environment_names(
 ) -> None:
     example_profile_data["publishing"]["endpoint_url_env"] = "https://embedded.invalid"
 
-    with pytest.raises(ProfileError, match="publishing.endpoint_url_env"):
+    with pytest.raises(ProfileError, match="publishing.cloudflare_r2.endpoint_url_env"):
         validate_profile_data(example_profile_data)
 
 

@@ -40,6 +40,64 @@
       "title": "Audience",
       "type": "object"
     },
+    "CloudflareR2Publishing": {
+      "additionalProperties": false,
+      "properties": {
+        "base_url_env": {
+          "const": "PODCAST_BASE_URL",
+          "title": "Base Url Env",
+          "type": "string"
+        },
+        "bucket_name_env": {
+          "const": "R2_BUCKET_NAME",
+          "title": "Bucket Name Env",
+          "type": "string"
+        },
+        "endpoint_url_env": {
+          "const": "R2_ENDPOINT_URL",
+          "title": "Endpoint Url Env",
+          "type": "string"
+        },
+        "feed_title": {
+          "maxLength": 2000,
+          "minLength": 1,
+          "title": "Feed Title",
+          "type": "string"
+        },
+        "language": {
+          "pattern": "^[a-z]{2,3}(?:-[A-Z]{2})?$",
+          "title": "Language",
+          "type": "string"
+        },
+        "private_path_env": {
+          "const": "PODCAST_FEED_TOKEN",
+          "title": "Private Path Env",
+          "type": "string"
+        },
+        "provider": {
+          "const": "cloudflare_r2",
+          "title": "Provider",
+          "type": "string"
+        },
+        "retention_days_env": {
+          "const": "R2_RETENTION_DAYS",
+          "title": "Retention Days Env",
+          "type": "string"
+        }
+      },
+      "required": [
+        "feed_title",
+        "language",
+        "provider",
+        "private_path_env",
+        "endpoint_url_env",
+        "bucket_name_env",
+        "base_url_env",
+        "retention_days_env"
+      ],
+      "title": "CloudflareR2Publishing",
+      "type": "object"
+    },
     "Collection": {
       "additionalProperties": false,
       "properties": {
@@ -338,9 +396,46 @@
       "type": "object"
     },
     "JsonValue": {},
+    "LocalPrivatePublishing": {
+      "additionalProperties": false,
+      "properties": {
+        "feed_title": {
+          "maxLength": 2000,
+          "minLength": 1,
+          "title": "Feed Title",
+          "type": "string"
+        },
+        "language": {
+          "pattern": "^[a-z]{2,3}(?:-[A-Z]{2})?$",
+          "title": "Language",
+          "type": "string"
+        },
+        "provider": {
+          "const": "local_private",
+          "title": "Provider",
+          "type": "string"
+        }
+      },
+      "required": [
+        "feed_title",
+        "language",
+        "provider"
+      ],
+      "title": "LocalPrivatePublishing",
+      "type": "object"
+    },
     "Performance": {
       "additionalProperties": false,
       "properties": {
+        "conversation_mode": {
+          "default": "standard",
+          "enum": [
+            "standard",
+            "inquiry_driven"
+          ],
+          "title": "Conversation Mode",
+          "type": "string"
+        },
         "fatal_warning_codes": {
           "default": [],
           "items": {
@@ -389,64 +484,6 @@
       "title": "Performance",
       "type": "object"
     },
-    "Publishing": {
-      "additionalProperties": false,
-      "properties": {
-        "base_url_env": {
-          "const": "PODCAST_BASE_URL",
-          "title": "Base Url Env",
-          "type": "string"
-        },
-        "bucket_name_env": {
-          "const": "R2_BUCKET_NAME",
-          "title": "Bucket Name Env",
-          "type": "string"
-        },
-        "endpoint_url_env": {
-          "const": "R2_ENDPOINT_URL",
-          "title": "Endpoint Url Env",
-          "type": "string"
-        },
-        "feed_title": {
-          "maxLength": 2000,
-          "minLength": 1,
-          "title": "Feed Title",
-          "type": "string"
-        },
-        "language": {
-          "pattern": "^[a-z]{2,3}(?:-[A-Z]{2})?$",
-          "title": "Language",
-          "type": "string"
-        },
-        "private_path_env": {
-          "const": "PODCAST_FEED_TOKEN",
-          "title": "Private Path Env",
-          "type": "string"
-        },
-        "provider": {
-          "const": "cloudflare_r2",
-          "title": "Provider",
-          "type": "string"
-        },
-        "retention_days_env": {
-          "const": "R2_RETENTION_DAYS",
-          "title": "Retention Days Env",
-          "type": "string"
-        }
-      },
-      "required": [
-        "feed_title",
-        "language",
-        "provider",
-        "private_path_env",
-        "endpoint_url_env",
-        "bucket_name_env",
-        "base_url_env",
-        "retention_days_env"
-      ],
-      "title": "Publishing",
-      "type": "object"
-    },
     "ScopeSection": {
       "additionalProperties": false,
       "properties": {
@@ -479,7 +516,10 @@
         "consecutive_host_turns",
         "repeated_stock_phrase",
         "missing_segment_takeaway",
-        "script_duration_preferred"
+        "script_duration_preferred",
+        "missing_followup_question",
+        "abrupt_transition",
+        "mechanical_turn_taking"
       ],
       "title": "ScriptWarningCode",
       "type": "string"
@@ -636,7 +676,22 @@
       "$ref": "#/$defs/Performance"
     },
     "publishing": {
-      "$ref": "#/$defs/Publishing"
+      "discriminator": {
+        "mapping": {
+          "cloudflare_r2": "#/$defs/CloudflareR2Publishing",
+          "local_private": "#/$defs/LocalPrivatePublishing"
+        },
+        "propertyName": "provider"
+      },
+      "oneOf": [
+        {
+          "$ref": "#/$defs/CloudflareR2Publishing"
+        },
+        {
+          "$ref": "#/$defs/LocalPrivatePublishing"
+        }
+      ],
+      "title": "Publishing"
     },
     "schema_version": {
       "const": "1.0",

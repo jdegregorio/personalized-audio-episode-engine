@@ -182,11 +182,15 @@ class ScriptWarningCode(StrEnum):
     REPEATED_STOCK_PHRASE = "repeated_stock_phrase"
     MISSING_SEGMENT_TAKEAWAY = "missing_segment_takeaway"
     SCRIPT_DURATION_PREFERRED = "script_duration_preferred"
+    MISSING_FOLLOWUP_QUESTION = "missing_followup_question"
+    ABRUPT_TRANSITION = "abrupt_transition"
+    MECHANICAL_TURN_TAKING = "mechanical_turn_taking"
 
 
 class Performance(_ProfileModel):
     style: NonEmptyText
     pace: NonEmptyText
+    conversation_mode: Literal["standard", "inquiry_driven"] = "standard"
     use_audio_tags: Literal["never", "sparingly", "freely"]
     prohibit_fake_personal_experience: bool
     prohibit_urls_in_speech: bool
@@ -208,7 +212,7 @@ class Tts(_ProfileModel):
     maximum_retries: Annotated[int, Field(ge=0, le=3)]
 
 
-class Publishing(_ProfileModel):
+class CloudflareR2Publishing(_ProfileModel):
     feed_title: NonEmptyText
     language: Annotated[str, Field(pattern=r"^[a-z]{2,3}(?:-[A-Z]{2})?$")]
     provider: Literal["cloudflare_r2"]
@@ -217,6 +221,18 @@ class Publishing(_ProfileModel):
     bucket_name_env: Literal["R2_BUCKET_NAME"]
     base_url_env: Literal["PODCAST_BASE_URL"]
     retention_days_env: Literal["R2_RETENTION_DAYS"]
+
+
+class LocalPrivatePublishing(_ProfileModel):
+    feed_title: NonEmptyText
+    language: Annotated[str, Field(pattern=r"^[a-z]{2,3}(?:-[A-Z]{2})?$")]
+    provider: Literal["local_private"]
+
+
+Publishing = Annotated[
+    CloudflareR2Publishing | LocalPrivatePublishing,
+    Field(discriminator="provider"),
+]
 
 
 class EpisodeProfile(_ProfileModel):

@@ -1,6 +1,6 @@
 # Personalized Audio Episode Engine
 
-This repository contains a profile-driven workflow that turns source-grounded research into a two-host audio episode and publishes it to a private-by-secret-link podcast feed. The approved MVP is intentionally one vertical slice: Codex supplies editorial judgment, while small Python scripts provide deterministic validation, state, audio, publication, and finalization operations.
+This repository contains a profile-driven workflow that turns source-grounded research or authorized personal context into a two-host audio episode. Public-news profiles can publish to a private-by-secret-link podcast feed; sensitive personal profiles finalize to a private local workspace and never enter that feed. Codex supplies editorial judgment, while small Python scripts provide deterministic validation, state, audio, publication, and finalization operations.
 
 Implementation follows the ordered pull requests in [`plan.md`](plan.md). The current delivery status is recorded in [`docs/implementation-status.md`](docs/implementation-status.md).
 
@@ -38,7 +38,7 @@ Validate the prepared host without contacting Gemini or R2:
 uv run python scripts/doctor.py --profile examples/profiles/world-us-seattle-news.yaml
 ```
 
-Episode profiles are strict, versioned YAML data. See [`docs/profile-authoring.md`](docs/profile-authoring.md) and the committed [`schemas/episode-profile-v1.0.schema.json`](schemas/episode-profile-v1.0.schema.json).
+Episode profiles are strict, versioned YAML data. See [`docs/profile-authoring.md`](docs/profile-authoring.md), the [voice and conversation design](docs/voice-and-conversation-design.md), the [personal daily briefing guide](docs/personal-daily-briefing.md), and the committed [`schemas/episode-profile-v1.0.schema.json`](schemas/episode-profile-v1.0.schema.json).
 
 For offline collection verification, [`examples/profiles/synthetic-marine-brief.yaml`](examples/profiles/synthetic-marine-brief.yaml) is grounded in the committed synthetic corpus under `tests/fixtures/sources/marine-brief/`; it is test data, not a production feed.
 
@@ -90,7 +90,7 @@ In a separate Codex phase, follow the skill's [`scriptwriting.md`](.agents/skill
 uv run python scripts/record_script.py --run <run-directory>
 ```
 
-The recorder binds current input hashes and script prompt version, checks claim and source lineage, required attribution and qualifications, disagreement, speaker/voice configuration, spoken-text safety, duration, conversational-quality warnings, and TTS input limits. It allows one recorded repair and deterministically writes `transcript.txt` from the accepted turns, so the spoken projection cannot diverge from the auditable script. A valid script advances to `tts`; it does not call Gemini.
+The recorder binds current input hashes and script prompt version, checks claim and source lineage, required attribution and qualifications, disagreement, speaker/voice configuration, spoken-text safety, duration, conversational-quality warnings, and TTS input limits. Inquiry-driven profiles require meaningful listener-proxy follow-ups and flag abrupt or mechanical handoffs. The recorder allows one repair and deterministically writes `transcript.txt` from the accepted turns, so the spoken projection cannot diverge from the auditable script. A valid script advances to `tts`; it does not call Gemini.
 
 ## TTS preparation workflow
 
@@ -100,7 +100,7 @@ At `tts`, follow the skill's [`tts-preparation.md`](.agents/skills/produce-audio
 uv run python scripts/prepare_tts.py --run <run-directory>
 ```
 
-The preparer revalidates the script/transcript, applies the configured model capability limits, prefers natural two-to-four-minute boundaries, and writes `tts/manifest.json` plus ordered atomic segment prompt files. Each provider input begins with an explicit synthesis instruction and delimits the exact spoken transcript from non-spoken direction. An unchanged rerun verifies hashes and returns `already_prepared` without rewriting valid outputs.
+The preparer revalidates the script/transcript, applies the configured model capability limits, prefers natural two-to-four-minute boundaries, and writes `tts/manifest.json` plus ordered atomic segment prompt files. Each provider input repeats immutable Audio Profiles for the two recurring hosts and delimits the exact spoken transcript from non-spoken direction. Gemini preparation also validates the configured female/male provider voice categories. An unchanged rerun verifies hashes and returns `already_prepared` without rewriting valid outputs.
 
 ## Gemini rendering workflow
 
@@ -120,7 +120,7 @@ At `audio`, follow the skill's [`audio-assembly.md`](.agents/skills/produce-audi
 uv run python scripts/assemble_audio.py --run <run-directory>
 ```
 
-The command revalidates each ordered PCM WAV, uses bounded FFmpeg/FFprobe processes to concatenate and encode a 48 kHz mono MP3, performs a full decode check, and atomically promotes `episode.mp3` only after codec, media type, duration, sample rate, channels, and size pass. Success advances to `publication`; a failed conversion leaves all rendered segments reusable at `audio` with recovery guidance. An unchanged rerun revalidates the recorded MP3 and returns `already_assembled` without rewriting it.
+The command revalidates each ordered PCM WAV, uses bounded FFmpeg/FFprobe processes to concatenate and encode a 48 kHz mono MP3, performs a silent full decode to a null sink, and atomically promotes `episode.mp3` only after codec, media type, duration, sample rate, channels, and size pass. It never invokes a player or sends audio to speakers. Success advances to `publication`; a failed conversion leaves all rendered segments reusable at `audio` with recovery guidance. An unchanged rerun revalidates the recorded MP3 and returns `already_assembled` without rewriting it.
 
 ## Podcast publication
 
@@ -135,20 +135,20 @@ Publication uploads and publicly verifies MP3, transcript, escaped source-groupe
 
 ## Finalization and cross-invocation resume
 
-After successful publication—or before an owning invocation stops with state still `running`—finalize it:
+After successful R2 publication, after a valid `local_private` MP3, or before an owning invocation stops with state still `running`, finalize it:
 
 ```bash
 uv run python scripts/finalize_run.py --run <run-directory>
 ```
 
-Successful finalization persists `status: completed`, advances to `finalized`, regenerates the one-screen `summary.md`, and releases the episode lease. Incomplete work is recorded as failed with a stage-specific recovery command before release. A later `init_run.py --profile <same-profile>` returns `resumed` for the same compatible workspace and preserves valid dossier/plan/script files, completed TTS segments, and final audio; publication-only retry never rerenders.
+Successful finalization persists `status: completed`, advances to `finalized`, regenerates the one-screen `summary.md`, and releases the episode lease. For `local_private`, it records publication as not required and retains the MP3 only in the run workspace. Incomplete work is recorded as failed with a stage-specific recovery command before release. A later `init_run.py --profile <same-profile>` returns `resumed` for the same compatible workspace and preserves valid dossier/plan/script files, completed TTS segments, and final audio; publication-only retry never rerenders.
 
 The intended user interface is one instruction invoking [`$produce-audio-episode`](.agents/skills/produce-audio-episode/SKILL.md) with one profile. The skill routes by authoritative state through the documented commands above; there is intentionally no all-in-one application CLI.
 
 ## Scheduled production and release
 
-The daily Codex task uses the canonical prompt, local execution settings, stable-checkout rules, and promotion procedure in [`docs/scheduled-task.md`](docs/scheduled-task.md). Release qualification uses [`docs/release-checklist.md`](docs/release-checklist.md) and the redacted [`docs/uat-evidence-template.md`](docs/uat-evidence-template.md). GitHub's manually dispatched `Release candidate` workflow reruns the complete secret-free offline gate and retains only validation reports; live research, Gemini, R2 publication, and playback remain local acceptance work.
+The daily Codex task uses the canonical prompt, local execution settings, stable-checkout rules, and promotion procedure in [`docs/scheduled-task.md`](docs/scheduled-task.md). Release qualification uses [`docs/release-checklist.md`](docs/release-checklist.md) and the redacted [`docs/uat-evidence-template.md`](docs/uat-evidence-template.md). GitHub's manually dispatched `Release candidate` workflow reruns the complete secret-free offline gate and retains only validation reports; live research, Gemini, and R2 publication remain local acceptance work, while listening is always a separate owner-initiated action after automation stops.
 
 ## Security boundary
 
-The MVP feed contains public-news content but uses an unguessable URL. That URL is access material, not authentication. Never commit or paste credentials, tokenized object keys, runtime data, generated audio, or complete feed URLs. State, command output, and `summary.md` contain only local paths and redacted publication labels. Profiles containing personal or otherwise sensitive information are outside the MVP and require a separate authenticated or encrypted publication design.
+The public-news feed uses an unguessable URL. That URL is access material, not authentication. Never commit or paste credentials, tokenized object keys, runtime data, generated audio, or complete feed URLs. State, command output, and `summary.md` contain only local paths and redacted publication labels. Profiles containing personal or otherwise sensitive information must use `local_private`; remote personal delivery requires a separate authenticated or encrypted design.

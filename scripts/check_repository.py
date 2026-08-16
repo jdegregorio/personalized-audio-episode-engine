@@ -22,6 +22,13 @@ _TOPIC_MODULE_PATTERN = re.compile(
     r"(?:^|[-_])(marine|news|seattle|world(?:[-_]us)?)(?:[-_]|$)", re.IGNORECASE
 )
 _COMMAND_DOCUMENTS = {"CONTRIBUTORS.md", "README.md"}
+_PLAYER_EXECUTABLES = {
+    "af" + "play",
+    "ff" + "play",
+    "m" + "pv",
+    "c" + "vlc",
+    "v" + "lc",
+}
 
 
 def markdown_heading_anchors(text: str) -> set[str]:
@@ -193,10 +200,42 @@ def markdown_errors(root: Path, paths: list[str]) -> list[str]:
     return errors
 
 
+def playback_command_errors(root: Path, paths: list[str]) -> list[str]:
+    """Reject production code that can unexpectedly send generated audio to speakers."""
+    errors: list[str] = []
+    for raw_path in paths:
+        path = Path(raw_path)
+        if path.suffix != ".py" or path.parts[:1] not in {("src",), ("scripts",)}:
+            continue
+        if raw_path == "scripts/check_repository.py":
+            continue
+        text = (root / path).read_text(encoding="utf-8")
+        lowered = text.lower()
+        executable = next(
+            (
+                player
+                for player in sorted(_PLAYER_EXECUTABLES)
+                if re.search(rf"\b{re.escape(player)}\b", lowered)
+            ),
+            None,
+        )
+        opens_audio = re.search(
+            r"\bopen\b[^\n]{0,160}\.(?:aac|flac|m4a|mp3|ogg|pcm|wav)\b",
+            lowered,
+        )
+        if executable or opens_audio:
+            errors.append(f"prohibited automatic audio playback command: {raw_path}")
+    return errors
+
+
 def check_repository(root: Path, paths: list[str] | None = None) -> list[str]:
     """Return all repository-integrity failures."""
     candidate_paths = repository_paths(root) if paths is None else paths
-    return prohibited_path_errors(candidate_paths) + markdown_errors(root, candidate_paths)
+    return (
+        prohibited_path_errors(candidate_paths)
+        + markdown_errors(root, candidate_paths)
+        + playback_command_errors(root, candidate_paths)
+    )
 
 
 def main(argv: list[str] | None = None) -> int:

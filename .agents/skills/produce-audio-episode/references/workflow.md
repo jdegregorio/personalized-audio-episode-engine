@@ -21,7 +21,7 @@ Capture `run_directory` from the initializer's compact JSON. If `result` is `no_
 | `tts` without preparation | Load `tts-preparation.md` and prepare token-bounded manifest/prompt files from the accepted script. |
 | `tts` with preparation | Load `tts-rendering.md` and render missing Gemini segments without repeating completed requests. |
 | `audio` | Load `audio-assembly.md`, assemble and validate the final MP3 without creative processing. |
-| `publication` | Load `publication.md`; upload and verify assets, then conditionally upsert the RSS feed last. After `published`/`already_published`, load `finalization.md`. |
+| `publication` | Route by the profile: for `cloudflare_r2`, load `publication.md`, upload and verify assets, then conditionally upsert the RSS feed last; for `local_private`, do not publish and load `finalization.md` directly. |
 | `finalized` | Read `summary.md` and return its concise completed result; do not repeat prior stages. |
 | failed/completed terminal state | Stop. Follow the recorded recovery guidance or report the completed result. |
 
@@ -29,4 +29,6 @@ After each deterministic command, read its compact JSON and then reload `state.j
 
 ## Invocation boundary
 
-Do not write dialogue in the editorial phase, synthesize speech in the script or preparation phase, add creative processing during assembly, or expose a feed item before every asset is publicly readable. Preserve valid final audio when publication defers or fails. Before ending an owning invocation, load `finalization.md`: complete a published run, or persist an actionable failure if state is still `running`, so ownership is never abandoned intentionally.
+Do not write dialogue in the editorial phase, synthesize speech in the script or preparation phase, add creative processing during assembly, or expose a feed item before every asset is publicly readable. Never pass a `local_private` episode to the R2 publisher. Preserve valid final audio when publication defers or fails. Before ending an owning invocation, load `finalization.md`: complete a remotely published or local-private run, or persist an actionable failure if state is still `running`, so ownership is never abandoned intentionally.
+
+All automated validation is silent. Never invoke an audio player, an operating-system `open` command for generated audio, a playback application, or speaker output. Validate metadata, hashes, duration, and a full decode to a null sink; leave subjective listening to a separate owner-initiated UAT action.

@@ -14,7 +14,7 @@ The command revalidates the complete script lineage and exact transcript before 
 - `already_prepared`: every input, manifest, prompt, speaker, token estimate, and transcript projection was reverified without rewriting valid outputs.
 - `failed`: do not bypass the token limit or split a spoken turn manually in generated files. If the invocation must stop while state remains `running`, use `finalize_run.py` before reporting its recovery message.
 
-Each prompt keeps scene direction, director notes, host descriptions/voices, segment position, and minimal prior context in separate fields from `transcript`. The transcript fields, in manifest order, must reproduce `transcript.txt` byte for byte. Host names and voices remain identical across prompts.
+Each prompt keeps scene direction, director notes, immutable Audio Profiles, segment position, and minimal prior context in separate fields from `transcript`. The transcript fields, in manifest order, must reproduce `transcript.txt` byte for byte. Host names, provider voice IDs, vocal registers, cadence, energy, and recurring personalities remain identical across prompts. Gemini profiles must use a documented female-category prebuilt voice for the female host and a documented male-category prebuilt voice for the male host.
 
 Natural script, planned-segment, section, transition, and closing-recap boundaries are preferred. Preparation targets two-to-four-minute requests and splits a discussion only when the configured safe token limit requires it. A single spoken turn that cannot fit fails closed so no prose is silently rewritten.
 

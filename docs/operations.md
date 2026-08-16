@@ -1,6 +1,6 @@
 # Operations
 
-The engine supports validated environment/profile preflight, deterministic artifact/lineage validation, owner-checked run initialization/resume, capability-neutral evidence collection, profile-driven editorial planning, grounded two-host scriptwriting, token-bounded TTS preparation/rendering, validated FFmpeg assembly, conditional Cloudflare R2 podcast publication, and terminal finalization.
+The engine supports validated environment/profile preflight, deterministic artifact/lineage validation, owner-checked run initialization/resume, capability-neutral evidence collection, profile-driven editorial planning, grounded two-host scriptwriting, token-bounded TTS preparation/rendering, validated FFmpeg assembly, conditional Cloudflare R2 podcast publication or private local output, and terminal finalization.
 
 ## Development gate
 
@@ -90,7 +90,7 @@ In a distinct Codex phase, follow the skill's [`scriptwriting.md`](../.agents/sk
 uv run python scripts/record_script.py --run <run-directory>
 ```
 
-The command authoritatively binds prompt/run/profile/date and current input hashes, validates planned claim coverage through underlying sources, preserves required spoken attribution/qualifications/disagreement, enforces two configured hosts and spoken-text policy, and surfaces balance/performance warnings. It writes `transcript.txt` only from validated ordered turns. Attempt 1 may receive one repair; attempt 2 fails/releases. A verified resume returns `already_valid` after rechecking inputs, script, transcript, and report.
+The command authoritatively binds prompt/run/profile/date and current input hashes, validates planned claim coverage through underlying sources, preserves required spoken attribution/qualifications/disagreement, enforces two configured hosts and spoken-text policy, and surfaces balance/performance warnings. Inquiry-driven profiles also check grounded listener-proxy follow-ups, abrupt transitions, and mechanical alternation. It writes `transcript.txt` only from validated ordered turns. Attempt 1 may receive one repair; attempt 2 fails/releases. A verified resume returns `already_valid` after rechecking inputs, script, transcript, and report.
 
 ## TTS preparation
 
@@ -100,7 +100,7 @@ At `tts`, follow the skill's [`tts-preparation.md`](../.agents/skills/produce-au
 uv run python scripts/prepare_tts.py --run <run-directory>
 ```
 
-The command revalidates the accepted script/transcript, rejects an unknown provider/model capability or unsafe token configuration, packs natural boundaries toward two-to-four-minute segments, and refuses a spoken turn that cannot fit. It writes private atomic `tts/segment-<NNN>.json` prompts followed by `tts/manifest.json` and state. The manifest records prompt hashes, token estimates, stable speakers/voices/direction, and exact ordered turn coverage. An unchanged rerun returns `already_prepared` without rewriting valid outputs. No provider is contacted.
+The command revalidates the accepted script/transcript, rejects an unknown provider/model capability, gender-inverted Gemini host voice, or unsafe token configuration, packs natural boundaries toward two-to-four-minute segments, and refuses a spoken turn that cannot fit. It writes private atomic `tts/segment-<NNN>.json` prompts followed by `tts/manifest.json` and state. Every provider request repeats the hosts' immutable Audio Profiles; the manifest records prompt hashes, token estimates, stable speakers/voices/direction, and exact ordered turn coverage. An unchanged rerun returns `already_prepared` without rewriting valid outputs. No provider is contacted.
 
 ## Gemini rendering
 
@@ -120,9 +120,11 @@ At `audio`, follow the skill's [`audio-assembly.md`](../.agents/skills/produce-a
 uv run python scripts/assemble_audio.py --run <run-directory>
 ```
 
-The command rechecks every manifest-ordered WAV, runs bounded FFprobe and full-decode checks, concatenates without creative processing, and encodes a 96 kbps mono 48 kHz MP3. It validates codec/container, duration against the sum of segments, sample rate, channel count, bytes, and complete decode before atomically promoting `episode.mp3` and advancing to `publication`. `already_assembled` means the recorded hash and all technical validation fields were rechecked without rewriting the file. Failure stays resumable at `audio`; rerun the same command after correcting FFmpeg/FFprobe or the named segment-file issue.
+The command rechecks every manifest-ordered WAV, runs bounded FFprobe and a full decode to a null sink, concatenates without creative processing, and encodes a 96 kbps mono 48 kHz MP3. It validates codec/container, duration against the sum of segments, sample rate, channel count, bytes, and complete decode before atomically promoting `episode.mp3` and advancing to `publication`. It never starts playback or sends audio to speakers. `already_assembled` means the recorded hash and all technical validation fields were rechecked without rewriting the file. Failure stays resumable at `audio`; rerun the same command after correcting FFmpeg/FFprobe or the named segment-file issue.
 
 ## R2 probe and episode publication
+
+This section applies only to a `cloudflare_r2` profile. A `local_private` profile must skip `publish_episode.py`; that command fails closed if called.
 
 Before the first live publication, verify the configured bucket, S3 credential, public endpoint, media type, and cleanup with one random non-sensitive object:
 
@@ -142,13 +144,13 @@ The publisher fully revalidates final audio, writes deterministic HTML notes and
 
 ## Finalization and resume
 
-After `published`/`already_published`, or when an owning invocation must stop while state remains `running`, run:
+After `published`/`already_published`, after validated audio for a `local_private` profile, or when an owning invocation must stop while state remains `running`, run:
 
 ```bash
 uv run python scripts/finalize_run.py --run <run-directory>
 ```
 
-The command validates recorded local artifacts before terminal success, writes `state.json` and the one-screen `summary.md`, then releases the episode lease. Successful publication becomes `status: completed` at `current_stage: finalized`. Incomplete work becomes `status: failed` with its last valid stage and one exact recovery command; it exits non-zero but preserves valid artifacts. Run `init_run.py` with the same profile in a later invocation: `resumed` restores that same compatible run ID/directory, while non-resumable second-invalid dossier/plan/script failures intentionally start a new run.
+The command validates recorded local artifacts before terminal success, writes `state.json` and the one-screen `summary.md`, then releases the episode lease. Successful remote publication becomes `status: completed` at `current_stage: finalized`; valid local-private audio does the same with publication `not_required` and no show-notes or published-episode artifacts. Incomplete work becomes `status: failed` with its last valid stage and one exact recovery command; it exits non-zero but preserves valid artifacts. Run `init_run.py` with the same profile in a later invocation: `resumed` restores that same compatible run ID/directory, while non-resumable second-invalid dossier/plan/script failures intentionally start a new run.
 
 Read the user-facing outcome from `summary.md`. It reports audio/publication status, warnings, local output directory, redacted publication labels, and recovery without exposing a tokenized URL.
 
@@ -164,6 +166,7 @@ Configure the standalone daily Codex task with the exact prompt, local environme
 - Production runs do not modify tracked code, dependencies, schemas, profiles, or documentation.
 - Resume valid work rather than rerunning successful external operations.
 - Persist terminal state through `finalize_run.py` before intentionally ending an owning invocation.
+- Never invoke an audio player, open generated audio in another app, or send automated output to speakers. Automated acceptance uses silent probes and full decode; listening is explicit owner-initiated UAT.
 - Never log credentials, tokenized object keys, or complete feed URLs.
 - Default CI cannot synthesize speech or publish objects because it receives no production secrets.
 

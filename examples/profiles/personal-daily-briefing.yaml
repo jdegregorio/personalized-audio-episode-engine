@@ -1,0 +1,159 @@
+schema_version: "1.0"
+
+id: personal-daily-briefing
+version: "0.1.0"
+enabled: true
+
+identity:
+  feed_id: personal-daily-briefing
+  title_template: "Personal Daily Briefing — {date}"
+  description: >
+    A private, action-oriented morning briefing that combines the day ahead,
+    priority communications, active commitments, and useful public context.
+
+episode:
+  topic: Personal schedule, priority communications, commitments, and day-ahead context
+  scope:
+    sections:
+      - id: day_ahead
+        description: >
+          Today's calendar, time-sensitive commitments, conflicts, preparation needs,
+          and useful travel buffers.
+      - id: priority_messages
+        description: >
+          Recent messages that require a decision, reply, preparation, or awareness today.
+      - id: commitments
+        description: >
+          Active reminders, notes, and promises that are relevant to today's choices.
+      - id: public_context
+        description: >
+          Weather, transit, local disruptions, or major public developments likely to
+          change today's plans or priorities.
+    exclude:
+      - routine notifications, newsletters, promotions, and low-priority inbox traffic
+      - stale commitments without a plausible action today
+      - public news that does not materially affect today's decisions
+      - verbatim private message bodies or unnecessary sensitive details
+
+audience:
+  timezone: America/Los_Angeles
+  locale: en-US
+  knowledge_level: informed_generalist
+  preferences:
+    - lead with what needs attention and why
+    - surface conflicts, preparation needs, and realistic next actions
+    - distinguish hard commitments from optional intentions
+    - minimize private detail while preserving enough context to act
+    - keep public context selective and directly useful
+
+collection:
+  source_types:
+    - google_calendar
+    - gmail
+    - google_keep
+    - public_web
+  suggested_capabilities: []
+  required_capabilities:
+    - google_calendar
+    - gmail
+    - google_keep
+  allow_native_research_fallback: true
+  evidence_contract_version: "1.0"
+  time_window:
+    recency_hours: 36
+  target_candidates:
+    day_ahead: 6
+    priority_messages: 5
+    commitments: 4
+    public_context: 5
+  maximum_candidates: 24
+  maximum_sources: 50
+  warning_estimated_tokens: 30000
+  maximum_estimated_tokens: 60000
+
+editorial:
+  target_minutes: 10
+  minimum_minutes: 6
+  maximum_minutes: 14
+  target_sections:
+    day_ahead:
+      minimum_items: 1
+      maximum_items: 4
+    priority_messages:
+      minimum_items: 0
+      maximum_items: 3
+    commitments:
+      minimum_items: 0
+      maximum_items: 2
+    public_context:
+      minimum_items: 0
+      maximum_items: 2
+  maximum_total_items: 9
+  allow_empty_sections:
+    - priority_messages
+    - commitments
+    - public_context
+  exclusion_reason_codes:
+    - not_actionable_today
+    - routine_or_low_priority
+    - duplicate_context
+    - superseded
+    - insufficient_context
+    - privacy_minimization
+    - episode_length_constraint
+  policy:
+    source_policy: owner_authorized_private_and_public_context
+    prefer_primary: true
+    multiple_sources_for_consequential_claims: false
+    calendar_window: today_and_next_morning
+    message_policy: action_required_or_material_context
+    commitment_policy: active_and_relevant_today
+    public_context_policy: changes_today_decisions
+    private_data_minimization: >
+      Summarize only what the listener needs to act. Do not reproduce full message bodies,
+      access links, meeting links, private tokens, or unnecessary personal details.
+
+hosts:
+  format: two_speaker
+  relationship: flexible_symmetry
+  female:
+    name: Maya
+    voice: Laomedeia
+    profile: >
+      Adult woman with a bright, lightly higher vocal register and crisp articulation.
+      Lively, quick, and playfully spunky without becoming cute or theatrical. Speaks with
+      an audible smile, reacts in the moment, spots friction, and brings light wit to
+      low-stakes moments. Acts as the listener's sharp morning proxy. Preserve this exact
+      voice, cadence, and personality in every segment.
+  male:
+    name: Daniel
+    voice: Achird
+    profile: >
+      Adult man with a friendly lower register and loose conversational cadence. Warm,
+      curious, and lightly wry; sounds like a smart friend thinking alongside the listener,
+      not a manager delivering a status report. Organizes the day, enjoys Maya's jokes, and
+      explains tradeoffs without sounding stern. Preserve this exact voice, cadence, and
+      personality in every segment.
+
+performance:
+  style: lively_friendly_morning_conversation
+  pace: varied_relaxed_with_quick_reactions
+  conversation_mode: inquiry_driven
+  use_audio_tags: sparingly
+  prohibit_fake_personal_experience: true
+  prohibit_urls_in_speech: true
+  fatal_warning_codes:
+    - missing_followup_question
+    - abrupt_transition
+
+tts:
+  provider: gemini
+  model: gemini-3.1-flash-tts-preview
+  safe_input_tokens: 7000
+  target_segment_minutes: 3
+  maximum_retries: 3
+
+publishing:
+  feed_title: Personal Daily Briefing
+  language: en-US
+  provider: local_private

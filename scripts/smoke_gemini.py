@@ -17,36 +17,37 @@ from audio_engine.tts import (
     SpeechRendererError,
     estimate_input_tokens,
     renderer_input,
+    validate_gemini_voice_pair,
 )
 
 _MODEL = "gemini-3.1-flash-tts-preview"
 _TRANSCRIPT = "\n".join(
     (
-        "Maya: Good morning. This is a synthetic audio check, built to test a calm "
-        "two-host conversation without using current news or private information.",
-        "Daniel: We are listening for stable voices, clear handoffs, comfortable pacing, "
-        "and a clean distinction between the two speakers.",
-        "Maya: The scene is intentionally simple: two colleagues in a quiet studio, "
-        "explaining how a reliable system preserves completed work when one request needs "
-        "to be tried again.",
-        "Daniel: That means a later retry should focus only on the missing segment. Earlier "
-        "audio stays exactly where it is, with its original checksum and completion time.",
-        "Maya: We also keep production direction outside the spoken transcript. If this "
-        "sample begins by reading labels, voice identifiers, or setup notes, the smoke check "
-        "should be treated as unsuccessful.",
-        "Daniel: The expected result is ordinary conversation, not a dramatic performance. "
-        "I should sound grounded and analytical, while Maya remains warm, incisive, and "
-        "concise.",
-        "Maya: This final exchange gives the sample enough length to reveal obvious drift in "
-        "pacing or voice identity.",
-        "Daniel: And it closes with a direct confirmation that both configured speakers "
-        "completed the synthetic Gemini text-to-speech check.",
+        "Maya: Okay, tiny morning mystery. Our completely fictional office put a bowl of "
+        "tangerines beside the coffee machine, and somehow the tangerines vanished before "
+        "the coffee did.",
+        "Daniel: Before the coffee? That's either a wellness breakthrough or somebody hid "
+        "the good beans. What did our very serious imaginary investigation find?",
+        "Maya: Mostly that people will eat fruit when it is directly in the path of caffeine. "
+        "Move the bowl six feet away and suddenly a tangerine requires project planning.",
+        "Maya: Which, honestly, feels unfair to the tangerine. It already came in its own "
+        "little jacket.",
+        "Daniel: Strong packaging. Terrible marketing department. But is the useful idea "
+        "really just that convenience beats good intentions?",
+        "Maya: Pretty much. Tiny bits of friction matter. If the healthy choice is visible and "
+        "easy, people don't have to stage a personal summit before breakfast.",
+        "Daniel: So what would you change next in this deeply rigorous fictional workplace?",
+        "Maya: Put water beside the tangerines, keep the coffee where it is, and absolutely do "
+        "not form a produce committee. That's how the bananas start requesting meetings.",
+        "Daniel: Sensible. We've learned something useful, nobody had to sound like an "
+        "announcer, and the imaginary bananas remain off the calendar.",
         "",
     )
 )
 
 
 def build_live_prompt(female_voice: str, male_voice: str) -> TtsSegmentPrompt:
+    validate_gemini_voice_pair(female_voice, male_voice)
     prompt = TtsSegmentPrompt(
         contract_version="1.0",
         prompt_version=TTS_PROMPT_VERSION,
@@ -61,22 +62,34 @@ def build_live_prompt(female_voice: str, male_voice: str) -> TtsSegmentPrompt:
         position=1,
         segment_count=1,
         scene_description=(
-            "A calm public-radio-style conversation in a quiet studio at a conversational pace."
+            "A bright, relaxed morning conversation between two quick, friendly colleagues. "
+            "They are smiling, reacting to each other, and having genuine fun with a small idea."
         ),
         director_notes=[
             "Speak only the exact transcript; never read production metadata aloud.",
-            "Keep both recurring hosts natural, grounded, and distinct.",
+            "Preserve each host's exact register, timbre, cadence, energy, and personality.",
+            "This is lively natural banter, not news reading: vary pace, use contractions, let "
+            "reactions breathe, and keep an audible smile.",
+            "Keep Maya bright, quick, and playfully spunky; keep Daniel lower, friendly, loose, "
+            "and lightly wry. Never blend them.",
+            "Respond to the humor and meaning of the prior line instead of resetting each turn.",
         ],
         hosts=[
             TtsHost(
                 name="Maya",
                 voice=female_voice,
-                description="calm, incisive, warm, concise",
+                description=(
+                    "Adult woman with a bright, lightly higher register, crisp articulation, "
+                    "an audible smile, quick playful wit, and lively spunky curiosity."
+                ),
             ),
             TtsHost(
                 name="Daniel",
                 voice=male_voice,
-                description="curious, analytical, grounded, concise",
+                description=(
+                    "Adult man with a friendly lower register, loose conversational cadence, "
+                    "easy curiosity, responsive amusement, and light dry wit."
+                ),
             ),
         ],
         continuity_context=None,
@@ -92,8 +105,8 @@ def build_live_prompt(female_voice: str, male_voice: str) -> TtsSegmentPrompt:
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--output", required=True, type=Path)
-    parser.add_argument("--female-voice", default="Kore")
-    parser.add_argument("--male-voice", default="Charon")
+    parser.add_argument("--female-voice", default="Laomedeia")
+    parser.add_argument("--male-voice", default="Achird")
     args = parser.parse_args(argv)
     key = os.environ.get("GEMINI_API_KEY", "")
     if not key:

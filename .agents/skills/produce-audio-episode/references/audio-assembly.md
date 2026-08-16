@@ -10,7 +10,7 @@ The command revalidates every manifest-ordered WAV and its recorded hash, probes
 
 ## Inspect the result
 
-- `assembled`: reload `state.json`; require `current_stage: publication`, `final_audio_validation.status: valid`, and exact equality between `final_audio_validation.artifact` and `artifacts.final_audio`. Play `episode.mp3` end to end.
+- `assembled`: reload `state.json`; require `current_stage: publication`, `final_audio_validation.status: valid`, and exact equality between `final_audio_validation.artifact` and `artifacts.final_audio`. Do not start playback. Automated validation is the recorded FFprobe inspection plus a full decode to a null output; subjective listening happens only as a separate, explicit, owner-initiated UAT action after the run.
 - `already_assembled`: the recorded MP3 hash and all technical validation fields revalidated without rewriting the file.
 - `failed`: read the final-audio message and summary. Correct FFmpeg/FFprobe or the recorded segment issue and rerun this command; if the invocation must stop, use `finalize_run.py` so the next initializer resumes here. Completed PCM/WAV segments remain reusable; do not call Gemini again.
 

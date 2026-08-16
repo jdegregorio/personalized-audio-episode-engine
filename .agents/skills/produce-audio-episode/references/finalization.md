@@ -1,12 +1,12 @@
 # Finalization
 
-Every owning invocation ends by persisting terminal state before releasing its episode lease. Run finalization after successful publication, or when the invocation must stop and `state.json.status` is still `running`:
+Every owning invocation ends by persisting terminal state before releasing its episode lease. Run finalization after successful remote publication, after valid local-private audio, or when the invocation must stop and `state.json.status` is still `running`:
 
 ```bash
 uv run python scripts/finalize_run.py --run <run-directory>
 ```
 
-The command revalidates every referenced local artifact. A successful publication advances to `current_stage: finalized`, records `status: completed` and `completed_at`, regenerates the one-screen `summary.md`, then releases ownership. Its compact JSON contains only the run ID, local run/summary paths, episode key, and redacted publication labels.
+The command revalidates every referenced local artifact. A successful `cloudflare_r2` publication or valid `local_private` final MP3 advances to `current_stage: finalized`, records `status: completed` and `completed_at`, regenerates the one-screen `summary.md`, then releases ownership. Local-private finalization records publication as `not_required` and leaves the MP3 only in the private run workspace. Its compact JSON contains only the run ID, local run/summary paths, episode key, and redacted location labels.
 
 If the workflow is incomplete, finalization records the current stage, a concise failure, and the exact resume command before releasing ownership. Valid dossiers, plans, scripts, completed TTS segments, and final audio remain unchanged. The command exits non-zero for this failed result; do not delete the workspace.
 

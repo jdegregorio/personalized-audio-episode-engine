@@ -3050,3 +3050,70 @@ The core repository must remain free of topic-specific source integrations.
 The world/U.S./Seattle profile exercises the generic engine as an example. Its news-specific sections, taxonomy, and collection preferences must remain profile data rather than becoming engine or skill constraints. The topic-generic evidence contract and profile schema preserve a clean path to future episode types without requiring those integrations to be built now.
 
 This specification supersedes the earlier three-episode and two-episode MVP proposals.
+
+---
+
+# 36. Post-MVP V0.2 quality and personal-briefing extension
+
+This section records owner feedback observed during basic MVP testing and extends the delivered vertical slice without weakening the generic engine or the privacy boundary above.
+
+## 36.1 Stable, distinct recurring hosts
+
+Every independently rendered TTS segment must receive the same explicit recurring Audio Profile for each host: exact provider voice ID, vocal register, timbre, cadence, energy, articulation, role, and personality. Provider voice metadata must reject a female host assigned to a documented male-category voice, a male host assigned to a documented female-category voice, or an undocumented voice.
+
+The default hosts shall be original lively conversational personalities, not imitations of identifiable people. Maya should remain an adult woman with a brighter, lightly higher register, crisp delivery, audible smile, and quick spunky wit. Daniel should remain an adult man with a friendly lower register, loose cadence, responsive amusement, and light dry wit. Both should sound like smart friends thinking together rather than anchors reading polished copy. The renderer must explicitly resist swapping, averaging, reinterpreting, or blending their performances across segment boundaries.
+
+## 36.2 Inquiry-driven host interaction
+
+For an inquiry-driven profile, the second host acts as a thoughtful listener proxy. Each planned story or briefing item must contain a non-lead follow-up grounded in the preceding fact or explanation and designed to reveal how, why, consequence, evidence, uncertainty, tradeoff, practical implication, or what happens next.
+
+Turn length and speaker order must follow the material rather than a rigid alternation template. Transitions should emerge from the preceding takeaway, open question, consequence, or shared theme. Generic announcer resets and nearly perfect long-form alternation must be observable validation signals, and profiles may make them fatal.
+
+## 36.3 Silent automated validation
+
+No automated, scheduled, smoke, validation, or production command may start an audio player, open generated audio in a playback application, or send output to laptop speakers. Automated audio acceptance uses metadata, hashes, duration, media/codec parameters, and a complete decode to a null sink.
+
+Because voice identity and personality are subjective, human listening remains required for release UAT, but it must be a separate, explicit, owner-initiated action after the generating task has stopped.
+
+## 36.4 Personal daily briefing profile
+
+The engine shall include one enabled personal daily briefing profile that combines:
+
+1. today's Calendar schedule, conflicts, preparation needs, and buffers;
+2. Gmail messages requiring a decision, response, preparation, or awareness;
+3. active Google Keep reminders, notes, and commitments relevant today; and
+4. selective public context such as weather, transit, local disruptions, or major developments that materially change today's decisions.
+
+Calendar, Gmail, and Keep are required independently configured capabilities. Native web research may supplement public context but may not replace a missing private source. The collected dossier must minimize private data and exclude full message bodies, meeting/access links, tokens, unrelated attendee details, and private source dumps.
+
+## 36.5 Private local output
+
+Personal briefing audio must not use the existing public-by-secret-link R2 feed. A `local_private` profile finalizes a validated MP3 in the mode-restricted run workspace, records remote publication as not required, creates no RSS/show-notes/published metadata, and fails closed if sent to the remote publisher.
+
+Authenticated or encrypted remote personal delivery remains deferred. The new profile must not be added to an unattended schedule until its private capabilities, minimization, voice quality, and no-publication behavior pass owner-approved UAT.
+
+## 36.6 Additional acceptance criteria
+
+### AC-021: Stable host identity
+
+Every prepared segment repeats identical host voice/profile fields, gender-inverted provider voices fail before a speech request, and owner-initiated listening confirms no material voice or personality drift across segment boundaries.
+
+### AC-022: Distinct original host performances
+
+Owner-initiated listening confirms a clearly brighter/livelier female host and lower/friendly/wry male host with useful original personalities and no imitation or caricature.
+
+### AC-023: Meaningful conversational depth
+
+Inquiry-driven scripts contain grounded listener-proxy follow-ups per planned item, avoid abrupt generic resets, and do not default to mechanical speaker alternation.
+
+### AC-024: No surprise playback
+
+Repository checks reject common automatic player commands, workflow instructions prohibit playback, and offline/live generation completes without opening a player or emitting speaker output.
+
+### AC-025: Personal briefing coverage
+
+The profile requires Calendar, Gmail, and Keep, uses native research only for permitted public context, and plans an action-oriented day-ahead episode under the generic evidence/editorial/script contracts.
+
+### AC-026: Personal-data publication boundary
+
+An offline vertical-slice test proves a local-private episode silently validates and finalizes, the remote publisher refuses it before object writes, no RSS/show-notes/published metadata is created, and same-day initialization returns `no_op` for the completed local episode.

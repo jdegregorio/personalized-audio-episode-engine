@@ -1,6 +1,6 @@
 # Publication
 
-Enter this phase only when `state.json.current_stage` is `publication` and `final_audio_validation.status` is `valid`. Load the central environment, then run:
+This phase applies only when `profile.publishing.provider` is `cloudflare_r2`, `state.json.current_stage` is `publication`, and `final_audio_validation.status` is `valid`. A `local_private` run skips this command and proceeds to finalization with its validated MP3 still in the private run workspace. Load the central environment, then run:
 
 ```bash
 uv run python scripts/publish_episode.py --run <run-directory>

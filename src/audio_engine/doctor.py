@@ -84,6 +84,12 @@ def _profile_environment_check(
     environment: Mapping[str, str],
 ) -> CheckResult:
     publishing = profile.publishing
+    if publishing.provider == "local_private":
+        return CheckResult(
+            "profile environment",
+            True,
+            "local-private output requires no publication endpoint",
+        )
     names = {
         publishing.private_path_env,
         publishing.endpoint_url_env,

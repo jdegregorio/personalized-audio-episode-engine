@@ -39,10 +39,53 @@ from audio_engine.validation import (
     validate_transcript_projection,
 )
 
-TTS_PROMPT_VERSION = "1.1.0"
+TTS_PROMPT_VERSION = "1.2.0"
 _WORD = re.compile(r"\b[\w’'-]+\b", re.UNICODE)
 _MINIMUM_TARGET_SECONDS = 2 * 60
 _MAXIMUM_TARGET_SECONDS = 4 * 60
+
+# Google documents these categories for Gemini-TTS prebuilt voices. Keep the
+# provider metadata here so profile data cannot accidentally assign a male
+# catalog voice to the recurring female host (or vice versa).
+GEMINI_FEMALE_VOICES = frozenset(
+    {
+        "Achernar",
+        "Aoede",
+        "Autonoe",
+        "Callirrhoe",
+        "Despina",
+        "Erinome",
+        "Gacrux",
+        "Kore",
+        "Laomedeia",
+        "Leda",
+        "Pulcherrima",
+        "Sulafat",
+        "Vindemiatrix",
+        "Zephyr",
+    }
+)
+GEMINI_MALE_VOICES = frozenset(
+    {
+        "Achird",
+        "Algenib",
+        "Algieba",
+        "Alnilam",
+        "Charon",
+        "Enceladus",
+        "Fenrir",
+        "Iapetus",
+        "Orus",
+        "Puck",
+        "Rasalgethi",
+        "Sadachbia",
+        "Sadaltager",
+        "Schedar",
+        "Umbriel",
+        "Zubenelgenubi",
+    }
+)
+GEMINI_SUPPORTED_VOICES = GEMINI_FEMALE_VOICES | GEMINI_MALE_VOICES
 
 
 class TtsPreparationError(RuntimeError):
@@ -154,19 +197,19 @@ def estimate_input_tokens(value: str) -> int:
 def renderer_input(prompt: TtsSegmentPrompt) -> str:
     """Build the complete, explicitly delimited provider input for one segment."""
     hosts = "\n".join(
-        f"- {host.name}: voice {host.voice}; {host.description}" for host in prompt.hosts
+        f"- {host.name} — immutable voice {host.voice}; recurring identity: {host.description}"
+        for host in prompt.hosts
     )
     notes = "\n".join(f"- {note}" for note in prompt.director_notes)
     continuity = prompt.continuity_context or "None; this is the first segment."
     return (
-        "Synthesize speech for the exact two-speaker conversation below.\n"
-        "Read only the text inside <TRANSCRIPT>; never speak these production instructions, "
-        "labels, voice IDs, or continuity context.\n\n"
-        f"Scene: {prompt.scene_description}\n"
-        f"Segment: {prompt.position} of {prompt.segment_count}\n"
-        f"Continuity context (not spoken): {continuity}\n"
-        f"Host performances (not spoken):\n{hosts}\n"
-        f"Director notes (not spoken):\n{notes}\n\n"
+        "Speak only the exact <TRANSCRIPT>; never speak directions, labels, IDs, or context. "
+        "Keep each AUDIO PROFILE identical across segments; never blend the hosts.\n\n"
+        f"# AUDIO PROFILES (not spoken)\n{hosts}\n\n"
+        f"# SCENE (not spoken)\n{prompt.scene_description}\n\n"
+        f"# CONTEXT (not spoken)\nSegment {prompt.position} of "
+        f"{prompt.segment_count}. {continuity}\n\n"
+        f"# DIRECTOR NOTES (not spoken)\n{notes}\n\n"
         f"<TRANSCRIPT>\n{prompt.transcript}</TRANSCRIPT>\n"
     )
 
@@ -301,6 +344,7 @@ def build_tts_preparation(
         profile.tts.provider, profile.tts.model
     )
     _validate_capabilities(profile, selected_capabilities)
+    validate_host_voice_configuration(profile)
     if script.safe_input_tokens != profile.tts.safe_input_tokens:
         raise TtsPreparationError("script and profile safe input limits do not match")
     configured_hosts = {
@@ -541,7 +585,7 @@ def _make_prompt(
     )
     continuity = None
     if previous_turn is not None:
-        prior_text = previous_turn.text[-300:]
+        prior_text = previous_turn.text[-80:]
         continuity = f"Previous segment ended with {previous_turn.speaker}: {prior_text}"
     prompt = TtsSegmentPrompt(
         contract_version="1.0",
@@ -574,10 +618,33 @@ def _scene_description(profile: EpisodeProfile) -> str:
 
 def _director_notes(profile: EpisodeProfile) -> list[str]:
     return [
-        "Speak only the exact transcript; never read production metadata aloud.",
-        f"Use audio performance cues {profile.performance.use_audio_tags}.",
-        "Keep both recurring hosts natural, grounded, and consistent across segments.",
+        f"Cues: {profile.performance.use_audio_tags}. Preserve both profiles across segments.",
+        "Friends thinking aloud, not presenters: varied rhythm, contractions, short reactions, "
+        "audible smiles.",
+        "Female: bright, higher, quick, spunky. Male: lower, friendly, loose, wry. Respond to "
+        "each other with real curiosity; no announcer cadence.",
     ]
+
+
+def validate_host_voice_configuration(profile: EpisodeProfile) -> None:
+    """Reject Gemini host voices outside their documented gender categories."""
+    if profile.tts.provider != "gemini":
+        return
+    validate_gemini_voice_pair(profile.hosts.female.voice, profile.hosts.male.voice)
+
+
+def validate_gemini_voice_pair(female_voice: str, male_voice: str) -> None:
+    """Validate one explicit female/male Gemini prebuilt voice pairing."""
+    if female_voice not in GEMINI_FEMALE_VOICES:
+        raise TtsPreparationError(
+            "configured Gemini female host requires a documented female prebuilt voice"
+        )
+    if male_voice not in GEMINI_MALE_VOICES:
+        raise TtsPreparationError(
+            "configured Gemini male host requires a documented male prebuilt voice"
+        )
+    if female_voice == male_voice:
+        raise TtsPreparationError("configured Gemini host voices must be distinct")
 
 
 def _turn_word_count(turn: ScriptTurn) -> int:

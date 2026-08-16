@@ -30,6 +30,8 @@ uv run python scripts/select_collection_method.py \
 
 Declare every surviving suitable capability again. Failed names persist in state and cannot be selected by a later invocation. Omit `--capability` only when no suitable specialized option remains and native fallback is allowed. Pass every profile-required capability as `--capability` only when it is actually available. The command terminalizes the run with configuration guidance when a required capability is missing or failed. Never install a capability during the run.
 
+For a multi-source personal briefing, use every required private capability named by the profile. Native public-web research cannot replace Calendar, Gmail, Keep, or another private source. Collect only the fields needed to brief the owner: minimize message bodies and attendee data, never copy access links or tokens, and omit unrelated private content.
+
 ## 2. Collect high-recall evidence
 
 Use the request's topic, section IDs and descriptions, time window, source types, audience context, exclusions, source policy, targets, and output path. Classify every candidate with exactly one declared section ID. Collect materially more credible candidates than a final episode normally needs, up to the configured hard limits. When meaningful evidence is scarce, record that fact instead of padding with low-value items.

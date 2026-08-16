@@ -27,7 +27,9 @@ configuration, or tracked documentation during this production run. Resume an
 incomplete run for the same profile and date when valid artifacts already exist.
 Publish only after all required validations and audio checks pass. End an owning
 invocation with terminal finalization, then return the contents of the final
-human-readable run summary.
+human-readable run summary. Never invoke an audio player, open generated audio
+in another application, or send sound to speakers; all automated audio
+validation must be silent.
 ```
 
 <!-- scheduled-task-prompt:end -->
@@ -59,7 +61,7 @@ The computer must remain powered on and awake, the Codex desktop app must remain
 2. Run the complete local gate and configured doctor from that checkout. Confirm `git status --short` is empty.
 3. Configure the task above against that local checkout and environment file. Run the canonical prompt once manually in a fresh context before enabling the recurrence.
 4. Enable the daily schedule. Do not edit code, dependencies, schemas, profiles, documentation, task prompt, model setting, environment, or runtime artifacts between qualification runs.
-5. Require three consecutive scheduled dates to produce a newly validated playable MP3 without manual intermediate intervention. A failed or manually repaired run breaks the streak; fix the smallest owning defect and restart at run 1.
+5. Require three consecutive scheduled dates to produce a newly validated playable MP3 without manual intermediate intervention or automated playback. A failed or manually repaired run breaks the streak; fix the smallest owning defect and restart at run 1.
 6. Record only the redacted fields in [`uat-evidence-template.md`](uat-evidence-template.md). Never record a complete feed URL, tokenized object key, credential, current-news dossier, transcript, generated audio, or private runtime artifact.
 7. Perform the AntennaPod, idempotency, recovery, and concurrency checks in [`release-checklist.md`](release-checklist.md) before merge.
 

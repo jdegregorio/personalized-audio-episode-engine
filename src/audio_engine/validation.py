@@ -52,6 +52,10 @@ _DISAGREEMENT_LANGUAGE = re.compile(
 )
 _WORD = re.compile(r"\b[\w’'-]+\b", re.UNICODE)
 _STOCK_PHRASES = ("that's fascinating", "absolutely", "great question")
+_ABRUPT_TRANSITION = re.compile(
+    r"^(?:all right,?\s*)?(?:moving on|turning to|next up|in other news|on to the next)\b",
+    re.IGNORECASE,
+)
 
 
 @dataclass(frozen=True, order=True)
@@ -1174,6 +1178,18 @@ def validate_script_against_profile(
                 )
         if turn.turn_type == "reaction":
             reaction_count += 1
+        if (
+            profile.performance.conversation_mode == "inquiry_driven"
+            and turn.turn_type == "transition"
+            and _ABRUPT_TRANSITION.search(turn.text)
+        ):
+            warnings.append(
+                _issue(
+                    "abrupt_transition",
+                    path,
+                    "transition uses a generic reset instead of an earned conversational handoff",
+                )
+            )
         if turn.speaker == consecutive_speaker:
             consecutive_count += 1
         else:
@@ -1233,6 +1249,19 @@ def validate_script_against_profile(
                 "a discouraged stock phrase is repeated",
             )
         )
+    if profile.performance.conversation_mode == "inquiry_driven" and len(script.turns) >= 8:
+        speaker_switches = sum(
+            left.speaker != right.speaker
+            for left, right in zip(script.turns, script.turns[1:], strict=False)
+        )
+        if speaker_switches / (len(script.turns) - 1) > 0.90:
+            warnings.append(
+                _issue(
+                    "mechanical_turn_taking",
+                    "/turns",
+                    "speaker order alternates almost perfectly and may sound mechanically scripted",
+                )
+            )
     for segment in plan.segments:
         segment_turns = [
             turn for turn in script.turns if turn.planned_segment_id == segment.segment_id
@@ -1245,6 +1274,25 @@ def validate_script_against_profile(
                     f"planned segment {segment.segment_id!r} has no analysis or outro takeaway",
                 )
             )
+        if profile.performance.conversation_mode == "inquiry_driven":
+            has_listener_followup = any(
+                turn.turn_type == "question"
+                and turn.speaker != segment.lead_host
+                and any(
+                    earlier.speaker != turn.speaker and earlier.turn_type in {"fact", "analysis"}
+                    for earlier in segment_turns[:index]
+                )
+                for index, turn in enumerate(segment_turns)
+            )
+            if not has_listener_followup:
+                warnings.append(
+                    _issue(
+                        "missing_followup_question",
+                        "/turns",
+                        f"planned segment {segment.segment_id!r} lacks a non-lead follow-up "
+                        "question grounded in an earlier explanation",
+                    )
+                )
     preferred_tolerance = max(30, round(plan.planned_duration_seconds * 0.15))
     if abs(script.estimated_duration_seconds - plan.planned_duration_seconds) > preferred_tolerance:
         warnings.append(

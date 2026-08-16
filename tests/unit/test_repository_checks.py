@@ -8,6 +8,7 @@ from scripts.check_repository import (
     check_repository,
     markdown_errors,
     markdown_heading_anchors,
+    playback_command_errors,
     prohibited_path_errors,
     repository_paths,
 )
@@ -41,6 +42,20 @@ def test_prohibited_paths_reject_runtime_secrets_credentials_and_audio() -> None
 
     assert len(errors) == len(paths)
     assert prohibited_path_errors([".env.example", "src/audio_engine/__init__.py"]) == []
+
+
+def test_playback_commands_are_rejected_from_production_code(tmp_path: Path) -> None:
+    scripts = tmp_path / "scripts"
+    scripts.mkdir()
+    unsafe = scripts / "unsafe.py"
+    unsafe.write_text(
+        'import subprocess\nsubprocess.run(["afplay", "episode.mp3"], check=True)\n',
+        encoding="utf-8",
+    )
+
+    assert playback_command_errors(tmp_path, ["scripts/unsafe.py"]) == [
+        "prohibited automatic audio playback command: scripts/unsafe.py"
+    ]
 
 
 def test_markdown_errors_report_style_and_unsafe_links(tmp_path: Path) -> None:

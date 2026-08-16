@@ -711,7 +711,7 @@ class FinalAudioValidation(_ContractModel):
 
 
 class PublicationState(_ContractModel):
-    status: Literal["not_started", "deferred", "published", "failed"]
+    status: Literal["not_started", "not_required", "deferred", "published", "failed"]
     redacted_locations: Annotated[list[ShortText], Field(max_length=20)]
     message: ShortText | None
 

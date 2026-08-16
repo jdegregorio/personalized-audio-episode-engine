@@ -13,7 +13,7 @@ For every dossier candidate, record exactly one disposition:
 - select it once as a planned segment; or
 - exclude it once with a profile-declared reason code and concise specific explanation.
 
-For each selected segment, provide its order, optional profile section, editorial angle, audience value, required and optional claim IDs, treatment time, configured lead host, useful two-host dynamic, transition intent, and any material source-conflict or emphasis note. Preserve disagreements and uncertainty; never manufacture balance. Define a purposeful opening and closing takeaway. Keep total time and item/section maxima within the profile.
+For each selected segment, provide its order, optional profile section, editorial angle, audience value, required and optional claim IDs, treatment time, configured lead host, useful two-host dynamic, transition intent, and any material source-conflict or emphasis note. For `inquiry_driven` conversation, design an inquiry arc: the lead establishes what happened or what is scheduled, and the other host acts as the listener's proxy with the next useful question about how, why, consequence, tradeoff, uncertainty, or what needs attention. Vary where that question lands and leave room for reactions, callbacks, lightness, and a second consecutive turn when natural. Do not plan perfect speaker alternation or repeat one setup-question-answer template. Make each transition emerge from the previous takeaway, open question, consequence, or shared theme. Preserve disagreements and uncertainty; never manufacture balance. Define a purposeful opening and closing takeaway. Keep total time and item/section maxima within the profile.
 
 ## 2. Write and record one plan
 

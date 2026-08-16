@@ -1,6 +1,6 @@
 ---
 name: produce-audio-episode
-description: Produce and publish one source-grounded conversational audio episode from an episode profile. Use when asked to generate a podcast, audio briefing, daily news episode, or topic-based spoken program through this repository's durable workflow. Use available research capabilities when suitable, with native web research as the public-web fallback; do not use for ordinary writing, summarization, or standalone text-to-speech requests.
+description: Produce one source-grounded conversational audio episode or personal daily briefing from an episode profile, and publish it only when the profile permits. Use when asked to generate a podcast, audio briefing, daily news episode, or topic-based spoken program through this repository's durable workflow. Use available research capabilities when suitable, with native web research as the public-web fallback; do not use for ordinary writing, summarization, or standalone text-to-speech requests.
 ---
 
 # Produce Audio Episode
@@ -20,8 +20,8 @@ Process exactly one enabled episode profile through the repository's durable, va
 9. For `tts` without `tts_preparation`, read [references/tts-preparation.md](references/tts-preparation.md) and prepare deterministic provider inputs.
 10. For `tts` with valid preparation, read [references/tts-rendering.md](references/tts-rendering.md) and render only missing segments.
 11. For `audio`, read [references/audio-assembly.md](references/audio-assembly.md) and assemble only the validated rendered segments.
-12. For `publication`, read [references/publication.md](references/publication.md), publish only after final-audio revalidation, and resume publication without rerendering.
-13. After successful publication, read [references/finalization.md](references/finalization.md) and finalize before reporting success. If an invocation must stop while state is still `running`, use the same reference to persist failure and release ownership before reporting recovery guidance.
+12. For `publication`, route by `profile.publishing.provider`: read [references/publication.md](references/publication.md) and publish a `cloudflare_r2` episode only after final-audio revalidation; skip remote publication for `local_private` and proceed directly to finalization.
+13. After successful remote publication or validated local-private audio, read [references/finalization.md](references/finalization.md) and finalize before reporting success. If an invocation must stop while state is still `running`, use the same reference to persist failure and release ownership before reporting recovery guidance.
 
 ## Non-negotiable rules
 
@@ -32,6 +32,7 @@ Process exactly one enabled episode profile through the repository's durable, va
 - Use an already available specialized capability only when it can satisfy the request and evidence contract. Never install one during a run. Use native research only when the profile permits public-web fallback.
 - Validate every structured artifact. Permit one recorded repair or affected-step repeat for the current dossier, plan, or script, and fail after its second invalid attempt.
 - Treat validated artifacts and `state.json` as authoritative. Resume valid work instead of repeating it.
+- Never start an audio player, open generated audio in another application, or send sound to speakers during an automated or scheduled run. Validation is silent: inspect metadata, hashes, duration, and a full decode. Listening UAT is a separate, explicit, owner-initiated action.
 - Never commit secrets, private URLs, runtime artifacts, source dumps, or generated audio.
 
 ## Failure boundary

@@ -308,6 +308,11 @@ def publish_episode(
         repo_root=repo_root,
         audio_tools=audio_tools,
     )
+    if context.profile.publishing.provider != "cloudflare_r2":
+        raise PublicationError(
+            "local-private profiles must skip publish_episode.py and finalize "
+            "validated audio locally"
+        )
     from audio_engine.r2 import R2ObjectStore
 
     selected_store = store or R2ObjectStore.from_engine_settings(settings)
